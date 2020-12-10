@@ -35,6 +35,9 @@ version by setting JAVA_HOME env var:
 
     $ JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64 mvn clean install -am -pl debezium-connector-cassandra
 
+## Getting Started
+
+For getting started please check the [tutorial example](https://github.com/debezium/debezium-examples/tree/master/tutorial#using-cassandra).
 ## Contributing
 
 The Debezium community welcomes anyone that wants to help out in any way, whether that includes reporting problems, helping with documentation, or contributing code changes to fix bugs, add tests, or implement new features. See [this document](https://github.com/debezium/debezium/blob/master/CONTRIBUTE.md) for details.
