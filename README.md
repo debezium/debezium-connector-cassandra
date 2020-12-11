@@ -1,6 +1,6 @@
 [![License](http://img.shields.io/:license-apache%202.0-brightgreen.svg)](http://www.apache.org/licenses/LICENSE-2.0.html)
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/io.debezium/debezium-connector-cassandra/badge.svg)](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22io.debezium%22)
-[![Build Status](https://travis-ci.com/debezium/debezium-connector-cassandra.svg?branch=main)](https://github.com/debezium/debezium-incubator/actions/)
+[![Build Status](https://github.com/debezium/debezium-connector-cassandra/workflows/Maven%20CI/badge.svg?branch=main)](https://github.com/debezium/debezium-connector-cassandra/actions)
 [![User chat](https://img.shields.io/badge/chat-users-brightgreen.svg)](https://gitter.im/debezium/user)
 [![Developer chat](https://img.shields.io/badge/chat-devs-brightgreen.svg)](https://gitter.im/debezium/dev)
 [![Google Group](https://img.shields.io/:mailing%20list-debezium-brightgreen.svg)](https://groups.google.com/forum/#!forum/debezium)
