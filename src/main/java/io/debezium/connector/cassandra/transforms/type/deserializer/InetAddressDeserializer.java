@@ -18,7 +18,7 @@ public class InetAddressDeserializer extends LogicalTypeDeserializer {
     @Override
     public Object deserialize(AbstractType<?> abstractType, ByteBuffer bb) {
         Object value = super.deserialize(abstractType, bb);
-        return convertDeserializedValue(abstractType, value);
+        return formatDeserializedValue(abstractType, value);
     }
 
     @Override
@@ -27,7 +27,7 @@ public class InetAddressDeserializer extends LogicalTypeDeserializer {
     }
 
     @Override
-    public Object convertDeserializedValue(AbstractType<?> abstractType, Object value) {
+    public Object formatDeserializedValue(AbstractType<?> abstractType, Object value) {
         InetAddress inetAddress = (InetAddress) value;
         return inetAddress.toString();
     }
