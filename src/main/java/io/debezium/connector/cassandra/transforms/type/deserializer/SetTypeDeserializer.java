@@ -25,7 +25,7 @@ public class SetTypeDeserializer extends CollectionTypeDeserializer<SetType<?>> 
     @Override
     public Object deserialize(AbstractType<?> abstractType, ByteBuffer bb) {
         Set<?> deserializedSet = (Set<?>) super.deserialize(abstractType, bb);
-        List<?> deserializedList = convertDeserializedElementsIfNecessary(abstractType, deserializedSet);
+        List<?> deserializedList = processElementsInDeserializedSet(abstractType, deserializedSet);
         return Values.convertToList(getSchemaBuilder(abstractType).build(), deserializedList);
     }
 
@@ -50,22 +50,34 @@ public class SetTypeDeserializer extends CollectionTypeDeserializer<SetType<?>> 
     }
 
     /**
-     * If elements in a deserialized set is LogicalType, convert each element to fit in Kafka Schema type
+     * Format or deserialize each elements in deserialized list:
+     * If the element is logical type, format the element.
+     * If the element is UserType or TupleType, deserialize the element.
      * @param abstractType the {@link AbstractType} of a column in Cassandra
      * @param deserializedSet Set deserialized from Cassandra
-     * @return A deserialized list from Cassandra with each element that fits in Kafka Schema type
+     * @return A deserialized list from Cassandra with each element that fits in it's Kafka Schema.
      */
-    private List<Object> convertDeserializedElementsIfNecessary(AbstractType<?> abstractType, Set<?> deserializedSet) {
+    private List<Object> processElementsInDeserializedSet(AbstractType<?> abstractType, Set<?> deserializedSet) {
         AbstractType<?> elementsType = ((SetType<?>) abstractType).getElementsType();
         TypeDeserializer elementsTypeDeserializer = CassandraTypeDeserializer.getTypeDeserializer(elementsType);
+        List<Object> resultedList;
         if (elementsTypeDeserializer instanceof LogicalTypeDeserializer) {
-            List<Object> convertedDeserializedList = new ArrayList<>();
+            resultedList = new ArrayList<>();
             for (Object element : deserializedSet) {
-                Object convertedValue = ((LogicalTypeDeserializer) elementsTypeDeserializer).convertDeserializedValue(elementsType, element);
-                convertedDeserializedList.add(convertedValue);
+                Object convertedValue = ((LogicalTypeDeserializer) elementsTypeDeserializer).formatDeserializedValue(elementsType, element);
+                resultedList.add(convertedValue);
             }
-            return convertedDeserializedList;
         }
-        return new ArrayList<>(deserializedSet);
+        else if (elementsTypeDeserializer instanceof UserTypeDeserializer || elementsTypeDeserializer instanceof TupleTypeDeserializer) {
+            resultedList = new ArrayList<>();
+            for (Object element : deserializedSet) {
+                Object deserializedElement = elementsTypeDeserializer.deserialize(elementsType, (ByteBuffer) element);
+                resultedList.add(deserializedElement);
+            }
+        }
+        else {
+            resultedList = new ArrayList<>(deserializedSet);
+        }
+        return resultedList;
     }
 }
