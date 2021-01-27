@@ -7,17 +7,17 @@ package io.debezium.connector.cassandra;
 
 import java.util.Objects;
 
-import io.debezium.DebeziumException;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.DataException;
 
 import com.datastax.driver.core.ColumnMetadata;
 
+import io.debezium.DebeziumException;
 import io.debezium.connector.cassandra.transforms.CassandraTypeConverter;
 import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;
-import org.apache.kafka.connect.errors.DataException;
 
 /**
  * Cell-level data about the source event. Each cell contains the name, value and
@@ -75,7 +75,8 @@ public class CellData implements KafkaRecord {
                     .put(CELL_SET_KEY, true)
                     .put(CELL_VALUE_KEY, value);
             return cellStruct;
-        } catch (DataException e) {
+        }
+        catch (DataException e) {
             throw new DebeziumException(String.format("Failed to record Cell. Name: %s, Schema: %s, Value: %s", name, schema.toString(), value), e);
         }
     }
