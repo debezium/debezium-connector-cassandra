@@ -465,4 +465,55 @@ public class CassandraTypeDeserializerTest {
         Object deserializedList = CassandraTypeDeserializer.deserialize(frozenListType, serializedList);
         Assert.assertEquals(expectedList, deserializedList);
     }
+
+    @Test
+    public void testListUserType() {
+
+        ByteBuffer expectedTypeName = ByteBuffer.wrap("FooType".getBytes(Charset.defaultCharset()));
+        List<FieldIdentifier> expectedFieldIdentifiers = new ArrayList<>();
+        expectedFieldIdentifiers.add(new FieldIdentifier(ByteBuffer.wrap("asciiField".getBytes(Charset.defaultCharset()))));
+        expectedFieldIdentifiers.add(new FieldIdentifier(ByteBuffer.wrap("doubleField".getBytes(Charset.defaultCharset()))));
+        // testing duration to make sure that recursive deserialization works correctly
+        List<AbstractType<?>> expectedFieldTypes = new ArrayList<>();
+        expectedFieldTypes.add(AsciiType.instance);
+        expectedFieldTypes.add(DoubleType.instance);
+        UserType userType = new UserType("barspace",
+                expectedTypeName,
+                expectedFieldIdentifiers,
+                expectedFieldTypes,
+                true);
+        Schema userSchema = CassandraTypeDeserializer.getSchemaBuilder(userType).build();
+        Struct expectedUserTypeData1 = new Struct(userSchema)
+                .put("asciiField", "foobar1")
+                .put("doubleField", 1.5d);
+        Struct expectedUserTypeData2 = new Struct(userSchema)
+                .put("asciiField", "foobar2")
+                .put("doubleField", 2.5d);
+        Map<String, Object> jsonObject1 = new HashMap<>(2);
+        jsonObject1.put("\"asciiField\"", "foobar1");
+        jsonObject1.put("\"doubleField\"", 1.5d);
+        Term userTypeObject1 = userType.fromJSONObject(jsonObject1);
+        ByteBuffer buffer1 = userTypeObject1.bindAndGet(QueryOptions.DEFAULT);
+        ByteBuffer serializedUserTypeObject1 = userType.decompose(buffer1);
+        Map<String, Object> jsonObject2 = new HashMap<>(2);
+        jsonObject2.put("\"asciiField\"", "foobar2");
+        jsonObject2.put("\"doubleField\"", 2.5d);
+        Term userTypeObject2 = userType.fromJSONObject(jsonObject2);
+        ByteBuffer buffer2 = userTypeObject2.bindAndGet(QueryOptions.DEFAULT);
+        ByteBuffer serializedUserTypeObject2 = userType.decompose(buffer2);
+
+        List<ByteBuffer> originalList = new ArrayList<>();
+        originalList.add(serializedUserTypeObject1);
+        originalList.add(serializedUserTypeObject2);
+
+        List<Struct> expectedList = new ArrayList<>();
+        expectedList.add(expectedUserTypeData1);
+        expectedList.add(expectedUserTypeData2);
+
+        ListType<ByteBuffer> frozenListType = ListType.getInstance(userType, false);
+        ByteBuffer serializedList = frozenListType.decompose(originalList);
+        Object deserializedList = CassandraTypeDeserializer.deserialize(frozenListType, serializedList);
+        Assert.assertEquals(expectedList, deserializedList);
+    }
+
 }
