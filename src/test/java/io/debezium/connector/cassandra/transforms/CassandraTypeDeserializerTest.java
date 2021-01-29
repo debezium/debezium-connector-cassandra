@@ -500,13 +500,13 @@ public class CassandraTypeDeserializerTest {
         ByteBuffer serializedSet = frozenSetType.decompose(sourceSet);
         Map<String, Object> jsonObject1 = new HashMap<>(2);
         jsonObject1.put("\"asciiField\"", "foobar1");
-        jsonObject1.put("\"setField\"", serializedSet);
+        jsonObject1.put("\"setField\"", new ArrayList<>(sourceSet));
         Term userTypeObject1 = userType.fromJSONObject(jsonObject1);
         ByteBuffer buffer1 = userTypeObject1.bindAndGet(QueryOptions.DEFAULT);
         ByteBuffer serializedUserTypeObject1 = userType.decompose(buffer1);
         Map<String, Object> jsonObject2 = new HashMap<>(2);
         jsonObject2.put("\"asciiField\"", "foobar2");
-        jsonObject2.put("\"setField\"", serializedSet);
+        jsonObject2.put("\"setField\"", new ArrayList<>(sourceSet));
         Term userTypeObject2 = userType.fromJSONObject(jsonObject2);
         ByteBuffer buffer2 = userTypeObject2.bindAndGet(QueryOptions.DEFAULT);
         ByteBuffer serializedUserTypeObject2 = userType.decompose(buffer2);
