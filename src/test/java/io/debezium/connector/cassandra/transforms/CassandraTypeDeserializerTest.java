@@ -489,10 +489,10 @@ public class CassandraTypeDeserializerTest {
         sourceSet.add("text2");
         Struct expectedUserTypeData1 = new Struct(userTypeSchema)
                 .put("asciiField", "foobar1")
-                .put("setField", sourceSet);
+                .put("setField", new ArrayList<>(sourceSet));
         Struct expectedUserTypeData2 = new Struct(userTypeSchema)
                 .put("asciiField", "foobar2")
-                .put("setField", sourceSet);
+                .put("setField", new ArrayList<>(sourceSet));
         List<Struct> expectedList = new ArrayList<>();
         expectedList.add(expectedUserTypeData1);
         expectedList.add(expectedUserTypeData2);
