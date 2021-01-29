@@ -469,26 +469,30 @@ public class CassandraTypeDeserializerTest {
     @Test
     public void testListUserType() {
 
-        ByteBuffer expectedTypeName = ByteBuffer.wrap("FooType".getBytes(Charset.defaultCharset()));
-        List<FieldIdentifier> expectedFieldIdentifiers = new ArrayList<>();
-        expectedFieldIdentifiers.add(new FieldIdentifier(ByteBuffer.wrap("asciiField".getBytes(Charset.defaultCharset()))));
-        expectedFieldIdentifiers.add(new FieldIdentifier(ByteBuffer.wrap("doubleField".getBytes(Charset.defaultCharset()))));
-        // testing duration to make sure that recursive deserialization works correctly
-        List<AbstractType<?>> expectedFieldTypes = new ArrayList<>();
-        expectedFieldTypes.add(AsciiType.instance);
-        expectedFieldTypes.add(DoubleType.instance);
+        ByteBuffer userTypeName = ByteBuffer.wrap("FooType".getBytes(Charset.defaultCharset()));
+        List<FieldIdentifier> userTypeFieldIdentifiers = new ArrayList<>();
+        userTypeFieldIdentifiers.add(new FieldIdentifier(ByteBuffer.wrap("asciiField".getBytes(Charset.defaultCharset()))));
+        userTypeFieldIdentifiers.add(new FieldIdentifier(ByteBuffer.wrap("doubleField".getBytes(Charset.defaultCharset()))));
+        List<AbstractType<?>> userFieldTypes = new ArrayList<>();
+        userFieldTypes.add(AsciiType.instance);
+        userFieldTypes.add(DoubleType.instance);
         UserType userType = new UserType("barspace",
-                expectedTypeName,
-                expectedFieldIdentifiers,
-                expectedFieldTypes,
+                userTypeName,
+                userTypeFieldIdentifiers,
+                userFieldTypes,
                 true);
-        Schema userSchema = CassandraTypeDeserializer.getSchemaBuilder(userType).build();
-        Struct expectedUserTypeData1 = new Struct(userSchema)
+
+        Schema userTypeSchema = CassandraTypeDeserializer.getSchemaBuilder(userType).build();
+        Struct expectedUserTypeData1 = new Struct(userTypeSchema)
                 .put("asciiField", "foobar1")
                 .put("doubleField", 1.5d);
-        Struct expectedUserTypeData2 = new Struct(userSchema)
+        Struct expectedUserTypeData2 = new Struct(userTypeSchema)
                 .put("asciiField", "foobar2")
                 .put("doubleField", 2.5d);
+        List<Struct> expectedList = new ArrayList<>();
+        expectedList.add(expectedUserTypeData1);
+        expectedList.add(expectedUserTypeData2);
+
         Map<String, Object> jsonObject1 = new HashMap<>(2);
         jsonObject1.put("\"asciiField\"", "foobar1");
         jsonObject1.put("\"doubleField\"", 1.5d);
@@ -501,14 +505,9 @@ public class CassandraTypeDeserializerTest {
         Term userTypeObject2 = userType.fromJSONObject(jsonObject2);
         ByteBuffer buffer2 = userTypeObject2.bindAndGet(QueryOptions.DEFAULT);
         ByteBuffer serializedUserTypeObject2 = userType.decompose(buffer2);
-
         List<ByteBuffer> originalList = new ArrayList<>();
         originalList.add(serializedUserTypeObject1);
         originalList.add(serializedUserTypeObject2);
-
-        List<Struct> expectedList = new ArrayList<>();
-        expectedList.add(expectedUserTypeData1);
-        expectedList.add(expectedUserTypeData2);
 
         ListType<ByteBuffer> frozenListType = ListType.getInstance(userType, false);
         ByteBuffer serializedList = frozenListType.decompose(originalList);
