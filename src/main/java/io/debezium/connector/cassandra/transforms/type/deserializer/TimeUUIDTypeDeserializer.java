@@ -20,7 +20,7 @@ public class TimeUUIDTypeDeserializer extends LogicalTypeDeserializer {
     @Override
     public Object deserialize(AbstractType<?> abstractType, ByteBuffer bb) {
         Object value = super.deserialize(abstractType, bb);
-        return convertDeserializedValue(abstractType, value);
+        return formatDeserializedValue(abstractType, value);
     }
 
     @Override
@@ -29,7 +29,7 @@ public class TimeUUIDTypeDeserializer extends LogicalTypeDeserializer {
     }
 
     @Override
-    public Object convertDeserializedValue(AbstractType<?> abstractType, Object value) {
+    public Object formatDeserializedValue(AbstractType<?> abstractType, Object value) {
         byte[] bytes = UuidUtil.asBytes((java.util.UUID) value);
         return Values.convertToString(getSchemaBuilder(abstractType).build(), bytes);
     }

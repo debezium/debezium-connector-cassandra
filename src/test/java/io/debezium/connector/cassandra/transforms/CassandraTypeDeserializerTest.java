@@ -465,4 +465,59 @@ public class CassandraTypeDeserializerTest {
         Object deserializedList = CassandraTypeDeserializer.deserialize(frozenListType, serializedList);
         Assert.assertEquals(expectedList, deserializedList);
     }
+
+    @Test
+    public void testListUserType() {
+
+        ByteBuffer userTypeName = ByteBuffer.wrap("FooType".getBytes(Charset.defaultCharset()));
+        List<FieldIdentifier> userTypeFieldIdentifiers = new ArrayList<>();
+        userTypeFieldIdentifiers.add(new FieldIdentifier(ByteBuffer.wrap("asciiField".getBytes(Charset.defaultCharset()))));
+        userTypeFieldIdentifiers.add(new FieldIdentifier(ByteBuffer.wrap("setField".getBytes(Charset.defaultCharset()))));
+        SetType<String> frozenSetType = SetType.getInstance(AsciiType.instance, false);
+        List<AbstractType<?>> userFieldTypes = new ArrayList<>();
+        userFieldTypes.add(AsciiType.instance);
+        userFieldTypes.add(frozenSetType);
+        UserType userType = new UserType("barspace",
+                userTypeName,
+                userTypeFieldIdentifiers,
+                userFieldTypes,
+                true);
+
+        Schema userTypeSchema = CassandraTypeDeserializer.getSchemaBuilder(userType).build();
+        Set<String> sourceSet = new HashSet<>();
+        sourceSet.add("text1");
+        sourceSet.add("text2");
+        Struct expectedUserTypeData1 = new Struct(userTypeSchema)
+                .put("asciiField", "foobar1")
+                .put("setField", new ArrayList<>(sourceSet));
+        Struct expectedUserTypeData2 = new Struct(userTypeSchema)
+                .put("asciiField", "foobar2")
+                .put("setField", new ArrayList<>(sourceSet));
+        List<Struct> expectedList = new ArrayList<>();
+        expectedList.add(expectedUserTypeData1);
+        expectedList.add(expectedUserTypeData2);
+
+        ByteBuffer serializedSet = frozenSetType.decompose(sourceSet);
+        Map<String, Object> jsonObject1 = new HashMap<>(2);
+        jsonObject1.put("\"asciiField\"", "foobar1");
+        jsonObject1.put("\"setField\"", new ArrayList<>(sourceSet));
+        Term userTypeObject1 = userType.fromJSONObject(jsonObject1);
+        ByteBuffer buffer1 = userTypeObject1.bindAndGet(QueryOptions.DEFAULT);
+        ByteBuffer serializedUserTypeObject1 = userType.decompose(buffer1);
+        Map<String, Object> jsonObject2 = new HashMap<>(2);
+        jsonObject2.put("\"asciiField\"", "foobar2");
+        jsonObject2.put("\"setField\"", new ArrayList<>(sourceSet));
+        Term userTypeObject2 = userType.fromJSONObject(jsonObject2);
+        ByteBuffer buffer2 = userTypeObject2.bindAndGet(QueryOptions.DEFAULT);
+        ByteBuffer serializedUserTypeObject2 = userType.decompose(buffer2);
+        List<ByteBuffer> originalList = new ArrayList<>();
+        originalList.add(serializedUserTypeObject1);
+        originalList.add(serializedUserTypeObject2);
+
+        ListType<ByteBuffer> frozenListType = ListType.getInstance(userType, false);
+        ByteBuffer serializedList = frozenListType.decompose(originalList);
+        Object deserializedList = CassandraTypeDeserializer.deserialize(frozenListType, serializedList);
+        Assert.assertEquals(expectedList, deserializedList);
+    }
+
 }

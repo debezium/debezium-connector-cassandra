@@ -24,7 +24,7 @@ public class MapTypeDeserializer extends CollectionTypeDeserializer<MapType<?, ?
     @Override
     public Object deserialize(AbstractType<?> abstractType, ByteBuffer bb) {
         Map<?, ?> deserializedMap = (Map<?, ?>) super.deserialize(abstractType, bb);
-        deserializedMap = convertDeserializedElementsIfNecessary(abstractType, deserializedMap);
+        deserializedMap = processKeyValueInDeserializedMap(abstractType, deserializedMap);
         return Values.convertToMap(getSchemaBuilder(abstractType).build(), deserializedMap);
     }
 
@@ -59,7 +59,7 @@ public class MapTypeDeserializer extends CollectionTypeDeserializer<MapType<?, ?
      * @param deserializedMap Map deserialized from Cassandra
      * @return A deserialized map from Cassandra with each element that fits in Kafka Schema type
      */
-    private Map<?, ?> convertDeserializedElementsIfNecessary(AbstractType<?> abstractType, Map<?, ?> deserializedMap) {
+    private Map<?, ?> processKeyValueInDeserializedMap(AbstractType<?> abstractType, Map<?, ?> deserializedMap) {
         MapType<?, ?> mapType = (MapType<?, ?>) abstractType;
         AbstractType<?> keysType = mapType.getKeysType();
         AbstractType<?> valuesType = mapType.getValuesType();
@@ -70,11 +70,17 @@ public class MapTypeDeserializer extends CollectionTypeDeserializer<MapType<?, ?
         for (Map.Entry<?, ?> entry : deserializedMap.entrySet()) {
             Object key = entry.getKey();
             if (keysTypeDeserializer instanceof LogicalTypeDeserializer) {
-                key = ((LogicalTypeDeserializer) keysTypeDeserializer).convertDeserializedValue(keysType, key);
+                key = ((LogicalTypeDeserializer) keysTypeDeserializer).formatDeserializedValue(keysType, key);
+            }
+            else if (keysTypeDeserializer instanceof UserTypeDeserializer || keysTypeDeserializer instanceof TupleTypeDeserializer) {
+                key = keysTypeDeserializer.deserialize(keysType, (ByteBuffer) key);
             }
             Object value = entry.getValue();
             if (valuesTypeDeserializer instanceof LogicalTypeDeserializer) {
-                value = ((LogicalTypeDeserializer) valuesTypeDeserializer).convertDeserializedValue(valuesType, value);
+                value = ((LogicalTypeDeserializer) valuesTypeDeserializer).formatDeserializedValue(valuesType, value);
+            }
+            else if (valuesTypeDeserializer instanceof UserTypeDeserializer || valuesTypeDeserializer instanceof TupleTypeDeserializer) {
+                value = valuesTypeDeserializer.deserialize(valuesType, (ByteBuffer) value);
             }
             resultedMap.put(key, value);
         }

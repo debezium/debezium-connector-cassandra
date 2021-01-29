@@ -13,11 +13,11 @@ import org.apache.cassandra.db.marshal.AbstractType;
 public abstract class LogicalTypeDeserializer extends TypeDeserializer {
 
     /**
-     * Convert the deserialized value from Cassandra to an object that fits kafka schema type
+     * Format deserialized value from Cassandra to an object that fits it's kafka Schema.
      * @param abstractType the {@link AbstractType} of a column in cassandra
      * @param value the deserialized value of a column in cassandra
-     * @return the object converted from deserialized value
+     * @return the formatted object from deserialized value
      */
-    public abstract Object convertDeserializedValue(AbstractType<?> abstractType, Object value);
+    public abstract Object formatDeserializedValue(AbstractType<?> abstractType, Object value);
 
 }

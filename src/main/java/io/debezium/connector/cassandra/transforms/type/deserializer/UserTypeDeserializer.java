@@ -20,10 +20,8 @@ import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;
 public class UserTypeDeserializer extends TypeDeserializer {
 
     public Object deserialize(AbstractType<?> abstractType, ByteBuffer bb) {
-        ByteBuffer userTypeByteBuffer = (ByteBuffer) super.deserialize(abstractType, bb);
         UserType userType = (UserType) abstractType;
-
-        UserTypes.Value value = UserTypes.Value.fromSerialized(userTypeByteBuffer, userType);
+        UserTypes.Value value = UserTypes.Value.fromSerialized(bb, userType);
         List<ByteBuffer> elements = value.getElements();
 
         Struct struct = new Struct(getSchemaBuilder(abstractType).build());
