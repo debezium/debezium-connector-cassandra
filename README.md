@@ -20,6 +20,8 @@ Please see the [README.md](https://github.com/debezium/debezium#building-debeziu
 
 ## Building the Cassandra 3.x connector
 
+Building this connector first requires the main [debezium](https://github.com/debezium/debezium) code repository to be built locally using `mvn clean install`.
+
 In order to build the Cassandra connector you'll need JDK 8 because Cassandra 3.x
 doesn't support Java versions above Java 8. That also means dependencies like
 `debezium-core` have to be built as Java 8 bytecode version 52.0 as well,
