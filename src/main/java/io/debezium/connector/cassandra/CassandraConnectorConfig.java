@@ -314,7 +314,11 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
         Properties props = new Properties();
         this.getConfig().asMap().entrySet().stream()
                 .filter(entry -> entry.getKey().startsWith(COMMIT_LOG_TRANSFER_CONFIG_PREFIX))
-                .forEach(entry -> props.put(entry.getKey(), entry.getValue()));
+                .forEach(entry -> {
+                    String k = entry.getKey().replace(COMMIT_LOG_TRANSFER_CONFIG_PREFIX, "");
+                    Object v = entry.getValue();
+                    props.put(k, v);
+                });
         return props;
     }
 
