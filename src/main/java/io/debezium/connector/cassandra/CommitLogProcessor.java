@@ -86,10 +86,11 @@ public class CommitLogProcessor extends AbstractProcessor {
             processLastModifiedCommitLog();
             throw new InterruptedException();
         }
-        if (errorCommitLogReprocessEnabled) {
-            commitLogTransfer.getErrorCommitLogFiles();
-        }
         if (initial) {
+            // If commit.log.error.reprocessing.enabled is set to true, download all error commitLog files upon starting for re-processing.
+            if (errorCommitLogReprocessEnabled) {
+                commitLogTransfer.getErrorCommitLogFiles();
+            }
             LOGGER.info("Reading existing commit logs in {}", cdcDir);
             File[] commitLogFiles = CommitLogUtil.getCommitLogs(cdcDir);
             Arrays.sort(commitLogFiles, CommitLogUtil::compareCommitLogs);

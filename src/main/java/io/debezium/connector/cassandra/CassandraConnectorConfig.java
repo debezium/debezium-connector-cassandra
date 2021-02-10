@@ -242,6 +242,13 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
             .withType(Type.INT).withDefault(DEFAULT_SNAPSHOT_POLL_INTERVAL_MS);
 
     /**
+     * The maximum amount of time to wait on each poll before reattempt.
+     */
+    public static final int DEFAULT_COMMITLOG_RELOCATION_DIR_POLL_INTERVAL_MS = 10000;
+    public static final Field COMMITLOG_RELOCATION_DIR_POLL_INTERVAL_MS = Field.create("cdc.dir.poll.interval.ms")
+            .withType(Type.INT).withDefault(DEFAULT_COMMITLOG_RELOCATION_DIR_POLL_INTERVAL_MS);
+
+    /**
      * A comma-separated list of fully-qualified names of fields that should be excluded from change event message values.
      * Fully-qualified names for fields are in the form {@code <keyspace_name>.<field_name>.<nested_field_name>}.
      */
@@ -436,6 +443,11 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
 
     public Duration snapshotPollIntervalMs() {
         int ms = this.getConfig().getInteger(SNAPSHOT_POLL_INTERVAL_MS);
+        return Duration.ofMillis(ms);
+    }
+
+    public Duration commitLogRelocationDirPollIntervalMs() {
+        int ms = this.getConfig().getInteger(COMMITLOG_RELOCATION_DIR_POLL_INTERVAL_MS);
         return Duration.ofMillis(ms);
     }
 
