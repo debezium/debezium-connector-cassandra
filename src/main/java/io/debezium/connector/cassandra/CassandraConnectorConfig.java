@@ -242,6 +242,13 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
             .withType(Type.INT).withDefault(DEFAULT_SNAPSHOT_POLL_INTERVAL_MS);
 
     /**
+     * The amount of time the CommitLogPostProcessor should wait to re-fetch all commitLog files in relocation dir.
+     */
+    public static final int DEFAULT_COMMIT_LOG_RELOCATION_DIR_POLL_INTERVAL_MS = 10000;
+    public static final Field COMMIT_LOG_RELOCATION_DIR_POLL_INTERVAL_MS = Field.create("commit.log.relocation.dir.poll.interval.ms")
+            .withType(Type.INT).withDefault(DEFAULT_COMMIT_LOG_RELOCATION_DIR_POLL_INTERVAL_MS);
+
+    /**
      * A comma-separated list of fully-qualified names of fields that should be excluded from change event message values.
      * Fully-qualified names for fields are in the form {@code <keyspace_name>.<field_name>.<nested_field_name>}.
      */
@@ -314,7 +321,11 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
         Properties props = new Properties();
         this.getConfig().asMap().entrySet().stream()
                 .filter(entry -> entry.getKey().startsWith(COMMIT_LOG_TRANSFER_CONFIG_PREFIX))
-                .forEach(entry -> props.put(entry.getKey(), entry.getValue()));
+                .forEach(entry -> {
+                    String k = entry.getKey().replace(COMMIT_LOG_TRANSFER_CONFIG_PREFIX, "");
+                    Object v = entry.getValue();
+                    props.put(k, v);
+                });
         return props;
     }
 
@@ -432,6 +443,11 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
 
     public Duration snapshotPollIntervalMs() {
         int ms = this.getConfig().getInteger(SNAPSHOT_POLL_INTERVAL_MS);
+        return Duration.ofMillis(ms);
+    }
+
+    public Duration commitLogRelocationDirPollIntervalMs() {
+        int ms = this.getConfig().getInteger(COMMIT_LOG_RELOCATION_DIR_POLL_INTERVAL_MS);
         return Duration.ofMillis(ms);
     }
 
