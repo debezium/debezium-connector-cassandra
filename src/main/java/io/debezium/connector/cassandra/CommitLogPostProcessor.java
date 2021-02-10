@@ -20,7 +20,6 @@ import java.util.concurrent.TimeUnit;
 public class CommitLogPostProcessor extends AbstractProcessor {
 
     private static final String NAME = "Commit Log Post-Processor";
-    private static final int SLEEP_MS = 100;
     private static final int THREAD_POOL_SIZE = 10;
     private static final int TERMINATION_WAIT_TIME_SECONDS = 10;
 
@@ -29,7 +28,7 @@ public class CommitLogPostProcessor extends AbstractProcessor {
     private final CommitLogTransfer commitLogTransfer;
 
     public CommitLogPostProcessor(CassandraConnectorContext context) {
-        super(NAME, SLEEP_MS);
+        super(NAME, context.getCassandraConnectorConfig().commitLogRelocationDirPollIntervalMs().toMillis());
         this.commitLogRelocationDir = context.getCassandraConnectorConfig().commitLogRelocationDir();
         this.executor = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
         this.commitLogTransfer = context.getCassandraConnectorConfig().getCommitLogTransfer();
@@ -47,9 +46,9 @@ public class CommitLogPostProcessor extends AbstractProcessor {
 
         File[] errCommitLogs = CommitLogUtil.getCommitLogs(Paths.get(commitLogRelocationDir, QueueProcessor.ERROR_FOLDER).toFile());
         Arrays.sort(errCommitLogs, CommitLogUtil::compareCommitLogs);
-        for (File errCmmitLog : errCommitLogs) {
+        for (File errCommitLog : errCommitLogs) {
             if (isRunning()) {
-                executor.submit(() -> commitLogTransfer.onErrorTransfer(errCmmitLog));
+                executor.submit(() -> commitLogTransfer.onErrorTransfer(errCommitLog));
             }
         }
     }

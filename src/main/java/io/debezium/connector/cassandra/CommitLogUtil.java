@@ -57,10 +57,10 @@ public final class CommitLogUtil {
             }
 
             Files.delete(file.toPath());
-            LOGGER.debug("Deleted commit log {} in cdc directory", file.getName());
+            LOGGER.debug("Deleted CommitLog File {}.", file.getPath());
         }
         catch (Exception e) {
-            LOGGER.error("Failed to delete the file {} from cdc directory: ", file.getName(), e);
+            LOGGER.warn("Failed to delete file {}. Error: ", file.getPath(), e);
         }
     }
 

@@ -86,10 +86,12 @@ public class CommitLogProcessor extends AbstractProcessor {
             processLastModifiedCommitLog();
             throw new InterruptedException();
         }
-        if (errorCommitLogReprocessEnabled) {
-            commitLogTransfer.getErrorCommitLogFiles();
-        }
         if (initial) {
+            // If commit.log.error.reprocessing.enabled is set to true, download all error commitLog files upon starting for re-processing.
+            if (errorCommitLogReprocessEnabled) {
+                LOGGER.info("CommitLog Error Processing is enabled. Attempting to get all error commitLog files.");
+                commitLogTransfer.getErrorCommitLogFiles();
+            }
             LOGGER.info("Reading existing commit logs in {}", cdcDir);
             File[] commitLogFiles = CommitLogUtil.getCommitLogs(cdcDir);
             Arrays.sort(commitLogFiles, CommitLogUtil::compareCommitLogs);
@@ -129,7 +131,7 @@ public class CommitLogProcessor extends AbstractProcessor {
                     LOGGER.error("Error occurred while processing commit log " + file.getName(), e);
                     throw e;
                 }
-                LOGGER.warn("Error occurred while processing commit log " + file.getName(), e);
+                LOGGER.error("Error occurred while processing commit log " + file.getName(), e);
             }
         }
         catch (InterruptedException e) {
