@@ -9,6 +9,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.time.Duration;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Test;
@@ -20,7 +21,7 @@ public class CassandraConnectorTaskTest {
         CassandraConnectorTask.ProcessorGroup processorGroup = new CassandraConnectorTask.ProcessorGroup();
         AtomicInteger running = new AtomicInteger(0);
         AtomicInteger iteration = new AtomicInteger(0);
-        AbstractProcessor processor1 = new AbstractProcessor("processor1", 100) {
+        AbstractProcessor processor1 = new AbstractProcessor("processor1", Duration.ofMillis(100)) {
             @Override
             public void initialize() {
                 running.incrementAndGet();
@@ -36,7 +37,7 @@ public class CassandraConnectorTaskTest {
                 iteration.incrementAndGet();
             }
         };
-        AbstractProcessor processor2 = new AbstractProcessor("processor2", 100) {
+        AbstractProcessor processor2 = new AbstractProcessor("processor2", Duration.ofMillis(100)) {
             @Override
             public void initialize() {
                 running.incrementAndGet();

@@ -38,7 +38,7 @@ public class CassandraConnectorContext extends CdcSourceTaskContext {
 
             // Setting up record queue ...
             this.queue = new ChangeEventQueue.Builder<Event>()
-                    .pollInterval(this.config.pollIntervalMs())
+                    .pollInterval(this.config.pollInterval())
                     .maxBatchSize(this.config.maxBatchSize())
                     .maxQueueSize(this.config.maxQueueSize())
                     .loggingContextSupplier(() -> this.configureLoggingContext(this.config.getContextName()))

@@ -28,7 +28,7 @@ public class CommitLogPostProcessor extends AbstractProcessor {
     private final CommitLogTransfer commitLogTransfer;
 
     public CommitLogPostProcessor(CassandraConnectorContext context) {
-        super(NAME, context.getCassandraConnectorConfig().commitLogRelocationDirPollIntervalMs().toMillis());
+        super(NAME, context.getCassandraConnectorConfig().commitLogRelocationDirPollInterval());
         this.commitLogRelocationDir = context.getCassandraConnectorConfig().commitLogRelocationDir();
         this.executor = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
         this.commitLogTransfer = context.getCassandraConnectorConfig().getCommitLogTransfer();

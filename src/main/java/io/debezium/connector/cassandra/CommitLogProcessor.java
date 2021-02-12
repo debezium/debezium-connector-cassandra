@@ -11,6 +11,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.WatchEvent;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
 
@@ -44,7 +45,7 @@ public class CommitLogProcessor extends AbstractProcessor {
     private final CommitLogTransfer commitLogTransfer;
 
     public CommitLogProcessor(CassandraConnectorContext context) throws IOException {
-        super(NAME, 0);
+        super(NAME, Duration.ZERO);
         commitLogReader = new org.apache.cassandra.db.commitlog.CommitLogReader();
         queue = context.getQueue();
         commitLogReadHandler = new CommitLogReadHandlerImpl(
@@ -56,9 +57,9 @@ public class CommitLogProcessor extends AbstractProcessor {
                         context.getCassandraConnectorConfig()),
                 metrics);
         cdcDir = new File(DatabaseDescriptor.getCDCLogLocation());
-        watcher = new AbstractDirectoryWatcher(cdcDir.toPath(), context.getCassandraConnectorConfig().cdcDirPollIntervalMs(), Collections.singleton(ENTRY_CREATE)) {
+        watcher = new AbstractDirectoryWatcher(cdcDir.toPath(), context.getCassandraConnectorConfig().cdcDirPollInterval(), Collections.singleton(ENTRY_CREATE)) {
             @Override
-            void handleEvent(WatchEvent event, Path path) throws IOException {
+            void handleEvent(WatchEvent<?> event, Path path) throws IOException {
                 if (isRunning()) {
                     processCommitLog(path.toFile());
                 }

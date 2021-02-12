@@ -8,10 +8,8 @@ package io.debezium.connector.cassandra;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.List;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.google.common.annotations.VisibleForTesting;
 
@@ -23,7 +21,7 @@ import io.debezium.connector.cassandra.exceptions.CassandraConnectorTaskExceptio
  * The processor is also responsible for marking the offset to file and deleting the commit log files.
  */
 public class QueueProcessor extends AbstractProcessor {
-    private static final Logger LOGGER = LoggerFactory.getLogger(QueueProcessor.class);
+
     private static final String NAME = "Change Event Queue Processor";
     private final ChangeEventQueue<Event> queue;
     private final KafkaRecordEmitter kafkaRecordEmitter;
@@ -46,7 +44,7 @@ public class QueueProcessor extends AbstractProcessor {
 
     @VisibleForTesting
     QueueProcessor(CassandraConnectorContext context, KafkaRecordEmitter emitter) {
-        super(NAME, 0);
+        super(NAME, Duration.ZERO);
         this.queue = context.getQueue();
         this.kafkaRecordEmitter = emitter;
         this.commitLogRelocationDir = context.getCassandraConnectorConfig().commitLogRelocationDir();
