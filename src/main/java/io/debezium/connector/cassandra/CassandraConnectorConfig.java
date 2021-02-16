@@ -208,7 +208,9 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
      */
     public static final int DEFAULT_OFFSET_FLUSH_INTERVAL_MS = 0;
     public static final Field OFFSET_FLUSH_INTERVAL_MS = Field.create("offset.flush.interval.ms")
-            .withType(Type.INT).withDefault(DEFAULT_OFFSET_FLUSH_INTERVAL_MS);
+            .withType(Type.INT)
+            .withDefault(0)
+            .withDescription("The minimum amount of time to wait before committing the offset, given in milliseconds. Defaults 0 ms.");
 
     /**
      * The maximum records that are allowed to be processed until it is required to flush offset to disk.
@@ -218,35 +220,34 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
     public static final Field MAX_OFFSET_FLUSH_SIZE = Field.create("max.offset.flush.size")
             .withType(Type.INT).withDefault(DEFAULT_MAX_OFFSET_FLUSH_SIZE);
 
-    /**
-    * Positive integer value that specifies the number of milliseconds the schema processor should wait before
-    * refreshing the cached Cassandra table schemas.
-    */
-    public static final int DEFAULT_SCHEMA_POLL_INTERVAL_MS = 10000;
+    public static final int DEFAULT_SCHEMA_POLL_INTERVAL_MS = 10_000;
     public static final Field SCHEMA_POLL_INTERVAL_MS = Field.create("schema.refresh.interval.ms")
-            .withType(Type.INT).withDefault(DEFAULT_SCHEMA_POLL_INTERVAL_MS);
+            .withType(Type.INT)
+            .withDefault(10_000)
+            .withValidation(Field::isPositiveInteger)
+            .withDescription(
+                    "Interval for the schema processor to wait before refreshing the cached Cassandra table schemas, given in milliseconds. Defaults to 10 seconds (10,000 ms).");
 
-    /**
-     * The maximum amount of time to wait on each poll before reattempt.
-     */
-    public static final int DEFAULT_CDC_DIR_POLL_INTERVAL_MS = 10000;
+    public static final int DEFAULT_CDC_DIR_POLL_INTERVAL_MS = 10_000;
     public static final Field CDC_DIR_POLL_INTERVAL_MS = Field.create("cdc.dir.poll.interval.ms")
-            .withType(Type.INT).withDefault(DEFAULT_CDC_DIR_POLL_INTERVAL_MS);
+            .withType(Type.INT)
+            .withDefault(10_000)
+            .withDescription("The maximum amount of time to wait on each poll before re-attempt, given in milliseconds. Defaults to 10 seconds (10,000 ms).");
 
-    /**
-     * Positive integer value that specifies the number of milliseconds the snapshot processor should wait before
-     * re-scanning tables to look for new cdc-enabled tables. Defaults to 10000 milliseconds, or 10 seconds.
-     */
-    public static final int DEFAULT_SNAPSHOT_POLL_INTERVAL_MS = 10000;
+    public static final int DEFAULT_SNAPSHOT_POLL_INTERVAL_MS = 10_000;
     public static final Field SNAPSHOT_POLL_INTERVAL_MS = Field.create("snapshot.scan.interval.ms")
-            .withType(Type.INT).withDefault(DEFAULT_SNAPSHOT_POLL_INTERVAL_MS);
+            .withType(Type.INT)
+            .withDefault(10_000)
+            .withValidation(Field::isPositiveInteger)
+            .withDescription(
+                    "Interval for the snapshot processor to wait before re-scanning tables to look for new cdc-enabled tables. Defaults to 10 seconds (10,000 ms).");
 
-    /**
-     * The amount of time the CommitLogPostProcessor should wait to re-fetch all commitLog files in relocation dir.
-     */
-    public static final int DEFAULT_COMMIT_LOG_RELOCATION_DIR_POLL_INTERVAL_MS = 10000;
+    public static final int DEFAULT_COMMIT_LOG_RELOCATION_DIR_POLL_INTERVAL_MS = 10_000;
     public static final Field COMMIT_LOG_RELOCATION_DIR_POLL_INTERVAL_MS = Field.create("commit.log.relocation.dir.poll.interval.ms")
-            .withType(Type.INT).withDefault(DEFAULT_COMMIT_LOG_RELOCATION_DIR_POLL_INTERVAL_MS);
+            .withType(Type.INT)
+            .withDefault(10_000)
+            .withDescription(
+                    "The amount of time the CommitLogPostProcessor should wait to re-fetch all commitLog files in relocation dir, given in milliseconds. Defaults to 10 seconds (10,000 ms).");
 
     /**
      * A comma-separated list of fully-qualified names of fields that should be excluded from change event message values.
