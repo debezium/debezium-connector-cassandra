@@ -6,6 +6,7 @@
 package io.debezium.connector.cassandra;
 
 import java.io.IOException;
+import java.time.Duration;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,15 +16,16 @@ import org.slf4j.LoggerFactory;
  * connector task. The class handles concurrency control for starting and stopping the processor.
  */
 public abstract class AbstractProcessor {
+
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractProcessor.class);
 
     private final String name;
-    private final long delay;
+    private final long delayMs;
     private boolean running;
 
-    public AbstractProcessor(String name, long delayMillis) {
+    public AbstractProcessor(String name, Duration delay) {
         this.name = name;
-        this.delay = delayMillis;
+        this.delayMs = delay.toMillis();
         this.running = false;
     }
 
@@ -59,7 +61,7 @@ public abstract class AbstractProcessor {
         running = true;
         while (isRunning()) {
             process();
-            Thread.sleep(delay);
+            Thread.sleep(delayMs);
         }
         LOGGER.info("Stopped {}", name);
     }

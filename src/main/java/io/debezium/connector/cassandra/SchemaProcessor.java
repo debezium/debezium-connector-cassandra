@@ -17,7 +17,7 @@ public class SchemaProcessor extends AbstractProcessor {
     private final SchemaHolder schemaHolder;
 
     public SchemaProcessor(CassandraConnectorContext context) {
-        super(NAME, context.getCassandraConnectorConfig().schemaPollIntervalMs().toMillis());
+        super(NAME, context.getCassandraConnectorConfig().schemaPollInterval());
         schemaHolder = context.getSchemaHolder();
     }
 

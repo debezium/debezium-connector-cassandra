@@ -97,19 +97,19 @@ public class CassandraConnectorConfigTest {
 
         int pollIntervalMs = 500;
         config = buildTaskConfig(CassandraConnectorConfig.POLL_INTERVAL_MS.name(), String.valueOf(pollIntervalMs));
-        assertEquals(pollIntervalMs, config.pollIntervalMs().toMillis());
+        assertEquals(pollIntervalMs, config.pollInterval().toMillis());
 
         int schemaPollIntervalMs = 500;
         config = buildTaskConfig(CassandraConnectorConfig.SCHEMA_POLL_INTERVAL_MS.name(), String.valueOf(schemaPollIntervalMs));
-        assertEquals(schemaPollIntervalMs, config.schemaPollIntervalMs().toMillis());
+        assertEquals(schemaPollIntervalMs, config.schemaPollInterval().toMillis());
 
         int cdcDirPollIntervalMs = 500;
         config = buildTaskConfig(CassandraConnectorConfig.CDC_DIR_POLL_INTERVAL_MS.name(), String.valueOf(cdcDirPollIntervalMs));
-        assertEquals(cdcDirPollIntervalMs, config.cdcDirPollIntervalMs().toMillis());
+        assertEquals(cdcDirPollIntervalMs, config.cdcDirPollInterval().toMillis());
 
         int snapshotPollIntervalMs = 500;
         config = buildTaskConfig(CassandraConnectorConfig.SNAPSHOT_POLL_INTERVAL_MS.name(), String.valueOf(snapshotPollIntervalMs));
-        assertEquals(snapshotPollIntervalMs, config.snapshotPollIntervalMs().toMillis());
+        assertEquals(snapshotPollIntervalMs, config.snapshotPollInterval().toMillis());
 
         String fieldExcludeList = "keyspace1.table1.column1,keyspace1.table1.column2";
         List<String> fieldExcludeListExpected = Arrays.asList(fieldExcludeList.split(","));
@@ -172,12 +172,12 @@ public class CassandraConnectorConfigTest {
         assertEquals(CassandraConnectorConfig.DEFAULT_CASSANDRA_PORT, config.cassandraPort());
         assertEquals(CassandraConnectorConfig.DEFAULT_MAX_QUEUE_SIZE, config.maxQueueSize());
         assertEquals(CassandraConnectorConfig.DEFAULT_MAX_BATCH_SIZE, config.maxBatchSize());
-        assertEquals(CassandraConnectorConfig.DEFAULT_POLL_INTERVAL_MS, config.pollIntervalMs().toMillis());
+        assertEquals(CassandraConnectorConfig.DEFAULT_POLL_INTERVAL_MS, config.pollInterval().toMillis());
         assertEquals(CassandraConnectorConfig.DEFAULT_MAX_OFFSET_FLUSH_SIZE, config.maxOffsetFlushSize());
         assertEquals(CassandraConnectorConfig.DEFAULT_OFFSET_FLUSH_INTERVAL_MS, config.offsetFlushIntervalMs().toMillis());
-        assertEquals(CassandraConnectorConfig.DEFAULT_SCHEMA_POLL_INTERVAL_MS, config.schemaPollIntervalMs().toMillis());
-        assertEquals(CassandraConnectorConfig.DEFAULT_CDC_DIR_POLL_INTERVAL_MS, config.cdcDirPollIntervalMs().toMillis());
-        assertEquals(CassandraConnectorConfig.DEFAULT_SNAPSHOT_POLL_INTERVAL_MS, config.snapshotPollIntervalMs().toMillis());
+        assertEquals(CassandraConnectorConfig.DEFAULT_SCHEMA_POLL_INTERVAL_MS, config.schemaPollInterval().toMillis());
+        assertEquals(CassandraConnectorConfig.DEFAULT_CDC_DIR_POLL_INTERVAL_MS, config.cdcDirPollInterval().toMillis());
+        assertEquals(CassandraConnectorConfig.DEFAULT_SNAPSHOT_POLL_INTERVAL_MS, config.snapshotPollInterval().toMillis());
         assertEquals(CassandraConnectorConfig.DEFAULT_COMMIT_LOG_POST_PROCESSING_ENABLED, config.postProcessEnabled());
         assertEquals(CassandraConnectorConfig.DEFAULT_COMMIT_LOG_ERROR_REPROCESSING_ENABLED, config.errorCommitLogReprocessEnabled());
         assertEquals(CassandraConnectorConfig.DEFAULT_COMMIT_LOG_TRANSFER_CLASS, config.getCommitLogTransfer().getClass().getName());

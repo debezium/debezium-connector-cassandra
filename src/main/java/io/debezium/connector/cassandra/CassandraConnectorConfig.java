@@ -426,27 +426,27 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
      * Positive integer value that specifies the number of milliseconds the commit log processor should wait during
      * each iteration for new change events to appear in the queue. Defaults to 1000 milliseconds, or 1 second.
      */
-    public Duration pollIntervalMs() {
+    public Duration pollInterval() {
         int ms = this.getConfig().getInteger(POLL_INTERVAL_MS, DEFAULT_POLL_INTERVAL_MS);
         return Duration.ofMillis(ms);
     }
 
-    public Duration schemaPollIntervalMs() {
+    public Duration schemaPollInterval() {
         int ms = this.getConfig().getInteger(SCHEMA_POLL_INTERVAL_MS);
         return Duration.ofMillis(ms);
     }
 
-    public Duration cdcDirPollIntervalMs() {
+    public Duration cdcDirPollInterval() {
         int ms = this.getConfig().getInteger(CDC_DIR_POLL_INTERVAL_MS);
         return Duration.ofMillis(ms);
     }
 
-    public Duration snapshotPollIntervalMs() {
+    public Duration snapshotPollInterval() {
         int ms = this.getConfig().getInteger(SNAPSHOT_POLL_INTERVAL_MS);
         return Duration.ofMillis(ms);
     }
 
-    public Duration commitLogRelocationDirPollIntervalMs() {
+    public Duration commitLogRelocationDirPollInterval() {
         int ms = this.getConfig().getInteger(COMMIT_LOG_RELOCATION_DIR_POLL_INTERVAL_MS);
         return Duration.ofMillis(ms);
     }

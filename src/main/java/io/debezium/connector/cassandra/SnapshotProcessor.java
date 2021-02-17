@@ -66,7 +66,7 @@ public class SnapshotProcessor extends AbstractProcessor {
     private boolean initial = true;
 
     public SnapshotProcessor(CassandraConnectorContext context) {
-        super(NAME, context.getCassandraConnectorConfig().snapshotPollIntervalMs().toMillis());
+        super(NAME, context.getCassandraConnectorConfig().snapshotPollInterval());
         cassandraClient = context.getCassandraClient();
         queue = context.getQueue();
         offsetWriter = context.getOffsetWriter();
