@@ -83,110 +83,99 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
      */
     public static final String COMMIT_LOG_TRANSFER_CONFIG_PREFIX = "commit.log.transfer.";
 
-    /**
-     * Logical name for the Cassandra connector. This name should uniquely identify the connector from
-     * those that reside in other Cassandra nodes.
-     */
-    public static final Field CONNECTOR_NAME = Field.create("connector.name").withType(Type.STRING);
+    public static final Field CONNECTOR_NAME = Field.create("connector.name")
+            .withType(Type.STRING)
+            .withDescription(
+                    "Logical name for the Cassandra connector. This name should uniquely identify the connector from those that reside in other Cassandra nodes.");
+
+    public static final Field KAFKA_TOPIC_PREFIX = Field.create("kafka.topic.prefix")
+            .withType(Type.STRING)
+            .withDescription("Logical name for the Cassandra cluster. This name should be identical across all Cassandra connectors in a Cassandra cluster");
+
+    public static final Field KEY_CONVERTER_CLASS_CONFIG = Field.create("key.converter")
+            .withType(Type.STRING)
+            .withDescription("Required config for Kafka key converter.");
+
+    public static final Field VALUE_CONVERTER_CLASS_CONFIG = Field.create("value.converter")
+            .withType(Type.STRING)
+            .withDescription("Required config for Kafka value converter.");
 
     /**
-     * Logical name for the Cassandra cluster. This name should be identical across all Cassandra connectors
-     * in a Cassandra cluster
-     */
-    public static final Field KAFKA_TOPIC_PREFIX = Field.create("kafka.topic.prefix").withType(Type.STRING);
-
-    /**
-     * Required config for Kafka key converter.
-     */
-    public static final Field KEY_CONVERTER_CLASS_CONFIG = Field.create("key.converter").withType(Type.STRING);
-
-    /**
-     * Required config for Kafka value converter.
-     */
-    public static final Field VALUE_CONVERTER_CLASS_CONFIG = Field.create("value.converter").withType(Type.STRING);
-
-    /**
-     * Specifies the criteria for running a snapshot (eg. initial sync) upon startup of the cassandra connector agent.
      * Must be one of 'INITIAL', 'ALWAYS', or 'NEVER'. The default snapshot mode is 'INITIAL'.
      * See {@link SnapshotMode for details}.
      */
     public static final String DEFAULT_SNAPSHOT_MODE = "INITIAL";
     public static final Field SNAPSHOT_MODE = Field.create("snapshot.mode")
-            .withType(Type.STRING).withDefault(DEFAULT_SNAPSHOT_MODE);
+            .withType(Type.STRING)
+            .withDefault(DEFAULT_SNAPSHOT_MODE)
+            .withDescription("Specifies the criteria for running a snapshot (eg. initial sync) upon startup of the cassandra connector agent.");
 
     /**
      * Specify the {@link ConsistencyLevel} used for the snapshot query.
      */
     public static final String DEFAULT_SNAPSHOT_CONSISTENCY = "QUORUM";
     public static final Field SNAPSHOT_CONSISTENCY = Field.create("snapshot.consistency")
-            .withType(Type.STRING).withDefault(DEFAULT_SNAPSHOT_CONSISTENCY);
+            .withType(Type.STRING)
+            .withDefault(DEFAULT_SNAPSHOT_CONSISTENCY)
+            .withDescription("Specifies the ConsistencyLevel used for the snapshot query.");
 
-    /**
-     * The port used by the HTTP server for ping, health check, and build info
-     */
     public static final int DEFAULT_HTTP_PORT = 8000;
-    public static final Field HTTP_PORT = Field.create("http.port").withType(Type.INT).withDefault(DEFAULT_HTTP_PORT);
+    public static final Field HTTP_PORT = Field.create("http.port")
+            .withType(Type.INT).withDefault(DEFAULT_HTTP_PORT)
+            .withDescription("The port used by the HTTP server for ping, health check, and build info. Defaults to 8000.");
 
-    /**
-     * The absolute path of the YAML config file used by a Cassandra node.
-     */
-    public static final Field CASSANDRA_CONFIG = Field.create("cassandra.config").withType(Type.STRING);
+    public static final Field CASSANDRA_CONFIG = Field.create("cassandra.config")
+            .withType(Type.STRING)
+            .withDescription("The absolute path of the YAML config file used by a Cassandra node.");
 
-    /**
-     * One or more addresses of Cassandra nodes that driver uses to discover topology, separated by ","
-     */
     public static final String DEFAULT_CASSANDRA_HOST = "localhost";
     public static final Field CASSANDRA_HOSTS = Field.create("cassandra.hosts")
-            .withType(Type.STRING).withDefault(DEFAULT_CASSANDRA_HOST);
+            .withType(Type.STRING)
+            .withDefault(DEFAULT_CASSANDRA_HOST)
+            .withDescription(" One or more addresses of Cassandra nodes that driver uses to discover topology, separated by \",\" ");
 
-    /**
-     * The port used to connect to Cassandra host(s).
-     */
     public static final int DEFAULT_CASSANDRA_PORT = 9042;
     public static final Field CASSANDRA_PORT = Field.create("cassandra.port")
-            .withType(Type.INT).withDefault(DEFAULT_CASSANDRA_PORT);
+            .withType(Type.INT)
+            .withDefault(DEFAULT_CASSANDRA_PORT)
+            .withDescription("The port used to connect to Cassandra host(s). Defaults to 9042.");
 
-    /**
-     * The username used when connecting to Cassandra hosts.
-     */
-    public static final Field CASSANDRA_USERNAME = Field.create("cassandra.username").withType(Type.STRING);
+    public static final Field CASSANDRA_USERNAME = Field.create("cassandra.username")
+            .withType(Type.STRING)
+            .withDescription("The username used when connecting to Cassandra hosts.");
 
-    /**
-     * The password used when connecting to Cassandra hosts.
-     */
-    public static final Field CASSANDRA_PASSWORD = Field.create("cassandra.password").withType(Type.STRING);
+    public static final Field CASSANDRA_PASSWORD = Field.create("cassandra.password")
+            .withType(Type.STRING)
+            .withDescription("The password used when connecting to Cassandra hosts.");
 
-    /**
-     * If set to true, Cassandra connector agent will use SSL to connect to Cassandra node.
-     */
     public static final boolean DEFAULT_CASSANDRA_SSL_ENABLED = false;
     public static final Field CASSANDRA_SSL_ENABLED = Field.create("cassandra.ssl.enabled")
-            .withType(Type.BOOLEAN).withDefault(DEFAULT_CASSANDRA_SSL_ENABLED);
+            .withType(Type.BOOLEAN)
+            .withDefault(DEFAULT_CASSANDRA_SSL_ENABLED)
+            .withDescription("If set to true, Cassandra connector agent will use SSL to connect to Cassandra node.");
+
+    public static final Field CASSANDRA_SSL_CONFIG_PATH = Field.create("cassandra.ssl.config.path")
+            .withType(Type.STRING)
+            .withDescription("The SSL config file path required for storage node.");
+
+    public static final Field COMMIT_LOG_RELOCATION_DIR = Field.create("commit.log.relocation.dir")
+            .withType(Type.STRING)
+            .withDescription("The local directory which commit logs get relocated to once processed.");
 
     /**
-     * The SSL config file path required for storage node.
-     */
-    public static final Field CASSANDRA_SSL_CONFIG_PATH = Field.create("cassandra.ssl.config.path").withType(Type.STRING);
-
-    /**
-     * The local directory which commit logs get relocated to once processed.
-     */
-    public static final Field COMMIT_LOG_RELOCATION_DIR = Field.create("commit.log.relocation.dir").withType(Type.STRING);
-
-    /**
-     * Determines whether or not the CommitLogPostProcessor should run.
      * If disabled, commit logs would not be deleted post-process, and this could lead to disk storage
      */
     public static final boolean DEFAULT_COMMIT_LOG_POST_PROCESSING_ENABLED = true;
     public static final Field COMMIT_LOG_POST_PROCESSING_ENABLED = Field.create("commit.log.post.processing.enabled")
-            .withType(Type.BOOLEAN).withDefault(DEFAULT_COMMIT_LOG_POST_PROCESSING_ENABLED);
+            .withType(Type.BOOLEAN)
+            .withDefault(DEFAULT_COMMIT_LOG_POST_PROCESSING_ENABLED)
+            .withDescription("Determines whether or not the CommitLogPostProcessor should run.");
 
-    /**
-     * Determine if CommitLogProcessor should re-process error commitLogFiles.
-     */
     public static final boolean DEFAULT_COMMIT_LOG_ERROR_REPROCESSING_ENABLED = false;
     public static final Field COMMIT_LOG_ERROR_REPROCESSING_ENABLED = Field.create("commit.log.error.reprocessing.enabled")
-            .withType(Type.BOOLEAN).withDefault(DEFAULT_COMMIT_LOG_ERROR_REPROCESSING_ENABLED);
+            .withType(Type.BOOLEAN)
+            .withDefault(DEFAULT_COMMIT_LOG_ERROR_REPROCESSING_ENABLED)
+            .withDescription("Determines whether or not the CommitLogProcessor should re-process error commitLogFiles.");
 
     /**
      * The fully qualified {@link CommitLogTransfer} class used to transfer commit logs.
@@ -195,16 +184,17 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
      */
     public static final String DEFAULT_COMMIT_LOG_TRANSFER_CLASS = "io.debezium.connector.cassandra.BlackHoleCommitLogTransfer";
     public static final Field COMMIT_LOG_TRANSFER_CLASS = Field.create("commit.log.transfer.class")
-            .withType(Type.STRING).withDefault(DEFAULT_COMMIT_LOG_TRANSFER_CLASS);
+            .withType(Type.STRING)
+            .withDefault(DEFAULT_COMMIT_LOG_TRANSFER_CLASS)
+            .withDescription(
+                    "A custom option used to transfer commit logs. The default option will delete all commit log files after processing (successful or otherwise).");
+
+    public static final Field OFFSET_BACKING_STORE_DIR = Field.create("offset.backing.store.dir")
+            .withType(Type.STRING)
+            .withDescription("The directory which is used to store offset tracking files.");
 
     /**
-     * The directory to store offset tracking files.
-     */
-    public static final Field OFFSET_BACKING_STORE_DIR = Field.create("offset.backing.store.dir").withType(Type.STRING);
-
-    /**
-     * The minimum amount of time to wait before committing the offset. The default value of 0 implies
-     * the offset will be flushed every time.
+     * The default value of 0 implies the offset will be flushed every time.
      */
     public static final int DEFAULT_OFFSET_FLUSH_INTERVAL_MS = 0;
     public static final Field OFFSET_FLUSH_INTERVAL_MS = Field.create("offset.flush.interval.ms")
@@ -213,12 +203,13 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
             .withDescription("The minimum amount of time to wait before committing the offset, given in milliseconds. Defaults 0 ms.");
 
     /**
-     * The maximum records that are allowed to be processed until it is required to flush offset to disk.
      * This config is effective only if offset_flush_interval_ms != 0
      */
     public static final int DEFAULT_MAX_OFFSET_FLUSH_SIZE = 100;
     public static final Field MAX_OFFSET_FLUSH_SIZE = Field.create("max.offset.flush.size")
-            .withType(Type.INT).withDefault(DEFAULT_MAX_OFFSET_FLUSH_SIZE);
+            .withType(Type.INT)
+            .withDefault(DEFAULT_MAX_OFFSET_FLUSH_SIZE)
+            .withDescription("The maximum records that are allowed to be processed until it is required to flush offset to disk.");
 
     public static final int DEFAULT_SCHEMA_POLL_INTERVAL_MS = 10_000;
     public static final Field SCHEMA_POLL_INTERVAL_MS = Field.create("schema.refresh.interval.ms")
@@ -280,7 +271,9 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
      */
     public static final boolean DEFAULT_LATEST_COMMIT_LOG_ONLY = false;
     public static final Field LATEST_COMMIT_LOG_ONLY = Field.create("latest.commit.log.only")
-            .withType(Type.BOOLEAN).withDefault(DEFAULT_LATEST_COMMIT_LOG_ONLY);
+            .withType(Type.BOOLEAN)
+            .withDefault(DEFAULT_LATEST_COMMIT_LOG_ONLY)
+            .withDescription("Fetch the commit log with the latest modified timestamp in the commit log directory.");
 
     public static final int DEFAULT_POLL_INTERVAL_MS = 1000;
 
