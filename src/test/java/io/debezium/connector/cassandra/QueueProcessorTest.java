@@ -92,7 +92,7 @@ public class QueueProcessorTest extends EmbeddedCassandraConnectorTestBase {
 
         ChangeEventQueue<Event> queue = context.getQueue();
         File commitLogFile = generateCommitLogFile();
-        queue.enqueue(new EOFEvent(commitLogFile, true));
+        queue.enqueue(new EOFEvent(commitLogFile));
 
         assertEquals(1, queue.totalCapacity() - queue.remainingCapacity());
         queueProcessor.process();

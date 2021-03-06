@@ -14,6 +14,7 @@ import java.nio.file.WatchEvent;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.slf4j.Logger;
@@ -43,6 +44,7 @@ public class CommitLogProcessor extends AbstractProcessor {
     private boolean initial = true;
     private final boolean errorCommitLogReprocessEnabled;
     private final CommitLogTransfer commitLogTransfer;
+    private final HashSet<String> errorCommitLogSet;
 
     public CommitLogProcessor(CassandraConnectorContext context) throws IOException {
         super(NAME, Duration.ZERO);
@@ -68,6 +70,7 @@ public class CommitLogProcessor extends AbstractProcessor {
         latestOnly = context.getCassandraConnectorConfig().latestCommitLogOnly();
         errorCommitLogReprocessEnabled = context.getCassandraConnectorConfig().errorCommitLogReprocessEnabled();
         commitLogTransfer = context.getCassandraConnectorConfig().getCommitLogTransfer();
+        errorCommitLogSet = context.getErrorCommitLogSet();
     }
 
     @Override
@@ -120,17 +123,18 @@ public class CommitLogProcessor extends AbstractProcessor {
                 metrics.setCommitLogFilename(file.getName());
                 commitLogReader.readCommitLogSegment(commitLogReadHandler, file, false);
                 if (!latestOnly) {
-                    queue.enqueue(new EOFEvent(file, true));
+                    queue.enqueue(new EOFEvent(file));
                 }
                 LOGGER.info("Successfully processed commit log {}", file.getName());
             }
             catch (Exception e) {
-                if (!latestOnly) {
-                    queue.enqueue(new EOFEvent(file, false));
-                }
                 if (commitLogTransfer.getClass().getName().equals(CassandraConnectorConfig.DEFAULT_COMMIT_LOG_TRANSFER_CLASS)) {
                     LOGGER.error("Error occurred while processing commit log " + file.getName(), e);
                     throw e;
+                }
+                if (!latestOnly) {
+                    queue.enqueue(new EOFEvent(file));
+                    errorCommitLogSet.add(file.getName());
                 }
                 LOGGER.error("Error occurred while processing commit log " + file.getName(), e);
             }
