@@ -9,8 +9,8 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.time.Duration;
-import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,7 +32,7 @@ public class QueueProcessor extends AbstractProcessor {
     private final ChangeEventQueue<Event> queue;
     private final KafkaRecordEmitter kafkaRecordEmitter;
     private final String commitLogRelocationDir;
-    private final HashSet<String> errorCommitLogSet;
+    private final Set<String> erroneousCommitLogs;
 
     public static final String ARCHIVE_FOLDER = "archive";
     public static final String ERROR_FOLDER = "error";
@@ -47,7 +47,7 @@ public class QueueProcessor extends AbstractProcessor {
                 context.getCassandraConnectorConfig().maxOffsetFlushSize(),
                 context.getCassandraConnectorConfig().getKeyConverter(),
                 context.getCassandraConnectorConfig().getValueConverter(),
-                context.getErrorCommitLogSet(),
+                context.getErroneousCommitLogs(),
                 context.getCassandraConnectorConfig().getCommitLogTransfer()));
     }
 
@@ -56,7 +56,7 @@ public class QueueProcessor extends AbstractProcessor {
         super(NAME, Duration.ZERO);
         this.queue = context.getQueue();
         this.kafkaRecordEmitter = emitter;
-        this.errorCommitLogSet = context.getErrorCommitLogSet();
+        this.erroneousCommitLogs = context.getErroneousCommitLogs();
         this.commitLogRelocationDir = context.getCassandraConnectorConfig().commitLogRelocationDir();
     }
 
@@ -112,7 +112,7 @@ public class QueueProcessor extends AbstractProcessor {
                 EOFEvent eofEvent = (EOFEvent) event;
                 String commitLogFileName = eofEvent.file.getName();
                 LOGGER.info("Encountered EOF event for {} ...", commitLogFileName);
-                String folder = errorCommitLogSet.contains(commitLogFileName) ? ERROR_FOLDER : ARCHIVE_FOLDER;
+                String folder = erroneousCommitLogs.contains(commitLogFileName) ? ERROR_FOLDER : ARCHIVE_FOLDER;
                 CommitLogUtil.moveCommitLog(eofEvent.file, Paths.get(commitLogRelocationDir, folder));
                 LOGGER.info("Moved {} into {} folder.", commitLogFileName, folder);
                 break;

@@ -7,6 +7,7 @@ package io.debezium.connector.cassandra;
 
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Set;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
@@ -24,7 +25,7 @@ public class CassandraConnectorContext extends CdcSourceTaskContext {
     private final ChangeEventQueue<Event> queue;
     private final SchemaHolder schemaHolder;
     private final OffsetWriter offsetWriter;
-    private final HashSet<String> errorCommitLogSet;
+    private final Set<String> erroneousCommitLogs;
 
     public CassandraConnectorContext(CassandraConnectorConfig config) throws Exception {
 
@@ -34,7 +35,7 @@ public class CassandraConnectorContext extends CdcSourceTaskContext {
         try {
 
             // Create a HashSet to record names of CommitLog Files which are not successfully read or streamed.
-            this.errorCommitLogSet = new HashSet<>();
+            this.erroneousCommitLogs = new HashSet<>();
 
             // Loading up DDL schemas from disk
             loadDdlFromDisk(this.config.cassandraConfig());
@@ -106,7 +107,7 @@ public class CassandraConnectorContext extends CdcSourceTaskContext {
         return schemaHolder;
     }
 
-    public HashSet<String> getErrorCommitLogSet() {
-        return errorCommitLogSet;
+    public Set<String> getErroneousCommitLogs() {
+        return erroneousCommitLogs;
     }
 }

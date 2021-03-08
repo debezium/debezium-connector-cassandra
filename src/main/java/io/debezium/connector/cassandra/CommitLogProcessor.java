@@ -14,7 +14,7 @@ import java.nio.file.WatchEvent;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashSet;
+import java.util.Set;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.slf4j.Logger;
@@ -44,7 +44,7 @@ public class CommitLogProcessor extends AbstractProcessor {
     private boolean initial = true;
     private final boolean errorCommitLogReprocessEnabled;
     private final CommitLogTransfer commitLogTransfer;
-    private final HashSet<String> errorCommitLogSet;
+    private final Set<String> erroneousCommitLogs;
 
     public CommitLogProcessor(CassandraConnectorContext context) throws IOException {
         super(NAME, Duration.ZERO);
@@ -70,7 +70,7 @@ public class CommitLogProcessor extends AbstractProcessor {
         latestOnly = context.getCassandraConnectorConfig().latestCommitLogOnly();
         errorCommitLogReprocessEnabled = context.getCassandraConnectorConfig().errorCommitLogReprocessEnabled();
         commitLogTransfer = context.getCassandraConnectorConfig().getCommitLogTransfer();
-        errorCommitLogSet = context.getErrorCommitLogSet();
+        erroneousCommitLogs = context.getErroneousCommitLogs();
     }
 
     @Override
@@ -134,7 +134,7 @@ public class CommitLogProcessor extends AbstractProcessor {
                 }
                 if (!latestOnly) {
                     queue.enqueue(new EOFEvent(file));
-                    errorCommitLogSet.add(file.getName());
+                    erroneousCommitLogs.add(file.getName());
                 }
                 LOGGER.error("Error occurred while processing commit log " + file.getName(), e);
             }
