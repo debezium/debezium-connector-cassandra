@@ -6,8 +6,8 @@
 package io.debezium.connector.cassandra;
 
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
@@ -35,7 +35,7 @@ public class CassandraConnectorContext extends CdcSourceTaskContext {
         try {
 
             // Create a HashSet to record names of CommitLog Files which are not successfully read or streamed.
-            this.erroneousCommitLogs = new HashSet<>();
+            this.erroneousCommitLogs = ConcurrentHashMap.newKeySet();
 
             // Loading up DDL schemas from disk
             loadDdlFromDisk(this.config.cassandraConfig());
