@@ -20,6 +20,7 @@ import org.apache.cassandra.config.DatabaseDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorTaskException;
 
@@ -61,7 +62,7 @@ public class CommitLogProcessor extends AbstractProcessor {
         cdcDir = new File(DatabaseDescriptor.getCDCLogLocation());
         watcher = new AbstractDirectoryWatcher(cdcDir.toPath(), context.getCassandraConnectorConfig().cdcDirPollInterval(), Collections.singleton(ENTRY_CREATE)) {
             @Override
-            void handleEvent(WatchEvent<?> event, Path path) throws IOException {
+            void handleEvent(WatchEvent<?> event, Path path) {
                 if (isRunning()) {
                     processCommitLog(path.toFile());
                 }
@@ -91,11 +92,6 @@ public class CommitLogProcessor extends AbstractProcessor {
             throw new InterruptedException();
         }
         if (initial) {
-            // If commit.log.error.reprocessing.enabled is set to true, download all error commitLog files upon starting for re-processing.
-            if (errorCommitLogReprocessEnabled) {
-                LOGGER.info("CommitLog Error Processing is enabled. Attempting to get all error commitLog files.");
-                commitLogTransfer.getErrorCommitLogFiles();
-            }
             LOGGER.info("Reading existing commit logs in {}", cdcDir);
             File[] commitLogFiles = CommitLogUtil.getCommitLogs(cdcDir);
             Arrays.sort(commitLogFiles, CommitLogUtil::compareCommitLogs);
@@ -104,18 +100,24 @@ public class CommitLogProcessor extends AbstractProcessor {
                     processCommitLog(commitLogFile);
                 }
             }
+            // If commit.log.error.reprocessing.enabled is set to true, download all error commitLog files upon starting for re-processing.
+            if (errorCommitLogReprocessEnabled) {
+                LOGGER.info("CommitLog Error Processing is enabled. Attempting to get all error commitLog files.");
+                commitLogTransfer.getErrorCommitLogFiles();
+            }
             initial = false;
         }
-
         watcher.poll();
     }
 
-    void processCommitLog(File file) throws IOException {
+    void processCommitLog(File file) {
         if (file == null) {
-            throw new IOException("Commit log is null");
+            LOGGER.warn("Commit log is null");
+            return;
         }
         if (!file.exists()) {
-            throw new IOException("Commit log " + file.getName() + " does not exist");
+            LOGGER.warn("Commit log " + file.getName() + " does not exist");
+            return;
         }
         try {
             try {
@@ -129,14 +131,14 @@ public class CommitLogProcessor extends AbstractProcessor {
             }
             catch (Exception e) {
                 if (commitLogTransfer.getClass().getName().equals(CassandraConnectorConfig.DEFAULT_COMMIT_LOG_TRANSFER_CLASS)) {
-                    LOGGER.error("Error occurred while processing commit log " + file.getName(), e);
-                    throw e;
+                    throw new DebeziumException(String.format("Error occurred while processing commit log %s",
+                            file.getName()), e);
                 }
+                LOGGER.error("Error occurred while processing commit log " + file.getName(), e);
                 if (!latestOnly) {
                     queue.enqueue(new EOFEvent(file));
                     erroneousCommitLogs.add(file.getName());
                 }
-                LOGGER.error("Error occurred while processing commit log " + file.getName(), e);
             }
         }
         catch (InterruptedException e) {
@@ -145,7 +147,7 @@ public class CommitLogProcessor extends AbstractProcessor {
         }
     }
 
-    void processLastModifiedCommitLog() throws IOException {
+    void processLastModifiedCommitLog() {
         LOGGER.warn("CommitLogProcessor will read the last modified commit log from the COMMIT LOG "
                 + "DIRECTORY based on modified timestamp, NOT FROM THE CDC_RAW DIRECTORY. This method "
                 + "should not be used in PRODUCTION!");
