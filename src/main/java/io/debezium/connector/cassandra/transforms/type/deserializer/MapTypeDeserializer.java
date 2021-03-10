@@ -72,14 +72,14 @@ public class MapTypeDeserializer extends CollectionTypeDeserializer<MapType<?, ?
             if (keysTypeDeserializer instanceof LogicalTypeDeserializer) {
                 key = ((LogicalTypeDeserializer) keysTypeDeserializer).formatDeserializedValue(keysType, key);
             }
-            else if (keysTypeDeserializer instanceof UserTypeDeserializer || keysTypeDeserializer instanceof TupleTypeDeserializer) {
+            else if (keysTypeDeserializer instanceof UserDefinedTypeDeserializer || keysTypeDeserializer instanceof TupleTypeDeserializer) {
                 key = keysTypeDeserializer.deserialize(keysType, (ByteBuffer) key);
             }
             Object value = entry.getValue();
             if (valuesTypeDeserializer instanceof LogicalTypeDeserializer) {
                 value = ((LogicalTypeDeserializer) valuesTypeDeserializer).formatDeserializedValue(valuesType, value);
             }
-            else if (valuesTypeDeserializer instanceof UserTypeDeserializer || valuesTypeDeserializer instanceof TupleTypeDeserializer) {
+            else if (valuesTypeDeserializer instanceof UserDefinedTypeDeserializer || valuesTypeDeserializer instanceof TupleTypeDeserializer) {
                 value = valuesTypeDeserializer.deserialize(valuesType, (ByteBuffer) value);
             }
             resultedMap.put(key, value);

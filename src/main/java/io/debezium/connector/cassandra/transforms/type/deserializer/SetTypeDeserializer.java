@@ -68,7 +68,7 @@ public class SetTypeDeserializer extends CollectionTypeDeserializer<SetType<?>> 
                 resultedList.add(convertedValue);
             }
         }
-        else if (elementsTypeDeserializer instanceof UserTypeDeserializer || elementsTypeDeserializer instanceof TupleTypeDeserializer) {
+        else if (elementsTypeDeserializer instanceof UserDefinedTypeDeserializer || elementsTypeDeserializer instanceof TupleTypeDeserializer) {
             resultedList = new ArrayList<>();
             for (Object element : deserializedSet) {
                 Object deserializedElement = elementsTypeDeserializer.deserialize(elementsType, (ByteBuffer) element);
