@@ -12,11 +12,9 @@ import java.io.File;
  */
 public class EOFEvent implements Event {
     public final File file;
-    public final boolean success;
 
-    public EOFEvent(File file, boolean success) {
+    public EOFEvent(File file) {
         this.file = file;
-        this.success = success;
     }
 
     @Override

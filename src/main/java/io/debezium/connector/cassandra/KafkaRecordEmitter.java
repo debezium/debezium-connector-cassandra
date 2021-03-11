@@ -9,6 +9,7 @@ import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
@@ -32,6 +33,8 @@ public class KafkaRecordEmitter implements AutoCloseable {
     private final TopicSelector<KeyspaceTable> topicSelector;
     private final OffsetWriter offsetWriter;
     private final OffsetFlushPolicy offsetFlushPolicy;
+    private final Set<String> erroneousCommitLogs;
+    private final CommitLogTransfer commitLogTransfer;
     private final Map<Record, Future<RecordMetadata>> futures = new LinkedHashMap<>();
     private final Object lock = new Object();
     private long timeOfLastFlush;
@@ -41,11 +44,14 @@ public class KafkaRecordEmitter implements AutoCloseable {
 
     public KafkaRecordEmitter(String kafkaTopicPrefix, String heartbeatPrefix, Properties kafkaProperties,
                               OffsetWriter offsetWriter, Duration offsetFlushIntervalMs, long maxOffsetFlushSize,
-                              Converter keyConverter, Converter valueConverter) {
+                              Converter keyConverter, Converter valueConverter, Set<String> erroneousCommitLogs,
+                              CommitLogTransfer commitLogTransfer) {
         this.producer = new KafkaProducer<>(kafkaProperties);
         this.topicSelector = CassandraTopicSelector.defaultSelector(kafkaTopicPrefix, heartbeatPrefix);
         this.offsetWriter = offsetWriter;
         this.offsetFlushPolicy = offsetFlushIntervalMs.isZero() ? OffsetFlushPolicy.always() : OffsetFlushPolicy.periodic(offsetFlushIntervalMs, maxOffsetFlushSize);
+        this.erroneousCommitLogs = erroneousCommitLogs;
+        this.commitLogTransfer = commitLogTransfer;
         this.keyConverter = keyConverter;
         this.valueConverter = valueConverter;
     }
@@ -53,8 +59,8 @@ public class KafkaRecordEmitter implements AutoCloseable {
     public void emit(Record record) {
         try {
             synchronized (lock) {
-                ProducerRecord<byte[], byte[]> producerRecord = toProducerRecord(record);
                 LOGGER.debug("Sending the record '{}'", record.toString());
+                ProducerRecord<byte[], byte[]> producerRecord = toProducerRecord(record);
                 Future<RecordMetadata> future = producer.send(producerRecord);
                 LOGGER.debug("The record '{}' has been sent", record.toString());
                 futures.put(record, future);
@@ -62,7 +68,11 @@ public class KafkaRecordEmitter implements AutoCloseable {
             }
         }
         catch (Exception e) {
-            throw new DebeziumException(String.format("Failed to send record %s", record.toString()), e);
+            if (record.getSource().snapshot || commitLogTransfer.getClass().getName().equals(CassandraConnectorConfig.DEFAULT_COMMIT_LOG_TRANSFER_CLASS)) {
+                throw new DebeziumException(String.format("Failed to send record %s", record.toString()), e);
+            }
+            LOGGER.error("Failed to send the record {}. Error: ", record.toString(), e);
+            erroneousCommitLogs.add(record.getSource().offsetPosition.fileName);
         }
     }
 

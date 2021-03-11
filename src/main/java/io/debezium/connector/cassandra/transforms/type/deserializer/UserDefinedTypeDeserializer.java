@@ -17,7 +17,7 @@ import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;
 
-public class UserTypeDeserializer extends TypeDeserializer {
+public class UserDefinedTypeDeserializer extends TypeDeserializer {
 
     public Object deserialize(AbstractType<?> abstractType, ByteBuffer bb) {
         UserType userType = (UserType) abstractType;

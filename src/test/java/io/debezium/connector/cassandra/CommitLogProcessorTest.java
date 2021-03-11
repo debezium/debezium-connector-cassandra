@@ -89,7 +89,7 @@ public class CommitLogProcessorTest extends EmbeddedCassandraConnectorTestBase {
             }
             else if (event instanceof EOFEvent) {
                 EOFEvent eofEvent = (EOFEvent) event;
-                assertTrue(eofEvent.success);
+                assertFalse(context.getErroneousCommitLogs().contains(eofEvent.file.getName()));
             }
             else {
                 throw new Exception("unexpected event type");

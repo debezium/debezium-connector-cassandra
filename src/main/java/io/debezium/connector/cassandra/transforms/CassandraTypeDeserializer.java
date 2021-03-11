@@ -56,7 +56,7 @@ import io.debezium.connector.cassandra.transforms.type.deserializer.TimestampTyp
 import io.debezium.connector.cassandra.transforms.type.deserializer.TupleTypeDeserializer;
 import io.debezium.connector.cassandra.transforms.type.deserializer.TypeDeserializer;
 import io.debezium.connector.cassandra.transforms.type.deserializer.UUIDTypeDeserializer;
-import io.debezium.connector.cassandra.transforms.type.deserializer.UserTypeDeserializer;
+import io.debezium.connector.cassandra.transforms.type.deserializer.UserDefinedTypeDeserializer;
 
 @ThreadSafe
 @Immutable
@@ -70,30 +70,34 @@ public final class CassandraTypeDeserializer {
     static {
         Map<Class<? extends AbstractType>, TypeDeserializer> tmp = new HashMap<>();
 
-        tmp.put(AsciiType.class, new BasicTypeDeserializer(CassandraTypeKafkaSchemaBuilders.STRING_TYPE));
+        // Basic Types
         tmp.put(BooleanType.class, new BasicTypeDeserializer(CassandraTypeKafkaSchemaBuilders.BOOLEAN_TYPE));
-        tmp.put(BytesType.class, new BasicTypeDeserializer(CassandraTypeKafkaSchemaBuilders.BYTES_TYPE));
-        tmp.put(ByteType.class, new BasicTypeDeserializer(CassandraTypeKafkaSchemaBuilders.BYTE_TYPE));
-        tmp.put(CounterColumnType.class, new BasicTypeDeserializer(CassandraTypeKafkaSchemaBuilders.LONG_TYPE));
-        tmp.put(DecimalType.class, new BasicTypeDeserializer(CassandraTypeKafkaSchemaBuilders.DOUBLE_TYPE));
-        tmp.put(DoubleType.class, new BasicTypeDeserializer(CassandraTypeKafkaSchemaBuilders.DOUBLE_TYPE));
-        tmp.put(DurationType.class, new DurationTypeDeserializer());
-        tmp.put(FloatType.class, new BasicTypeDeserializer(CassandraTypeKafkaSchemaBuilders.FLOAT_TYPE));
-        tmp.put(InetAddressType.class, new InetAddressDeserializer());
-        tmp.put(Int32Type.class, new BasicTypeDeserializer(CassandraTypeKafkaSchemaBuilders.INT_TYPE));
-        tmp.put(ListType.class, new ListTypeDeserializer());
-        tmp.put(LongType.class, new BasicTypeDeserializer(CassandraTypeKafkaSchemaBuilders.LONG_TYPE));
-        tmp.put(MapType.class, new MapTypeDeserializer());
-        tmp.put(SetType.class, new SetTypeDeserializer());
-        tmp.put(ShortType.class, new BasicTypeDeserializer(CassandraTypeKafkaSchemaBuilders.SHORT_TYPE));
-        tmp.put(SimpleDateType.class, new BasicTypeDeserializer(CassandraTypeKafkaSchemaBuilders.DATE_TYPE));
-        tmp.put(TimeType.class, new BasicTypeDeserializer(CassandraTypeKafkaSchemaBuilders.LONG_TYPE));
-        tmp.put(TimestampType.class, new TimestampTypeDeserializer());
-        tmp.put(TimeUUIDType.class, new TimeUUIDTypeDeserializer());
-        tmp.put(TupleType.class, new TupleTypeDeserializer());
-        tmp.put(UserType.class, new UserTypeDeserializer());
         tmp.put(UTF8Type.class, new BasicTypeDeserializer(CassandraTypeKafkaSchemaBuilders.STRING_TYPE));
+        tmp.put(AsciiType.class, new BasicTypeDeserializer(CassandraTypeKafkaSchemaBuilders.STRING_TYPE));
+        tmp.put(ByteType.class, new BasicTypeDeserializer(CassandraTypeKafkaSchemaBuilders.BYTE_TYPE));
+        tmp.put(BytesType.class, new BasicTypeDeserializer(CassandraTypeKafkaSchemaBuilders.BYTES_TYPE));
+        tmp.put(FloatType.class, new BasicTypeDeserializer(CassandraTypeKafkaSchemaBuilders.FLOAT_TYPE));
+        tmp.put(DoubleType.class, new BasicTypeDeserializer(CassandraTypeKafkaSchemaBuilders.DOUBLE_TYPE));
+        tmp.put(DecimalType.class, new BasicTypeDeserializer(CassandraTypeKafkaSchemaBuilders.DOUBLE_TYPE));
+        tmp.put(Int32Type.class, new BasicTypeDeserializer(CassandraTypeKafkaSchemaBuilders.INT_TYPE));
+        tmp.put(ShortType.class, new BasicTypeDeserializer(CassandraTypeKafkaSchemaBuilders.SHORT_TYPE));
+        tmp.put(LongType.class, new BasicTypeDeserializer(CassandraTypeKafkaSchemaBuilders.LONG_TYPE));
+        tmp.put(TimeType.class, new BasicTypeDeserializer(CassandraTypeKafkaSchemaBuilders.LONG_TYPE));
+        tmp.put(CounterColumnType.class, new BasicTypeDeserializer(CassandraTypeKafkaSchemaBuilders.LONG_TYPE));
+        tmp.put(SimpleDateType.class, new BasicTypeDeserializer(CassandraTypeKafkaSchemaBuilders.DATE_TYPE));
+        // Logical Types
+        tmp.put(InetAddressType.class, new InetAddressDeserializer());
+        tmp.put(TimestampType.class, new TimestampTypeDeserializer());
+        tmp.put(DurationType.class, new DurationTypeDeserializer());
         tmp.put(UUIDType.class, new UUIDTypeDeserializer());
+        tmp.put(TimeUUIDType.class, new TimeUUIDTypeDeserializer());
+        // Collection Types
+        tmp.put(ListType.class, new ListTypeDeserializer());
+        tmp.put(SetType.class, new SetTypeDeserializer());
+        tmp.put(MapType.class, new MapTypeDeserializer());
+        // Struct Types
+        tmp.put(TupleType.class, new TupleTypeDeserializer());
+        tmp.put(UserType.class, new UserDefinedTypeDeserializer());
 
         TYPE_MAP = Collections.unmodifiableMap(tmp);
     }

@@ -65,7 +65,7 @@ public class ListTypeDeserializer extends CollectionTypeDeserializer<ListType<?>
                 resultedList.add(formattedElement);
             }
         }
-        else if (elementsTypeDeserializer instanceof UserTypeDeserializer || elementsTypeDeserializer instanceof TupleTypeDeserializer) {
+        else if (elementsTypeDeserializer instanceof UserDefinedTypeDeserializer || elementsTypeDeserializer instanceof TupleTypeDeserializer) {
             resultedList = new ArrayList<>();
             for (Object element : deserializedList) {
                 Object deserializedElement = elementsTypeDeserializer.deserialize(elementsType, (ByteBuffer) element);

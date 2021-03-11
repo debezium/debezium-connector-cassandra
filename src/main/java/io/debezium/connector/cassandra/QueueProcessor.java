@@ -10,6 +10,10 @@ import java.io.IOException;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.List;
+import java.util.Set;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.annotations.VisibleForTesting;
 
@@ -22,10 +26,13 @@ import io.debezium.connector.cassandra.exceptions.CassandraConnectorTaskExceptio
  */
 public class QueueProcessor extends AbstractProcessor {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(QueueProcessor.class);
+
     private static final String NAME = "Change Event Queue Processor";
     private final ChangeEventQueue<Event> queue;
     private final KafkaRecordEmitter kafkaRecordEmitter;
     private final String commitLogRelocationDir;
+    private final Set<String> erroneousCommitLogs;
 
     public static final String ARCHIVE_FOLDER = "archive";
     public static final String ERROR_FOLDER = "error";
@@ -39,7 +46,9 @@ public class QueueProcessor extends AbstractProcessor {
                 context.getCassandraConnectorConfig().offsetFlushIntervalMs(),
                 context.getCassandraConnectorConfig().maxOffsetFlushSize(),
                 context.getCassandraConnectorConfig().getKeyConverter(),
-                context.getCassandraConnectorConfig().getValueConverter()));
+                context.getCassandraConnectorConfig().getValueConverter(),
+                context.getErroneousCommitLogs(),
+                context.getCassandraConnectorConfig().getCommitLogTransfer()));
     }
 
     @VisibleForTesting
@@ -47,6 +56,7 @@ public class QueueProcessor extends AbstractProcessor {
         super(NAME, Duration.ZERO);
         this.queue = context.getQueue();
         this.kafkaRecordEmitter = emitter;
+        this.erroneousCommitLogs = context.getErroneousCommitLogs();
         this.commitLogRelocationDir = context.getCassandraConnectorConfig().commitLogRelocationDir();
     }
 
@@ -100,8 +110,11 @@ public class QueueProcessor extends AbstractProcessor {
                 break;
             case EOF_EVENT:
                 EOFEvent eofEvent = (EOFEvent) event;
-                String folder = eofEvent.success ? ARCHIVE_FOLDER : ERROR_FOLDER;
+                String commitLogFileName = eofEvent.file.getName();
+                LOGGER.info("Encountered EOF event for {} ...", commitLogFileName);
+                String folder = erroneousCommitLogs.contains(commitLogFileName) ? ERROR_FOLDER : ARCHIVE_FOLDER;
                 CommitLogUtil.moveCommitLog(eofEvent.file, Paths.get(commitLogRelocationDir, folder));
+                LOGGER.info("Moved {} into {} folder.", commitLogFileName, folder);
                 break;
             default:
                 throw new CassandraConnectorTaskException("Encountered unexpected record with type: " + event.getEventType());
