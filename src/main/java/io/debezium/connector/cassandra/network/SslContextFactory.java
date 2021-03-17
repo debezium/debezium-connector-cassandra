@@ -9,6 +9,8 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Properties;
 
 import javax.net.ssl.KeyManagerFactory;
@@ -96,6 +98,11 @@ public class SslContextFactory {
             else {
                 LOGGER.error("TrustStoreLocation was not specified. Building SslContext using InsecureTrustManagerFactory. This is not suitable for PRODUCTION");
                 builder.trustManager(InsecureTrustManagerFactory.INSTANCE);
+            }
+
+            if (config.cipherSuites() != null) {
+                List<String> cipherSuites = Arrays.asList(config.cipherSuites().toString().split(","));
+                builder.ciphers(cipherSuites);
             }
 
             return builder.build();

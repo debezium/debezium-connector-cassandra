@@ -25,6 +25,8 @@ public class SslConfig {
     public static final String TRUST_MANAGER_ALGORITHM = "trustManager.algorithm";
     public static final String DEFAULT_TRUST_MANAGER_ALGORITHM = "SunX509";
 
+    public static final String CIPHER_SUITES = "cipherSuites";
+
     private Properties configs;
 
     public SslConfig(Properties configs) {
@@ -62,4 +64,9 @@ public class SslConfig {
     public String trustManagerAlgorithm() {
         return (String) configs.getOrDefault(TRUST_MANAGER_ALGORITHM, DEFAULT_TRUST_MANAGER_ALGORITHM);
     }
+
+    public String cipherSuites() {
+        return (String) configs.get(CIPHER_SUITES);
+    }
+
 }
