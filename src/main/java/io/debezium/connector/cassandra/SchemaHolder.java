@@ -6,6 +6,7 @@
 package io.debezium.connector.cassandra;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -48,11 +49,11 @@ public class SchemaHolder {
     }
 
     public void refreshSchemas() {
-        LOGGER.debug("Refreshing schemas...");
+        LOGGER.info("Refreshing schemas...");
         Map<KeyspaceTable, TableMetadata> latest = getLatestTableMetadatas();
         removeDeletedTableSchemas(latest);
         createOrUpdateNewTableSchemas(latest);
-        LOGGER.debug("Schemas are refreshed");
+        LOGGER.info("Schemas are refreshed");
     }
 
     public KeyValueSchema getOrUpdateKeyValueSchema(KeyspaceTable kt) {
@@ -107,7 +108,7 @@ public class SchemaHolder {
     }
 
     private void removeDeletedTableSchemas(Map<KeyspaceTable, TableMetadata> latestTableMetadataMap) {
-        Set<KeyspaceTable> existingTables = tableToKVSchemaMap.keySet();
+        Set<KeyspaceTable> existingTables = new HashSet<>(tableToKVSchemaMap.keySet());
         Set<KeyspaceTable> latestTables = latestTableMetadataMap.keySet();
         existingTables.removeAll(latestTables);
         tableToKVSchemaMap.keySet().removeAll(existingTables);
@@ -116,10 +117,10 @@ public class SchemaHolder {
     private void createOrUpdateNewTableSchemas(Map<KeyspaceTable, TableMetadata> latestTableMetadataMap) {
         latestTableMetadataMap.forEach((table, metadata) -> {
             TableMetadata existingTableMetadata = tableToKVSchemaMap.containsKey(table) ? tableToKVSchemaMap.get(table).tableMetadata() : null;
-            if (existingTableMetadata != metadata) {
+            if (existingTableMetadata == null || !existingTableMetadata.equals(metadata)) {
                 KeyValueSchema keyValueSchema = new KeyValueSchema(kafkaTopicPrefix, metadata, sourceInfoStructMaker);
                 tableToKVSchemaMap.put(table, keyValueSchema);
-                LOGGER.debug("Updated schema for {}", table);
+                LOGGER.info("Updated schema for {}.", table);
             }
         });
     }

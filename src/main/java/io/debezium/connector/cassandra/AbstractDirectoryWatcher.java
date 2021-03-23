@@ -43,11 +43,11 @@ public abstract class AbstractDirectoryWatcher {
     }
 
     public void poll() throws InterruptedException, IOException {
-        LOGGER.debug("Polling commitLogFiles from cdc_raw directory...");
+        LOGGER.info("Polling commitLog files from {} ...", directory);
         WatchKey key = watchService.poll(pollInterval.toMillis(), TimeUnit.MILLISECONDS);
 
         if (key != null) {
-            LOGGER.debug("Detected new commitLogFiles in cdc_raw directory.");
+            LOGGER.info("Detected new commitLog files in {}.", directory);
             for (WatchEvent<?> event : key.pollEvents()) {
                 Path relativePath = (Path) event.context();
                 Path absolutePath = directory.resolve(relativePath);
@@ -59,7 +59,7 @@ public abstract class AbstractDirectoryWatcher {
             key.reset();
         }
         else {
-            LOGGER.debug("No commitLogFile is detected in cdc_raw directory.");
+            LOGGER.info("No commitLogFile is detected in {}.", directory);
         }
     }
 

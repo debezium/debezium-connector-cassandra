@@ -102,7 +102,7 @@ public class CommitLogProcessor extends AbstractProcessor {
             }
             // If commit.log.error.reprocessing.enabled is set to true, download all error commitLog files upon starting for re-processing.
             if (errorCommitLogReprocessEnabled) {
-                LOGGER.info("CommitLog Error Processing is enabled. Attempting to get all error commitLog files.");
+                LOGGER.info("CommitLog Error Processing is enabled. Attempting to get all error commitLog files for re-processing.");
                 commitLogTransfer.getErrorCommitLogFiles();
             }
             initial = false;
@@ -142,8 +142,8 @@ public class CommitLogProcessor extends AbstractProcessor {
             }
         }
         catch (InterruptedException e) {
-            LOGGER.error("Interruption while enqueuing EOF Event for file {}", file.getName());
-            throw new CassandraConnectorTaskException("Enqueuing has been interrupted: ", e);
+            throw new CassandraConnectorTaskException(String.format(
+                    "Enqueuing has been interrupted while enqueuing EOF Event for file %s", file.getName()), e);
         }
     }
 
@@ -165,7 +165,7 @@ public class CommitLogProcessor extends AbstractProcessor {
             processCommitLog(lastModified);
         }
         else {
-            LOGGER.info("No commit logs found in {}", DatabaseDescriptor.getCommitLogLocation());
+            LOGGER.debug("No commit logs found in {}", DatabaseDescriptor.getCommitLogLocation());
         }
     }
 }

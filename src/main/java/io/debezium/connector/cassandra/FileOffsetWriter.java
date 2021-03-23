@@ -117,7 +117,7 @@ public class FileOffsetWriter implements OffsetWriter {
             }
         }
         catch (IOException e) {
-            LOGGER.error("Ignoring flush failure", e);
+            LOGGER.warn("Ignoring flush failure", e);
         }
     }
 
@@ -126,14 +126,14 @@ public class FileOffsetWriter implements OffsetWriter {
             snapshotOffsetFileLock.release();
         }
         catch (IOException e) {
-            LOGGER.error("Failed to release snapshot offset file lock");
+            LOGGER.warn("Failed to release snapshot offset file lock");
         }
 
         try {
             commitLogOffsetFileLock.release();
         }
         catch (IOException e) {
-            LOGGER.error("Failed to release commit log offset file lock");
+            LOGGER.warn("Failed to release commit log offset file lock");
         }
     }
 
@@ -142,8 +142,7 @@ public class FileOffsetWriter implements OffsetWriter {
             props.store(fos, null);
         }
         catch (IOException e) {
-            LOGGER.error("Failed to save offset for file " + offsetFile.getName(), e);
-            throw e;
+            throw new IOException("Failed to save offset for file " + offsetFile.getName());
         }
     }
 
@@ -152,8 +151,7 @@ public class FileOffsetWriter implements OffsetWriter {
             props.load(fis);
         }
         catch (IOException e) {
-            LOGGER.error("Failed to load offset for file " + offsetFile.getName(), e);
-            throw e;
+            throw new IOException("Failed to load offset for file " + offsetFile.getName());
         }
     }
 

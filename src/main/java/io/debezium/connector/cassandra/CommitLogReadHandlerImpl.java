@@ -43,7 +43,6 @@ import com.datastax.driver.core.TableMetadata;
 import io.debezium.DebeziumException;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorSchemaException;
-import io.debezium.connector.cassandra.exceptions.CassandraConnectorTaskException;
 import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;
 import io.debezium.time.Conversions;
 
@@ -228,7 +227,7 @@ public class CommitLogReadHandlerImpl implements CommitLogReadHandler {
             KeyspaceTable keyspaceTable = new KeyspaceTable(mutation.getKeyspaceName(), pu.metadata().cfName);
 
             if (offsetWriter.isOffsetProcessed(keyspaceTable.name(), offsetPosition.serialize(), false)) {
-                LOGGER.debug("Mutation at {} for table {} already processed, skipping...", offsetPosition, keyspaceTable);
+                LOGGER.info("Mutation at {} for table {} already processed, skipping...", offsetPosition, keyspaceTable);
                 return;
             }
 
@@ -296,6 +295,7 @@ public class CommitLogReadHandlerImpl implements CommitLogReadHandler {
 
             default:
                 throw new CassandraConnectorSchemaException("Unsupported partition type " + partitionType + " should have been skipped");
+
         }
     }
 
@@ -313,41 +313,36 @@ public class CommitLogReadHandlerImpl implements CommitLogReadHandler {
      *      (4) Assemble a {@link Record} object from the populated data and queue the record
      */
     private void handlePartitionDeletion(PartitionUpdate pu, OffsetPosition offsetPosition, KeyspaceTable keyspaceTable) {
-        try {
 
-            SchemaHolder.KeyValueSchema keyValueSchema = schemaHolder.getOrUpdateKeyValueSchema(keyspaceTable);
-            Schema keySchema = keyValueSchema.keySchema();
-            Schema valueSchema = keyValueSchema.valueSchema();
+        SchemaHolder.KeyValueSchema keyValueSchema = schemaHolder.getOrUpdateKeyValueSchema(keyspaceTable);
+        Schema keySchema = keyValueSchema.keySchema();
+        Schema valueSchema = keyValueSchema.valueSchema();
 
-            RowData after = new RowData();
+        RowData after = new RowData();
 
-            populatePartitionColumns(after, pu);
+        populatePartitionColumns(after, pu);
 
-            // For partition deletions, the PartitionUpdate only specifies the partition key, it does not
-            // contains any info on regular (non-partition) columns, as if they were not modified. In order
-            // to differentiate deleted columns from unmodified columns, we populate the deleted columns
-            // with null value and timestamps
-            TableMetadata tableMetadata = keyValueSchema.tableMetadata();
-            List<ColumnMetadata> clusteringColumns = tableMetadata.getClusteringColumns();
-            if (!clusteringColumns.isEmpty()) {
-                throw new CassandraConnectorSchemaException("Uh-oh... clustering key should not exist for partition deletion");
-            }
-            List<ColumnMetadata> columns = tableMetadata.getColumns();
-            columns.removeAll(tableMetadata.getPartitionKey());
-            for (ColumnMetadata cm : columns) {
-                String name = cm.getName();
-                long deletionTs = pu.deletionInfo().getPartitionDeletion().markedForDeleteAt();
-                CellData cellData = new CellData(name, null, deletionTs, CellData.ColumnType.REGULAR);
-                after.addCell(cellData);
-            }
-
-            recordMaker.delete(DatabaseDescriptor.getClusterName(), offsetPosition, keyspaceTable, false,
-                    Conversions.toInstantFromMicros(pu.maxTimestamp()), after, keySchema, valueSchema,
-                    MARK_OFFSET, queue::enqueue);
+        // For partition deletions, the PartitionUpdate only specifies the partition key, it does not
+        // contains any info on regular (non-partition) columns, as if they were not modified. In order
+        // to differentiate deleted columns from unmodified columns, we populate the deleted columns
+        // with null value and timestamps
+        TableMetadata tableMetadata = keyValueSchema.tableMetadata();
+        List<ColumnMetadata> clusteringColumns = tableMetadata.getClusteringColumns();
+        if (!clusteringColumns.isEmpty()) {
+            throw new CassandraConnectorSchemaException("Uh-oh... clustering key should not exist for partition deletion");
         }
-        catch (Exception e) {
-            LOGGER.error("Fail to delete partition at {}. Reason: {}", offsetPosition, e);
+        List<ColumnMetadata> columns = tableMetadata.getColumns();
+        columns.removeAll(tableMetadata.getPartitionKey());
+        for (ColumnMetadata cm : columns) {
+            String name = cm.getName();
+            long deletionTs = pu.deletionInfo().getPartitionDeletion().markedForDeleteAt();
+            CellData cellData = new CellData(name, null, deletionTs, CellData.ColumnType.REGULAR);
+            after.addCell(cellData);
         }
+
+        recordMaker.delete(DatabaseDescriptor.getClusterName(), offsetPosition, keyspaceTable, false,
+                Conversions.toInstantFromMicros(pu.maxTimestamp()), after, keySchema, valueSchema,
+                MARK_OFFSET, queue::enqueue);
     }
 
     /**
@@ -395,7 +390,7 @@ public class CommitLogReadHandlerImpl implements CommitLogReadHandler {
                 break;
 
             default:
-                throw new CassandraConnectorTaskException("Unsupported row type " + rowType + " should have been skipped");
+                throw new CassandraConnectorSchemaException("Unsupported row type " + rowType + " should have been skipped");
         }
     }
 

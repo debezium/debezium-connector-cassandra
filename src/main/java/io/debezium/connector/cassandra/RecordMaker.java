@@ -72,8 +72,8 @@ public class RecordMaker {
             consumer.accept(record);
         }
         catch (InterruptedException e) {
-            LOGGER.error("Interruption while enqueuing Change Event {}", record.toString());
-            throw new CassandraConnectorTaskException("Enqueuing has been interrupted: ", e);
+            throw new CassandraConnectorTaskException(String.format(
+                    "Enqueuing has been interrupted while enqueuing Change Event %s", record.toString()), e);
         }
 
         if (operation == Record.Operation.DELETE && emitTombstoneOnDelete) {
@@ -82,9 +82,9 @@ public class RecordMaker {
             try {
                 consumer.accept(tombstoneRecord);
             }
-            catch (Exception e) {
-                LOGGER.error("Interruption while enqueuing Tombstone Event {}", record.toString());
-                throw new CassandraConnectorTaskException("Enqueuing has been interrupted: ", e);
+            catch (InterruptedException e) {
+                throw new CassandraConnectorTaskException(String.format(
+                        "Enqueuing has been interrupted while enqueuing Tombstone Event %s", record.toString()), e);
             }
         }
     }

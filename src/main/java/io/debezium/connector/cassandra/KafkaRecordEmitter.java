@@ -59,10 +59,10 @@ public class KafkaRecordEmitter implements AutoCloseable {
     public void emit(Record record) {
         try {
             synchronized (lock) {
-                LOGGER.debug("Sending the record '{}'", record.toString());
+                LOGGER.info("Sending the record '{}'", record.toString());
                 ProducerRecord<byte[], byte[]> producerRecord = toProducerRecord(record);
                 Future<RecordMetadata> future = producer.send(producerRecord);
-                LOGGER.debug("The record '{}' has been sent", record.toString());
+                LOGGER.info("The record '{}' has been sent", record.toString());
                 futures.put(record, future);
                 maybeFlushAndMarkOffset();
             }
@@ -102,7 +102,7 @@ public class KafkaRecordEmitter implements AutoCloseable {
         try {
             recordEntry.getValue().get(); // wait
             if (++emitCount % 10_000 == 0) {
-                LOGGER.info("Emitted {} records to Kafka Broker", emitCount);
+                LOGGER.debug("Emitted {} records to Kafka Broker", emitCount);
                 emitCount = 0;
             }
             return true;
@@ -124,7 +124,7 @@ public class KafkaRecordEmitter implements AutoCloseable {
         boolean isSnapshot = source.snapshot;
         offsetWriter.markOffset(sourceTable, sourceOffset, isSnapshot);
         if (isSnapshot) {
-            LOGGER.info("Mark snapshot offset for table '{}'", sourceTable);
+            LOGGER.debug("Mark snapshot offset for table '{}'", sourceTable);
         }
     }
 
