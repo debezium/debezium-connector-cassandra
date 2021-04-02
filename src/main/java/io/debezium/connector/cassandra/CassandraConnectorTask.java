@@ -27,9 +27,9 @@ import com.codahale.metrics.servlets.HealthCheckServlet;
 import com.codahale.metrics.servlets.MetricsServlet;
 import com.codahale.metrics.servlets.PingServlet;
 
-import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorConfigException;
+import io.debezium.connector.cassandra.exceptions.CassandraConnectorTaskException;
 import io.debezium.connector.cassandra.network.BuildInfoServlet;
 
 /**
@@ -111,14 +111,14 @@ public class CassandraConnectorTask {
 
         if (taskContext != null) {
             taskContext.cleanUp();
-            LOGGER.info("Cleaned up Cassandra connector task context.");
+            LOGGER.info("Cleaned up Cassandra connector context.");
         }
         LOGGER.info("Stopped Cassandra Connector Task.");
     }
 
     private void initHttpServer() {
         int httpPort = config.httpPort();
-        LOGGER.info("HTTP port is {}", httpPort);
+        LOGGER.debug("HTTP port is {}", httpPort);
         httpServer = new Server(httpPort);
 
         ServletContextHandler contextHandler = new ServletContextHandler(ServletContextHandler.SESSIONS);
@@ -143,9 +143,9 @@ public class CassandraConnectorTask {
             }
         }
         catch (Exception e) {
-            throw new DebeziumException("Failed to initiate Processor Group.", e);
+            throw new CassandraConnectorTaskException("Failed to initialize Processor Group.", e);
         }
-        LOGGER.info("Initiated Processor Group.");
+        LOGGER.info("Initialized Processor Group.");
     }
 
     private void initJmxReporter(String domain) {
@@ -226,7 +226,7 @@ public class CassandraConnectorTask {
                 }
             }
             catch (Exception e) {
-                throw new DebeziumException("Failed to terminate processor group.", e);
+                throw new CassandraConnectorTaskException("Failed to terminate processor group.", e);
             }
         }
 

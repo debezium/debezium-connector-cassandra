@@ -13,6 +13,7 @@ import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
 
 import io.debezium.connector.base.ChangeEventQueue;
+import io.debezium.connector.cassandra.exceptions.CassandraConnectorTaskException;
 import io.debezium.connector.common.CdcSourceTaskContext;
 
 /**
@@ -58,9 +59,9 @@ public class CassandraConnectorContext extends CdcSourceTaskContext {
             this.offsetWriter = new FileOffsetWriter(this.config.offsetBackingStoreDir());
         }
         catch (Exception e) {
-            // Clean up CassandraClient and FileOffsetWrite if connector context is failed to be initialized completely.
+            // Clean up CassandraClient and FileOffsetWrite if connector context fails to be completely initialized.
             cleanUp();
-            throw e;
+            throw new CassandraConnectorTaskException("Failed to initialize Cassandra Connector Context.", e);
         }
 
     }

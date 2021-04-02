@@ -63,8 +63,7 @@ public class SslContextFactory {
                     keyStore.load(is, config.keyStorePassword().toCharArray());
                 }
                 catch (IOException ex) {
-                    LOGGER.error("failed to load the key store: location=" + config.keyStoreLocation() + " type=" + config.keyStoreType());
-                    throw ex;
+                    throw new IOException("Failed to load the key store: location=" + config.keyStoreLocation() + " type=" + config.keyStoreType());
                 }
                 KeyManagerFactory keyManagerFactory = KeyManagerFactory.getInstance(config.getKeyManagerAlgorithm());
                 keyManagerFactory.init(keyStore, config.keyStorePassword().toCharArray());
@@ -74,7 +73,7 @@ public class SslContextFactory {
 
             }
             else {
-                LOGGER.error("KeyStoreLocation was not specified. Building SslContext without certificate. This is not suitable for PRODUCTION");
+                LOGGER.warn("KeyStoreLocation was not specified. Building SslContext without certificate. This is not suitable for PRODUCTION");
                 final SelfSignedCertificate ssc = new SelfSignedCertificate();
 
                 builder = builder.keyManager(ssc.certificate(), ssc.privateKey());
@@ -86,8 +85,7 @@ public class SslContextFactory {
                     trustStore.load(is, config.trustStorePassword().toCharArray());
                 }
                 catch (IOException ex) {
-                    LOGGER.error("failed to load the trust store: location=" + config.trustStoreLocation() + " type=" + config.trustStoreType());
-                    throw ex;
+                    throw new IOException("Failed to load the trust store: location=" + config.trustStoreLocation() + " type=" + config.trustStoreType());
                 }
                 TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(config.trustManagerAlgorithm());
                 trustManagerFactory.init(trustStore);
@@ -96,7 +94,7 @@ public class SslContextFactory {
 
             }
             else {
-                LOGGER.error("TrustStoreLocation was not specified. Building SslContext using InsecureTrustManagerFactory. This is not suitable for PRODUCTION");
+                LOGGER.warn("TrustStoreLocation was not specified. Building SslContext using InsecureTrustManagerFactory. This is not suitable for PRODUCTION");
                 builder.trustManager(InsecureTrustManagerFactory.INSTANCE);
             }
 

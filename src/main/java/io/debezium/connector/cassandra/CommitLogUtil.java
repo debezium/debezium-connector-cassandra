@@ -32,35 +32,40 @@ public final class CommitLogUtil {
     /**
      * Move a commit log to a new directory. If the commit log already exists in the new directory, it woull be replaced.
      */
-    public static void moveCommitLog(File file, Path toDir) {
+    public static boolean moveCommitLog(File file, Path toDir) {
         try {
             Matcher filenameMatcher = FILENAME_REGEX_PATTERN.matcher(file.getName());
             if (!filenameMatcher.matches()) {
-                throw new IllegalArgumentException("Cannot move file because " + file.getName() + " does not appear to be a CommitLog");
+                LOGGER.warn("Cannot move file {} because it does not appear to be a CommitLog.", file.getName());
+                return false;
             }
-
             Files.move(file.toPath(), toDir.resolve(file.getName()), REPLACE_EXISTING);
+            LOGGER.debug("Moved CommitLog file {} from {} to {}.", file.getName(), file.getParent(), toDir);
+            return true;
         }
         catch (Exception e) {
-            LOGGER.error("Failed to move the file {} from {}", file.getName(), toDir.getFileName(), e);
+            LOGGER.warn("Failed to move CommitLog file {} from {} to {}. Error:", file.getName(), file.getParent(), toDir, e);
+            return false;
         }
     }
 
     /**
      * Delete a commit log and logs the error in the case the deletion failed.
      */
-    public static void deleteCommitLog(File file) {
+    public static boolean deleteCommitLog(File file) {
         try {
             Matcher filenameMatcher = FILENAME_REGEX_PATTERN.matcher(file.getName());
             if (!filenameMatcher.matches()) {
-                throw new IllegalArgumentException("Cannot delete file because " + file.getName() + " does not appear to be a CommitLog");
+                LOGGER.warn("Cannot delete file {} because it does not appear to be a CommitLog", file.getName());
+                return false;
             }
-
             Files.delete(file.toPath());
-            LOGGER.debug("Deleted CommitLog File {}.", file.getPath());
+            LOGGER.debug("Deleted CommitLog file {} from {}.", file.getName(), file.getParent());
+            return true;
         }
         catch (Exception e) {
-            LOGGER.warn("Failed to delete file {}. Error: ", file.getPath(), e);
+            LOGGER.warn("Failed to delete CommitLog file {} from {}. Error: ", file.getName(), file.getParent(), e);
+            return false;
         }
     }
 

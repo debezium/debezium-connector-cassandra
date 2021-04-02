@@ -18,7 +18,6 @@ import org.slf4j.LoggerFactory;
 import com.google.common.annotations.VisibleForTesting;
 
 import io.debezium.connector.base.ChangeEventQueue;
-import io.debezium.connector.cassandra.exceptions.CassandraConnectorTaskException;
 
 /**
  * A thread that constantly polls records from the queue and emit them to Kafka via the KafkaRecordEmitter.
@@ -113,11 +112,12 @@ public class QueueProcessor extends AbstractProcessor {
                 String commitLogFileName = eofEvent.file.getName();
                 LOGGER.info("Encountered EOF event for {} ...", commitLogFileName);
                 String folder = erroneousCommitLogs.contains(commitLogFileName) ? ERROR_FOLDER : ARCHIVE_FOLDER;
-                CommitLogUtil.moveCommitLog(eofEvent.file, Paths.get(commitLogRelocationDir, folder));
-                LOGGER.info("Moved {} into {} folder.", commitLogFileName, folder);
+                if (CommitLogUtil.moveCommitLog(eofEvent.file, Paths.get(commitLogRelocationDir, folder))) {
+                    LOGGER.info("Moved {} into {} folder.", commitLogFileName, folder);
+                }
                 break;
             default:
-                throw new CassandraConnectorTaskException("Encountered unexpected record with type: " + event.getEventType());
+                LOGGER.warn("Encountered unexpected record with type: {}", event.getEventType());
         }
     }
 }

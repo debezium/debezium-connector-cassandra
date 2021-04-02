@@ -31,7 +31,6 @@ import com.datastax.driver.core.querybuilder.Select;
 
 import io.debezium.DebeziumException;
 import io.debezium.connector.base.ChangeEventQueue;
-import io.debezium.connector.cassandra.exceptions.CassandraConnectorTaskException;
 import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;
 import io.debezium.time.Conversions;
 import io.debezium.util.Collect;
@@ -89,7 +88,7 @@ public class SnapshotProcessor extends AbstractProcessor {
     }
 
     @Override
-    public void process() {
+    public void process() throws IOException {
         if (snapshotMode == CassandraConnectorConfig.SnapshotMode.ALWAYS) {
             snapshot();
         }
@@ -106,35 +105,31 @@ public class SnapshotProcessor extends AbstractProcessor {
      * Fetch for all new tables that have not yet been snapshotted, and then iterate through the
      * tables to snapshot each one of them.
      */
-    synchronized void snapshot() {
-        try {
-            Set<TableMetadata> tables = getTablesToSnapshot();
-            if (!tables.isEmpty()) {
-                String[] tableArr = tables.stream().map(SnapshotProcessor::tableName).toArray(String[]::new);
-                LOGGER.info("Found {} tables to snapshot: {}", tables.size(), tableArr);
-                long startTime = System.currentTimeMillis();
-                metrics.setTableCount(tables.size());
-                metrics.startSnapshot();
-                for (TableMetadata table : tables) {
-                    if (isRunning()) {
-                        String tableName = tableName(table);
-                        LOGGER.info("Snapshotting table {}", tableName);
-                        startedTableNames.add(tableName);
-                        takeTableSnapshot(table);
-                        metrics.completeTable();
-                    }
+    synchronized void snapshot() throws IOException {
+        Set<TableMetadata> tables = getTablesToSnapshot();
+        if (!tables.isEmpty()) {
+            String[] tableArr = tables.stream().map(SnapshotProcessor::tableName).toArray(String[]::new);
+            LOGGER.debug("Found {} tables to snapshot: {}", tables.size(), tableArr);
+            long startTime = System.currentTimeMillis();
+            metrics.setTableCount(tables.size());
+            metrics.startSnapshot();
+            for (TableMetadata table : tables) {
+                if (isRunning()) {
+                    String tableName = tableName(table);
+                    LOGGER.info("Snapshotting table {} ...", tableName);
+                    startedTableNames.add(tableName);
+                    takeTableSnapshot(table);
+                    metrics.completeTable();
+                    LOGGER.info("Snapshot of table {} has been taken", tableName);
                 }
-                metrics.stopSnapshot();
-                long endTime = System.currentTimeMillis();
-                long durationInSeconds = Duration.ofMillis(endTime - startTime).getSeconds();
-                LOGGER.info("Snapshot completely queued in {} seconds for tables: {}", durationInSeconds, tableArr);
             }
-            else {
-                LOGGER.info("No tables to snapshot");
-            }
+            metrics.stopSnapshot();
+            long endTime = System.currentTimeMillis();
+            long durationInSeconds = Duration.ofMillis(endTime - startTime).getSeconds();
+            LOGGER.debug("Snapshot completely queued in {} seconds for tables: {}", durationInSeconds, tableArr);
         }
-        catch (IOException e) {
-            throw new CassandraConnectorTaskException(e);
+        else {
+            LOGGER.info("No table to snapshot");
         }
     }
 
@@ -158,8 +153,8 @@ public class SnapshotProcessor extends AbstractProcessor {
             statement.setConsistencyLevel(consistencyLevel);
             LOGGER.info("Executing snapshot query '{}' with consistency level {}", statement.getQueryString(), statement.getConsistencyLevel());
             ResultSet resultSet = cassandraClient.execute(statement);
+            LOGGER.info("Executed snapshot query for table {}", tableName(tableMetadata));
             processResultSet(tableMetadata, resultSet);
-            LOGGER.debug("The snapshot of table '{}' has been taken", tableName(tableMetadata));
         }
         catch (IOException e) {
             throw e;
@@ -230,7 +225,7 @@ public class SnapshotProcessor extends AbstractProcessor {
                         after, keySchema, valueSchema, markOffset, queue::enqueue);
                 rowNum++;
                 if (rowNum % 10_000 == 0) {
-                    LOGGER.info("Queued {} snapshot records from table {}", rowNum, tableName);
+                    LOGGER.debug("Queued {} snapshot records from table {}", rowNum, tableName);
                     metrics.setRowsScanned(tableName, rowNum);
                 }
             }
