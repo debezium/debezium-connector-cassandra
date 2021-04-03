@@ -114,7 +114,11 @@ public class KafkaRecordEmitter implements AutoCloseable {
     }
 
     private boolean hasOffset(Map.Entry<Record, Future<RecordMetadata>> recordEntry) {
-        return recordEntry.getKey().shouldMarkOffset();
+        Record record = recordEntry.getKey();
+        if (record.getSource().snapshot || commitLogTransfer.getClass().getName().equals(CassandraConnectorConfig.DEFAULT_COMMIT_LOG_TRANSFER_CLASS)) {
+            return record.shouldMarkOffset();
+        }
+        return record.shouldMarkOffset() && !erroneousCommitLogs.contains(record.getSource().offsetPosition.fileName);
     }
 
     private void markOffset(Map.Entry<Record, Future<RecordMetadata>> recordEntry) {
