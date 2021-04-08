@@ -27,20 +27,20 @@ public class QueueProcessor extends AbstractProcessor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(QueueProcessor.class);
 
-    private static final String NAME = "Change Event Queue Processor";
     private final ChangeEventQueue<Event> queue;
     private final KafkaRecordEmitter kafkaRecordEmitter;
     private final String commitLogRelocationDir;
     private final Set<String> erroneousCommitLogs;
 
+    private static final String NAME_PREFIX = "Queue Processor ";
     public static final String ARCHIVE_FOLDER = "archive";
     public static final String ERROR_FOLDER = "error";
 
-    public QueueProcessor(CassandraConnectorContext context) {
-        this(context, new KafkaRecordEmitter(
+    public QueueProcessor(CassandraConnectorContext context, int index) {
+        this(context, index, new KafkaRecordEmitter(
                 context.getCassandraConnectorConfig().kafkaTopicPrefix(),
                 context.getCassandraConnectorConfig().getHeartbeatTopicsPrefix(),
-                context.getCassandraConnectorConfig().getKafkaConfigs(),
+                context.getKafkaProducer(),
                 context.getOffsetWriter(),
                 context.getCassandraConnectorConfig().offsetFlushIntervalMs(),
                 context.getCassandraConnectorConfig().maxOffsetFlushSize(),
@@ -51,9 +51,9 @@ public class QueueProcessor extends AbstractProcessor {
     }
 
     @VisibleForTesting
-    QueueProcessor(CassandraConnectorContext context, KafkaRecordEmitter emitter) {
-        super(NAME, Duration.ZERO);
-        this.queue = context.getQueue();
+    QueueProcessor(CassandraConnectorContext context, int index, KafkaRecordEmitter emitter) {
+        super(NAME_PREFIX + "[" + index + "]", Duration.ZERO);
+        this.queue = context.getQueues().get(index);
         this.kafkaRecordEmitter = emitter;
         this.erroneousCommitLogs = context.getErroneousCommitLogs();
         this.commitLogRelocationDir = context.getCassandraConnectorConfig().commitLogRelocationDir();

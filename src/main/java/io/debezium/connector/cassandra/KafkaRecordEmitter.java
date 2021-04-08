@@ -8,7 +8,6 @@ package io.debezium.connector.cassandra;
 import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -42,11 +41,11 @@ public class KafkaRecordEmitter implements AutoCloseable {
     private Converter keyConverter;
     private Converter valueConverter;
 
-    public KafkaRecordEmitter(String kafkaTopicPrefix, String heartbeatPrefix, Properties kafkaProperties,
+    public KafkaRecordEmitter(String kafkaTopicPrefix, String heartbeatPrefix, KafkaProducer kafkaProducer,
                               OffsetWriter offsetWriter, Duration offsetFlushIntervalMs, long maxOffsetFlushSize,
                               Converter keyConverter, Converter valueConverter, Set<String> erroneousCommitLogs,
                               CommitLogTransfer commitLogTransfer) {
-        this.producer = new KafkaProducer<>(kafkaProperties);
+        this.producer = kafkaProducer;
         this.topicSelector = CassandraTopicSelector.defaultSelector(kafkaTopicPrefix, heartbeatPrefix);
         this.offsetWriter = offsetWriter;
         this.offsetFlushPolicy = offsetFlushIntervalMs.isZero() ? OffsetFlushPolicy.always() : OffsetFlushPolicy.periodic(offsetFlushIntervalMs, maxOffsetFlushSize);

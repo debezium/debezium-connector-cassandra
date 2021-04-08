@@ -58,18 +58,18 @@ public class CommitLogReadHandlerImpl implements CommitLogReadHandler {
 
     private static final boolean MARK_OFFSET = true;
 
-    private final ChangeEventQueue<Event> queue;
+    private final List<ChangeEventQueue<Event>> queues;
     private final RecordMaker recordMaker;
     private final OffsetWriter offsetWriter;
     private final SchemaHolder schemaHolder;
     private final CommitLogProcessorMetrics metrics;
 
     CommitLogReadHandlerImpl(SchemaHolder schemaHolder,
-                             ChangeEventQueue<Event> queue,
+                             List<ChangeEventQueue<Event>> queues,
                              OffsetWriter offsetWriter,
                              RecordMaker recordMaker,
                              CommitLogProcessorMetrics metrics) {
-        this.queue = queue;
+        this.queues = queues;
         this.offsetWriter = offsetWriter;
         this.recordMaker = recordMaker;
         this.schemaHolder = schemaHolder;
@@ -342,7 +342,7 @@ public class CommitLogReadHandlerImpl implements CommitLogReadHandler {
 
         recordMaker.delete(DatabaseDescriptor.getClusterName(), offsetPosition, keyspaceTable, false,
                 Conversions.toInstantFromMicros(pu.maxTimestamp()), after, keySchema, valueSchema,
-                MARK_OFFSET, queue::enqueue);
+                MARK_OFFSET, queues.get(Math.abs(offsetPosition.fileName.hashCode() % queues.size()))::enqueue);
     }
 
     /**
@@ -376,17 +376,20 @@ public class CommitLogReadHandlerImpl implements CommitLogReadHandler {
         switch (rowType) {
             case INSERT:
                 recordMaker.insert(DatabaseDescriptor.getClusterName(), offsetPosition, keyspaceTable, false,
-                        Conversions.toInstantFromMicros(ts), after, keySchema, valueSchema, MARK_OFFSET, queue::enqueue);
+                        Conversions.toInstantFromMicros(ts), after, keySchema, valueSchema, MARK_OFFSET,
+                        queues.get(Math.abs(offsetPosition.fileName.hashCode() % queues.size()))::enqueue);
                 break;
 
             case UPDATE:
                 recordMaker.update(DatabaseDescriptor.getClusterName(), offsetPosition, keyspaceTable, false,
-                        Conversions.toInstantFromMicros(ts), after, keySchema, valueSchema, MARK_OFFSET, queue::enqueue);
+                        Conversions.toInstantFromMicros(ts), after, keySchema, valueSchema, MARK_OFFSET,
+                        queues.get(Math.abs(offsetPosition.fileName.hashCode() % queues.size()))::enqueue);
                 break;
 
             case DELETE:
                 recordMaker.delete(DatabaseDescriptor.getClusterName(), offsetPosition, keyspaceTable, false,
-                        Conversions.toInstantFromMicros(ts), after, keySchema, valueSchema, MARK_OFFSET, queue::enqueue);
+                        Conversions.toInstantFromMicros(ts), after, keySchema, valueSchema, MARK_OFFSET,
+                        queues.get(Math.abs(offsetPosition.fileName.hashCode() % queues.size()))::enqueue);
                 break;
 
             default:
@@ -535,4 +538,5 @@ public class CommitLogReadHandlerImpl implements CommitLogReadHandler {
 
         return values;
     }
+
 }

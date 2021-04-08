@@ -54,7 +54,7 @@ public class SnapshotProcessor extends AbstractProcessor {
     private static final Set<DataType.Name> collectionTypes = Collect.unmodifiableSet(DataType.Name.LIST, DataType.Name.SET, DataType.Name.MAP);
 
     private final CassandraClient cassandraClient;
-    private final ChangeEventQueue<Event> queue;
+    private final List<ChangeEventQueue<Event>> queues;
     private final OffsetWriter offsetWriter;
     private final SchemaHolder schemaHolder;
     private final RecordMaker recordMaker;
@@ -66,8 +66,8 @@ public class SnapshotProcessor extends AbstractProcessor {
 
     public SnapshotProcessor(CassandraConnectorContext context) {
         super(NAME, context.getCassandraConnectorConfig().snapshotPollInterval());
+        this.queues = context.getQueues();
         cassandraClient = context.getCassandraClient();
-        queue = context.getQueue();
         offsetWriter = context.getOffsetWriter();
         schemaHolder = context.getSchemaHolder();
         recordMaker = new RecordMaker(context.getCassandraConnectorConfig().tombstonesOnDelete(),
@@ -222,7 +222,7 @@ public class SnapshotProcessor extends AbstractProcessor {
                 boolean markOffset = !rowIter.hasNext();
                 recordMaker.insert(DatabaseDescriptor.getClusterName(), OffsetPosition.defaultOffsetPosition(),
                         keyspaceTable, true, Conversions.toInstantFromMicros(TimeUnit.MICROSECONDS.convert((long) executionTime, TimeUnit.MILLISECONDS)),
-                        after, keySchema, valueSchema, markOffset, queue::enqueue);
+                        after, keySchema, valueSchema, markOffset, queues.get(Math.abs(tableName.hashCode() % queues.size()))::enqueue);
                 rowNum++;
                 if (rowNum % 10_000 == 0) {
                     LOGGER.debug("Queued {} snapshot records from table {}", rowNum, tableName);

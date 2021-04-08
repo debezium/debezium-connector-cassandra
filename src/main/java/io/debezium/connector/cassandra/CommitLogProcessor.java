@@ -14,6 +14,7 @@ import java.nio.file.WatchEvent;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
@@ -39,7 +40,7 @@ public class CommitLogProcessor extends AbstractProcessor {
     private final CommitLogReadHandlerImpl commitLogReadHandler;
     private final File cdcDir;
     private final AbstractDirectoryWatcher watcher;
-    private final ChangeEventQueue<Event> queue;
+    private final List<ChangeEventQueue<Event>> queues;
     private final boolean latestOnly;
     private final CommitLogProcessorMetrics metrics = new CommitLogProcessorMetrics();
     private boolean initial = true;
@@ -50,10 +51,10 @@ public class CommitLogProcessor extends AbstractProcessor {
     public CommitLogProcessor(CassandraConnectorContext context) throws IOException {
         super(NAME, Duration.ZERO);
         commitLogReader = new org.apache.cassandra.db.commitlog.CommitLogReader();
-        queue = context.getQueue();
+        this.queues = context.getQueues();
         commitLogReadHandler = new CommitLogReadHandlerImpl(
                 context.getSchemaHolder(),
-                context.getQueue(),
+                context.getQueues(),
                 context.getOffsetWriter(),
                 new RecordMaker(context.getCassandraConnectorConfig().tombstonesOnDelete(),
                         new Filters(context.getCassandraConnectorConfig().fieldExcludeList()),
@@ -125,7 +126,7 @@ public class CommitLogProcessor extends AbstractProcessor {
                 metrics.setCommitLogFilename(file.getName());
                 commitLogReader.readCommitLogSegment(commitLogReadHandler, file, false);
                 if (!latestOnly) {
-                    queue.enqueue(new EOFEvent(file));
+                    queues.get(Math.abs(file.getName().hashCode() % queues.size())).enqueue(new EOFEvent(file));
                 }
                 LOGGER.info("Successfully processed commit log {}", file.getName());
             }
@@ -136,7 +137,7 @@ public class CommitLogProcessor extends AbstractProcessor {
                 }
                 LOGGER.error("Error occurred while processing commit log " + file.getName(), e);
                 if (!latestOnly) {
-                    queue.enqueue(new EOFEvent(file));
+                    queues.get(Math.abs(file.getName().hashCode() % queues.size())).enqueue(new EOFEvent(file));
                     erroneousCommitLogs.add(file.getName());
                 }
             }

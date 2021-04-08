@@ -34,7 +34,7 @@ public class QueueProcessorTest extends EmbeddedCassandraConnectorTestBase {
     public void setUp() throws Exception {
         context = generateTaskContext();
         emitter = mock(KafkaRecordEmitter.class);
-        queueProcessor = new QueueProcessor(context, emitter);
+        queueProcessor = new QueueProcessor(context, 0, emitter);
     }
 
     @After
@@ -47,7 +47,7 @@ public class QueueProcessorTest extends EmbeddedCassandraConnectorTestBase {
         doNothing().when(emitter).emit(any());
 
         int recordSize = 5;
-        ChangeEventQueue<Event> queue = context.getQueue();
+        ChangeEventQueue<Event> queue = context.getQueues().get(0);
         for (int i = 0; i < recordSize; i++) {
             CassandraConnectorConfig config = new CassandraConnectorConfig(Configuration.from(new Properties()));
             SourceInfo sourceInfo = new SourceInfo(config, DatabaseDescriptor.getClusterName(),
@@ -69,7 +69,7 @@ public class QueueProcessorTest extends EmbeddedCassandraConnectorTestBase {
         doNothing().when(emitter).emit(any());
 
         int recordSize = 5;
-        ChangeEventQueue<Event> queue = context.getQueue();
+        ChangeEventQueue<Event> queue = context.getQueues().get(0);
         for (int i = 0; i < recordSize; i++) {
             CassandraConnectorConfig config = new CassandraConnectorConfig(Configuration.from(new Properties()));
             SourceInfo sourceInfo = new SourceInfo(config, DatabaseDescriptor.getClusterName(),
@@ -90,7 +90,7 @@ public class QueueProcessorTest extends EmbeddedCassandraConnectorTestBase {
     public void testProcessEofEvent() throws Exception {
         doNothing().when(emitter).emit(any());
 
-        ChangeEventQueue<Event> queue = context.getQueue();
+        ChangeEventQueue<Event> queue = context.getQueues().get(0);
         File commitLogFile = generateCommitLogFile();
         queue.enqueue(new EOFEvent(commitLogFile));
 
