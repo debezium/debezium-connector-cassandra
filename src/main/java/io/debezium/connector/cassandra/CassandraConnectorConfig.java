@@ -240,6 +240,13 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
             .withDescription(
                     "The amount of time the CommitLogPostProcessor should wait to re-fetch all commitLog files in relocation dir, given in milliseconds. Defaults to 10 seconds (10,000 ms).");
 
+    public static final int DEFAULT_NUM_OF_CHANGE_EVENT_QUEUES = 1;
+    public static final Field NUM_OF_CHANGE_EVENT_QUEUES = Field.create("num.of.change.event.queues")
+            .withType(Type.INT)
+            .withDefault(DEFAULT_NUM_OF_CHANGE_EVENT_QUEUES)
+            .withDescription(
+                    "The number of change event queues and queue processors.");
+
     /**
      * A comma-separated list of fully-qualified names of fields that should be excluded from change event message values.
      * Fully-qualified names for fields are in the form {@code <keyspace_name>.<field_name>.<nested_field_name>}.
@@ -443,6 +450,10 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
     public Duration commitLogRelocationDirPollInterval() {
         int ms = this.getConfig().getInteger(COMMIT_LOG_RELOCATION_DIR_POLL_INTERVAL_MS);
         return Duration.ofMillis(ms);
+    }
+
+    public int numOfChangeEventQueues() {
+        return this.getConfig().getInteger(NUM_OF_CHANGE_EVENT_QUEUES);
     }
 
     public List<String> fieldExcludeList() {

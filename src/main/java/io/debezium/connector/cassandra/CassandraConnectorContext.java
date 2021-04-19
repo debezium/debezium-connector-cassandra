@@ -5,12 +5,15 @@
  */
 package io.debezium.connector.cassandra;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
+import org.apache.kafka.clients.producer.KafkaProducer;
 
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorTaskException;
@@ -23,7 +26,8 @@ import io.debezium.connector.common.CdcSourceTaskContext;
 public class CassandraConnectorContext extends CdcSourceTaskContext {
     private final CassandraConnectorConfig config;
     private final CassandraClient cassandraClient;
-    private final ChangeEventQueue<Event> queue;
+    private final List<ChangeEventQueue<Event>> queues;
+    private final KafkaProducer kafkaProducer;
     private final SchemaHolder schemaHolder;
     private final OffsetWriter offsetWriter;
     private final Set<String> erroneousCommitLogs;
@@ -44,13 +48,21 @@ public class CassandraConnectorContext extends CdcSourceTaskContext {
             // Setting up Cassandra driver
             this.cassandraClient = new CassandraClient(this.config);
 
-            // Setting up record queue ...
-            this.queue = new ChangeEventQueue.Builder<Event>()
-                    .pollInterval(this.config.pollInterval())
-                    .maxBatchSize(this.config.maxBatchSize())
-                    .maxQueueSize(this.config.maxQueueSize())
-                    .loggingContextSupplier(() -> this.configureLoggingContext(this.config.getContextName()))
-                    .build();
+            // Setting up change event queues
+            this.queues = new ArrayList<>();
+            int numOfChangeEventQueues = this.config.numOfChangeEventQueues();
+            for (int i = 0; i < numOfChangeEventQueues; i++) {
+                ChangeEventQueue<Event> queue = new ChangeEventQueue.Builder<Event>()
+                        .pollInterval(this.config.pollInterval())
+                        .maxBatchSize(this.config.maxBatchSize())
+                        .maxQueueSize(this.config.maxQueueSize())
+                        .loggingContextSupplier(() -> this.configureLoggingContext(this.config.getContextName()))
+                        .build();
+                queues.add(queue);
+            }
+
+            // Creating Kafka Producer
+            this.kafkaProducer = new KafkaProducer(this.config.getKafkaConfigs());
 
             // Setting up schema holder ...
             this.schemaHolder = new SchemaHolder(this.cassandraClient, this.config.kafkaTopicPrefix(), this.config.getSourceInfoStructMaker());
@@ -96,8 +108,12 @@ public class CassandraConnectorContext extends CdcSourceTaskContext {
         return cassandraClient;
     }
 
-    public ChangeEventQueue<Event> getQueue() {
-        return queue;
+    public List<ChangeEventQueue<Event>> getQueues() {
+        return queues;
+    }
+
+    public KafkaProducer getKafkaProducer() {
+        return kafkaProducer;
     }
 
     public OffsetWriter getOffsetWriter() {

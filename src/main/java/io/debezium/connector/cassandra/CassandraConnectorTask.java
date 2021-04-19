@@ -8,6 +8,7 @@ package io.debezium.connector.cassandra;
 import java.io.FileInputStream;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
@@ -28,6 +29,7 @@ import com.codahale.metrics.servlets.MetricsServlet;
 import com.codahale.metrics.servlets.PingServlet;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorConfigException;
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorTaskException;
 import io.debezium.connector.cassandra.network.BuildInfoServlet;
@@ -137,7 +139,10 @@ public class CassandraConnectorTask {
             processorGroup.addProcessor(new SchemaProcessor(taskContext));
             processorGroup.addProcessor(new CommitLogProcessor(taskContext));
             processorGroup.addProcessor(new SnapshotProcessor(taskContext));
-            processorGroup.addProcessor(new QueueProcessor(taskContext));
+            List<ChangeEventQueue<Event>> queues = taskContext.getQueues();
+            for (int i = 0; i < queues.size(); i++) {
+                processorGroup.addProcessor(new QueueProcessor(taskContext, i));
+            }
             if (taskContext.getCassandraConnectorConfig().postProcessEnabled()) {
                 processorGroup.addProcessor(new CommitLogPostProcessor(taskContext));
             }

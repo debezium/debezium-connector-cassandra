@@ -43,7 +43,7 @@ public class SnapshotProcessorTest extends EmbeddedCassandraConnectorTestBase {
             context.getCassandraClient().execute("INSERT INTO " + keyspaceTable("cdc_table2") + "(a, b) VALUES (?, ?)", i + 10, String.valueOf(i + 10));
         }
 
-        ChangeEventQueue<Event> queue = context.getQueue();
+        ChangeEventQueue<Event> queue = context.getQueues().get(0);
         assertEquals(queue.totalCapacity(), queue.remainingCapacity());
         snapshotProcessor.process();
         assertEquals(2 * tableSize, queue.totalCapacity() - queue.remainingCapacity());
@@ -84,7 +84,7 @@ public class SnapshotProcessorTest extends EmbeddedCassandraConnectorTestBase {
             context.getCassandraClient().execute("INSERT INTO " + keyspaceTable("non_cdc_table") + "(a, b) VALUES (?, ?)", i, String.valueOf(i));
         }
 
-        ChangeEventQueue<Event> queue = context.getQueue();
+        ChangeEventQueue<Event> queue = context.getQueues().get(0);
         assertEquals(queue.totalCapacity(), queue.remainingCapacity());
         snapshotProcessor.process();
         assertEquals(queue.totalCapacity(), queue.remainingCapacity());
@@ -104,7 +104,7 @@ public class SnapshotProcessorTest extends EmbeddedCassandraConnectorTestBase {
         context.getCassandraClient().execute("CREATE TABLE IF NOT EXISTS " + keyspaceTable("cdc_table") + " (a int, b text, PRIMARY KEY(a)) WITH cdc = true;");
         context.getSchemaHolder().refreshSchemas();
 
-        ChangeEventQueue<Event> queue = context.getQueue();
+        ChangeEventQueue<Event> queue = context.getQueues().get(0);
         assertEquals(queue.totalCapacity(), queue.remainingCapacity());
         snapshotProcessor.process(); // records empty table to snapshot.offset, so it won't be snapshotted again
         assertEquals(queue.totalCapacity(), queue.remainingCapacity());
