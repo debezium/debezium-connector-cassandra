@@ -30,12 +30,20 @@ on newer versions of Java.
 
 Then the Cassandra connector can be built like so:
 
-    $ mvn clean install -am -pl debezium-connector-cassandra
+    $ mvn clean install
     
 If you have multiple Java installation on your machine you can select the correct
 version by setting JAVA_HOME env var:
 
-    $ JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64 mvn clean install -am -pl debezium-connector-cassandra
+    $ JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64 mvn clean install
+
+### Building just the artifacts, without running tests, CheckStyle, etc.
+
+You can skip all non-essential plug-ins (tests, integration tests, CheckStyle, formatter, API compatibility check, etc.) using the "quick" build profile:
+
+    $ mvn clean verify -Dquick
+
+This provides the fastes way for solely producing the output artifacts, without running any of the QA related Maven plug-ins.
 
 ## Getting Started
 
