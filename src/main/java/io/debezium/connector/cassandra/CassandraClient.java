@@ -95,6 +95,10 @@ public class CassandraClient implements AutoCloseable {
         return cluster.getMetadata().getClusterName();
     }
 
+    public Cluster getCluster() {
+        return cluster;
+    }
+
     public boolean isQueryable() {
         return !cluster.isClosed() && !session.isClosed();
     }
