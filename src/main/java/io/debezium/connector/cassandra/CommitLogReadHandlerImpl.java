@@ -77,7 +77,7 @@ public class CommitLogReadHandlerImpl implements CommitLogReadHandler {
     }
 
     /**
-     *  A PartitionType represents the type of a PartitionUpdate.
+     * A PartitionType represents the type of a PartitionUpdate.
      */
     enum PartitionType {
         /**
@@ -86,7 +86,7 @@ public class CommitLogReadHandlerImpl implements CommitLogReadHandler {
         PARTITION_KEY_ROW_DELETION,
 
         /**
-         *  a partition-level deletion where partition key + clustering key = primary key
+         * a partition-level deletion where partition key + clustering key = primary key
          */
         PARTITION_AND_CLUSTERING_KEY_ROW_DELETION,
 
@@ -147,7 +147,7 @@ public class CommitLogReadHandlerImpl implements CommitLogReadHandler {
     }
 
     /**
-     *  A RowType represents different types of {@link Row}-level modifications in a Cassandra table.
+     * A RowType represents different types of {@link Row}-level modifications in a Cassandra table.
      */
     enum RowType {
         /**
@@ -314,7 +314,12 @@ public class CommitLogReadHandlerImpl implements CommitLogReadHandler {
      */
     private void handlePartitionDeletion(PartitionUpdate pu, OffsetPosition offsetPosition, KeyspaceTable keyspaceTable) {
 
-        SchemaHolder.KeyValueSchema keyValueSchema = schemaHolder.getOrUpdateKeyValueSchema(keyspaceTable);
+        SchemaHolder.KeyValueSchema keyValueSchema = schemaHolder.getKeyValueSchema(keyspaceTable);
+        if (keyValueSchema == null) {
+            LOGGER.warn("Unable to get KeyValueSchema for table {}. It might have been deleted or CDC disabled.", keyspaceTable.toString());
+            return;
+        }
+
         Schema keySchema = keyValueSchema.keySchema();
         Schema valueSchema = keyValueSchema.valueSchema();
 
@@ -362,14 +367,18 @@ public class CommitLogReadHandlerImpl implements CommitLogReadHandler {
      */
     private void handleRowModifications(Row row, RowType rowType, PartitionUpdate pu, OffsetPosition offsetPosition, KeyspaceTable keyspaceTable) {
 
-        SchemaHolder.KeyValueSchema schema = schemaHolder.getOrUpdateKeyValueSchema(keyspaceTable);
-        Schema keySchema = schema.keySchema();
-        Schema valueSchema = schema.valueSchema();
+        SchemaHolder.KeyValueSchema keyValueSchema = schemaHolder.getKeyValueSchema(keyspaceTable);
+        if (keyValueSchema == null) {
+            LOGGER.warn("Unable to get KeyValueSchema for table {}. It might have been deleted or CDC disabled.", keyspaceTable.toString());
+            return;
+        }
+        Schema keySchema = keyValueSchema.keySchema();
+        Schema valueSchema = keyValueSchema.valueSchema();
 
         RowData after = new RowData();
         populatePartitionColumns(after, pu);
         populateClusteringColumns(after, row, pu);
-        populateRegularColumns(after, row, rowType, schema);
+        populateRegularColumns(after, row, rowType, keyValueSchema);
 
         long ts = rowType == DELETE ? row.deletion().time().markedForDeleteAt() : pu.maxTimestamp();
 

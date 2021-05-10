@@ -29,11 +29,14 @@ import io.debezium.connector.base.ChangeEventQueue;
 public class CommitLogProcessorTest extends EmbeddedCassandraConnectorTestBase {
     private CassandraConnectorContext context;
     private CommitLogProcessor commitLogProcessor;
+    private SchemaProcessor schemaProcessor;
 
     @Before
     public void setUp() throws Exception {
         context = generateTaskContext();
         commitLogProcessor = new CommitLogProcessor(context);
+        schemaProcessor = new SchemaProcessor(context);
+        schemaProcessor.initialize();
         commitLogProcessor.initialize();
     }
 
@@ -41,6 +44,7 @@ public class CommitLogProcessorTest extends EmbeddedCassandraConnectorTestBase {
     public void tearDown() throws Exception {
         deleteTestOffsets(context);
         commitLogProcessor.destroy();
+        schemaProcessor.destroy();
         context.cleanUp();
     }
 
@@ -48,7 +52,6 @@ public class CommitLogProcessorTest extends EmbeddedCassandraConnectorTestBase {
     public void testProcessCommitLogs() throws Exception {
         int commitLogRowSize = 10;
         context.getCassandraClient().execute("CREATE TABLE IF NOT EXISTS " + keyspaceTable("cdc_table") + " (a int, b int, PRIMARY KEY(a)) WITH cdc = true;");
-        context.getSchemaHolder().refreshSchemas();
 
         // programmatically add insertion and deletion events into commit log, this is because running an 'INSERT' or 'DELETE'
         // cql against the embedded Cassandra does not modify the commit log file on disk.
