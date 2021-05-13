@@ -314,7 +314,7 @@ public class CommitLogReadHandlerImpl implements CommitLogReadHandler {
      */
     private void handlePartitionDeletion(PartitionUpdate pu, OffsetPosition offsetPosition, KeyspaceTable keyspaceTable) {
 
-        SchemaHolder.KeyValueSchema keyValueSchema = schemaHolder.getKeyValueSchema(keyspaceTable);
+        KeyValueSchema keyValueSchema = schemaHolder.getKeyValueSchema(keyspaceTable);
         if (keyValueSchema == null) {
             LOGGER.warn("Unable to get KeyValueSchema for table {}. It might have been deleted or CDC disabled.", keyspaceTable.toString());
             return;
@@ -367,7 +367,7 @@ public class CommitLogReadHandlerImpl implements CommitLogReadHandler {
      */
     private void handleRowModifications(Row row, RowType rowType, PartitionUpdate pu, OffsetPosition offsetPosition, KeyspaceTable keyspaceTable) {
 
-        SchemaHolder.KeyValueSchema keyValueSchema = schemaHolder.getKeyValueSchema(keyspaceTable);
+        KeyValueSchema keyValueSchema = schemaHolder.getKeyValueSchema(keyspaceTable);
         if (keyValueSchema == null) {
             LOGGER.warn("Unable to get KeyValueSchema for table {}. It might have been deleted or CDC disabled.", keyspaceTable.toString());
             return;
@@ -437,7 +437,7 @@ public class CommitLogReadHandlerImpl implements CommitLogReadHandler {
         }
     }
 
-    private void populateRegularColumns(RowData after, Row row, RowType rowType, SchemaHolder.KeyValueSchema schema) {
+    private void populateRegularColumns(RowData after, Row row, RowType rowType, KeyValueSchema schema) {
         if (rowType == INSERT || rowType == UPDATE) {
             for (ColumnDefinition cd : row.columns()) {
                 try {

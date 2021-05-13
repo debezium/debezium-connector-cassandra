@@ -5,8 +5,6 @@
  */
 package io.debezium.connector.cassandra;
 
-import static io.debezium.connector.cassandra.SchemaHolder.getFieldSchema;
-
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -46,7 +44,7 @@ public class RowData implements KafkaRecord {
     public Struct record(Schema schema) {
         Struct struct = new Struct(schema);
         for (Field field : schema.fields()) {
-            Schema cellSchema = getFieldSchema(field.name(), schema);
+            Schema cellSchema = KeyValueSchema.getFieldSchema(field.name(), schema);
             CellData cellData = cellMap.get(field.name());
             // only add the cell if it is not null
             if (cellData != null) {

@@ -31,8 +31,6 @@ public class SnapshotProcessorTest extends EmbeddedCassandraConnectorTestBase {
     public void testSnapshotTable() throws Exception {
         CassandraConnectorContext context = generateTaskContext();
         SnapshotProcessor snapshotProcessor = Mockito.spy(new SnapshotProcessor(context));
-        SchemaProcessor schemaProcessor = new SchemaProcessor(context);
-        schemaProcessor.initialize();
         when(snapshotProcessor.isRunning()).thenReturn(true);
 
         int tableSize = 5;
@@ -76,8 +74,6 @@ public class SnapshotProcessorTest extends EmbeddedCassandraConnectorTestBase {
     public void testSnapshotSkipsNonCdcEnabledTable() throws Exception {
         CassandraConnectorContext context = generateTaskContext();
         SnapshotProcessor snapshotProcessor = Mockito.spy(new SnapshotProcessor(context));
-        SchemaProcessor schemaProcessor = new SchemaProcessor(context);
-        schemaProcessor.initialize();
         when(snapshotProcessor.isRunning()).thenReturn(true);
 
         int tableSize = 5;
@@ -101,8 +97,6 @@ public class SnapshotProcessorTest extends EmbeddedCassandraConnectorTestBase {
         CassandraConnectorContext context = generateTaskContext();
         AtomicBoolean globalTaskState = new AtomicBoolean(true);
         SnapshotProcessor snapshotProcessor = Mockito.spy(new SnapshotProcessor(context));
-        SchemaProcessor schemaProcessor = new SchemaProcessor(context);
-        schemaProcessor.initialize();
         when(snapshotProcessor.isRunning()).thenReturn(true);
 
         context.getCassandraClient().execute("CREATE TABLE IF NOT EXISTS " + keyspaceTable("cdc_table") + " (a int, b text, PRIMARY KEY(a)) WITH cdc = true;");

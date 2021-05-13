@@ -5,8 +5,6 @@
  */
 package io.debezium.connector.cassandra;
 
-import static io.debezium.connector.cassandra.SchemaHolder.getFieldSchema;
-
 import java.util.List;
 import java.util.Objects;
 
@@ -84,7 +82,7 @@ public abstract class Record implements Event {
                 .put(TIMESTAMP, ts)
                 .put(OPERATION, op.getValue())
                 .put(SOURCE, source.struct())
-                .put(AFTER, rowData.record(getFieldSchema(AFTER, valueSchema)));
+                .put(AFTER, rowData.record(KeyValueSchema.getFieldSchema(AFTER, valueSchema)));
     }
 
     @Override

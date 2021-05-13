@@ -29,14 +29,11 @@ import io.debezium.connector.base.ChangeEventQueue;
 public class CommitLogProcessorTest extends EmbeddedCassandraConnectorTestBase {
     private CassandraConnectorContext context;
     private CommitLogProcessor commitLogProcessor;
-    private SchemaProcessor schemaProcessor;
 
     @Before
     public void setUp() throws Exception {
         context = generateTaskContext();
         commitLogProcessor = new CommitLogProcessor(context);
-        schemaProcessor = new SchemaProcessor(context);
-        schemaProcessor.initialize();
         commitLogProcessor.initialize();
     }
 
@@ -44,7 +41,6 @@ public class CommitLogProcessorTest extends EmbeddedCassandraConnectorTestBase {
     public void tearDown() throws Exception {
         deleteTestOffsets(context);
         commitLogProcessor.destroy();
-        schemaProcessor.destroy();
         context.cleanUp();
     }
 
