@@ -166,6 +166,7 @@ public class SchemaProcessor extends AbstractProcessor {
                     LOGGER.info("Removed schema for table {}", table.asCQLQuery());
                 }
                 catch (Throwable t) {
+                    // Added comment for try
                     LOGGER.error(String.format("Error happened while removing table %s.%s", table.getKeyspace(), table.getName()), t);
                 }
             }
