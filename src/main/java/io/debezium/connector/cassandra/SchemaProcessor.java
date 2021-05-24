@@ -7,7 +7,9 @@ package io.debezium.connector.cassandra;
 
 import static java.util.stream.Collectors.toMap;
 
+import java.lang.reflect.Method;
 import java.util.Map;
+import java.util.Optional;
 
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.Schema;
@@ -139,17 +141,20 @@ public class SchemaProcessor extends AbstractProcessor {
                     final String ksName = table.getKeyspace().getName();
                     final String tableName = table.getName();
 
-                    final org.apache.cassandra.schema.KeyspaceMetadata oldKsm = Schema.instance.getKSMetaData(table.getKeyspace().getName());
+                    final org.apache.cassandra.schema.KeyspaceMetadata oldKsm = Schema.instance.getKSMetaData(ksName);
 
                     if (oldKsm == null) {
-                        LOGGER.warn("KeyspaceMetadata for keyspace {} is not found!", table.getKeyspace().getName());
+                        LOGGER.warn("KeyspaceMetadata for keyspace {} is not found!", ksName);
                         return;
                     }
 
-                    final ColumnFamilyStore cfs = Keyspace.openWithoutSSTables(ksName).getColumnFamilyStore(tableName);
+                    ColumnFamilyStore cfs;
 
-                    if (cfs == null) {
-                        LOGGER.warn("ColumnFamilyStore for {}.{} is not found!", table.getKeyspace(), table.getName());
+                    try {
+                        cfs = Keyspace.openWithoutSSTables(ksName).getColumnFamilyStore(tableName);
+                    }
+                    catch (final Exception ex) {
+                        LOGGER.warn("ColumnFamilyStore for {}.{} is not found!", ksName, table.getName());
                         return;
                     }
 
@@ -157,16 +162,24 @@ public class SchemaProcessor extends AbstractProcessor {
                     cfs.indexManager.markAllIndexesRemoved();
 
                     // reinitialize the keyspace.
-                    final CFMetaData cfm = oldKsm.tables.get(tableName).get();
-                    final org.apache.cassandra.schema.KeyspaceMetadata newKsm = oldKsm.withSwapped(oldKsm.tables.without(tableName));
+                    final Optional<CFMetaData> cfm = oldKsm.tables.get(tableName);
 
-                    Schema.instance.unload(cfm);
-                    Schema.instance.setKeyspaceMetadata(newKsm);
+                    final Method unregisterMBeanMethod = ColumnFamilyStore.class.getDeclaredMethod("unregisterMBean");
+                    unregisterMBeanMethod.setAccessible(true);
+                    unregisterMBeanMethod.invoke(cfs);
 
-                    LOGGER.info("Removed schema for table {}", table.asCQLQuery());
+                    if (cfm.isPresent()) {
+                        final org.apache.cassandra.schema.KeyspaceMetadata newKsm = oldKsm.withSwapped(oldKsm.tables.without(tableName));
+                        Schema.instance.unload(cfm.get());
+                        Schema.instance.setKeyspaceMetadata(newKsm);
+                        LOGGER.info("Removed schema for table {}", table.asCQLQuery());
+                    }
+                    else {
+                        LOGGER.warn("Table {}.{} is not present in old keyspace meta data!", ksName, tableName);
+                    }
                 }
                 catch (Throwable t) {
-                    LOGGER.error(String.format("Error happened while removing table %s.%s", table.getKeyspace(), table.getName()), t);
+                    LOGGER.error(String.format("Error happened while removing table %s.%s", table.getKeyspace().getName(), table.getName()), t);
                 }
             }
 
