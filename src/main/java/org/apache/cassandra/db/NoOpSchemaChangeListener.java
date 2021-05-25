@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.cassandra;
+package org.apache.cassandra.db;
 
 import com.datastax.driver.core.AggregateMetadata;
 import com.datastax.driver.core.Cluster;
@@ -15,6 +15,9 @@ import com.datastax.driver.core.TableMetadata;
 import com.datastax.driver.core.UserType;
 
 public class NoOpSchemaChangeListener implements SchemaChangeListener {
+    public void unregisterMBean(final ColumnFamilyStore cfs) throws Exception {
+        cfs.unregisterMBean();
+    }
     @Override
     public void onKeyspaceAdded(final KeyspaceMetadata keyspace) {
 

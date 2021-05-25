@@ -15,6 +15,7 @@ import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.Keyspace;
+import org.apache.cassandra.db.NoOpSchemaChangeListener;
 import org.apache.cassandra.schema.KeyspaceParams;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -164,9 +165,7 @@ public class SchemaProcessor extends AbstractProcessor {
                     // reinitialize the keyspace.
                     final Optional<CFMetaData> cfm = oldKsm.tables.get(tableName);
 
-                    final Method unregisterMBeanMethod = ColumnFamilyStore.class.getDeclaredMethod("unregisterMBean");
-                    unregisterMBeanMethod.setAccessible(true);
-                    unregisterMBeanMethod.invoke(cfs);
+                    unregisterMBean(cfs);
 
                     if (cfm.isPresent()) {
                         final org.apache.cassandra.schema.KeyspaceMetadata newKsm = oldKsm.withSwapped(oldKsm.tables.without(tableName));
