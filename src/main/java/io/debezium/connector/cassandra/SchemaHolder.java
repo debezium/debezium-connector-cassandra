@@ -159,9 +159,7 @@ public class SchemaHolder {
                     LOGGER.debug("Table {}.{} is already added!", tableMetadata.getKeyspace(), tableMetadata.getName());
                     return;
                 }
-                final java.util.function.Function<org.apache.cassandra.schema.KeyspaceMetadata, org.apache.cassandra.schema.KeyspaceMetadata> transformationFunction = ks -> ks
-                        .withSwapped(ks.tables.with(newCFMetaData));
-                org.apache.cassandra.schema.KeyspaceMetadata transformed = transformationFunction.apply(current);
+                org.apache.cassandra.schema.KeyspaceMetadata transformed = current.withSwapped(current.tables.with(newCFMetaData));
                 Schema.instance.setKeyspaceMetadata(transformed);
                 Schema.instance.load(newCFMetaData);
                 LOGGER.info("Added table [{}] to schema instance.", tableMetadata.asCQLQuery());
