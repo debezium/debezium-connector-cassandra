@@ -136,7 +136,6 @@ public class CassandraConnectorTask {
     private void initProcessorGroup() {
         try {
             processorGroup = new ProcessorGroup();
-            processorGroup.addProcessor(new SchemaProcessor(taskContext));
             processorGroup.addProcessor(new CommitLogProcessor(taskContext));
             processorGroup.addProcessor(new SnapshotProcessor(taskContext));
             List<ChangeEventQueue<Event>> queues = taskContext.getQueues();

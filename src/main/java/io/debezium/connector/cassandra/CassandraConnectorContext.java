@@ -92,6 +92,9 @@ public class CassandraConnectorContext extends CdcSourceTaskContext {
     }
 
     public void cleanUp() {
+        if (this.schemaHolder != null) {
+            this.schemaHolder.close();
+        }
         if (this.cassandraClient != null) {
             this.cassandraClient.close();
         }

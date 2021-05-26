@@ -198,7 +198,7 @@ public class SnapshotProcessor extends AbstractProcessor {
     private void processResultSet(TableMetadata tableMetadata, ResultSet resultSet) throws IOException {
         String tableName = tableName(tableMetadata);
         KeyspaceTable keyspaceTable = new KeyspaceTable(tableMetadata);
-        SchemaHolder.KeyValueSchema keyValueSchema = schemaHolder.getKeyValueSchema(keyspaceTable);
+        KeyValueSchema keyValueSchema = schemaHolder.getKeyValueSchema(keyspaceTable);
         Schema keySchema = keyValueSchema.keySchema();
         Schema valueSchema = keyValueSchema.valueSchema();
 
