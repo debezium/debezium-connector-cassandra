@@ -78,7 +78,7 @@ public class KeyValueSchema {
     }
 
     private static String getValueName(String kafkaTopicPrefix, TableMetadata tm) {
-        return kafkaTopicPrefix + "." + tm.getKeyspace().getName() + "." + tm.getName() + ".Value";
+        return kafkaTopicPrefix + "." + tm.getKeyspace().getName() + "." + tm.getName() + ".Envelope";
     }
 
     /**
