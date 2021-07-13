@@ -160,6 +160,7 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
 
     public static final Field COMMIT_LOG_RELOCATION_DIR = Field.create("commit.log.relocation.dir")
             .withType(Type.STRING)
+            .withValidation(Field::isRequired)
             .withDescription("The local directory which commit logs get relocated to once processed.");
 
     /**
@@ -191,6 +192,7 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
 
     public static final Field OFFSET_BACKING_STORE_DIR = Field.create("offset.backing.store.dir")
             .withType(Type.STRING)
+            .withValidation(Field::isRequired)
             .withDescription("The directory which is used to store offset tracking files.");
 
     /**
