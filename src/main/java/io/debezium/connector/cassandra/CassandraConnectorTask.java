@@ -70,6 +70,11 @@ public class CassandraConnectorTask {
 
     void run() throws Exception {
         try {
+            if (!config.validateAndRecord(config.ALL_FIELDS, LOGGER::error)) {
+                LOGGER.error("Failed to start connector with invalid configuration (see logs for actual errors)");
+                return;
+            }
+
             LOGGER.info("Initializing Cassandra connector task context ...");
             taskContext = new CassandraConnectorContext(config);
 
