@@ -201,7 +201,7 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
     public static final int DEFAULT_OFFSET_FLUSH_INTERVAL_MS = 0;
     public static final Field OFFSET_FLUSH_INTERVAL_MS = Field.create("offset.flush.interval.ms")
             .withType(Type.INT)
-            .withDefault(0)
+            .withDefault(DEFAULT_OFFSET_FLUSH_INTERVAL_MS)
             .withDescription("The minimum amount of time to wait before committing the offset, given in milliseconds. Defaults 0 ms.");
 
     /**
@@ -216,7 +216,7 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
     public static final int DEFAULT_SCHEMA_POLL_INTERVAL_MS = 10_000;
     public static final Field SCHEMA_POLL_INTERVAL_MS = Field.create("schema.refresh.interval.ms")
             .withType(Type.INT)
-            .withDefault(10_000)
+            .withDefault(DEFAULT_SCHEMA_POLL_INTERVAL_MS)
             .withValidation(Field::isPositiveInteger)
             .withDescription(
                     "Interval for the schema processor to wait before refreshing the cached Cassandra table schemas, given in milliseconds. Defaults to 10 seconds (10,000 ms).");
@@ -224,13 +224,13 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
     public static final int DEFAULT_CDC_DIR_POLL_INTERVAL_MS = 10_000;
     public static final Field CDC_DIR_POLL_INTERVAL_MS = Field.create("cdc.dir.poll.interval.ms")
             .withType(Type.INT)
-            .withDefault(10_000)
+            .withDefault(DEFAULT_CDC_DIR_POLL_INTERVAL_MS)
             .withDescription("The maximum amount of time to wait on each poll before re-attempt, given in milliseconds. Defaults to 10 seconds (10,000 ms).");
 
     public static final int DEFAULT_SNAPSHOT_POLL_INTERVAL_MS = 10_000;
     public static final Field SNAPSHOT_POLL_INTERVAL_MS = Field.create("snapshot.scan.interval.ms")
             .withType(Type.INT)
-            .withDefault(10_000)
+            .withDefault(DEFAULT_SNAPSHOT_POLL_INTERVAL_MS)
             .withValidation(Field::isPositiveInteger)
             .withDescription(
                     "Interval for the snapshot processor to wait before re-scanning tables to look for new cdc-enabled tables. Defaults to 10 seconds (10,000 ms).");
@@ -238,7 +238,7 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
     public static final int DEFAULT_COMMIT_LOG_RELOCATION_DIR_POLL_INTERVAL_MS = 10_000;
     public static final Field COMMIT_LOG_RELOCATION_DIR_POLL_INTERVAL_MS = Field.create("commit.log.relocation.dir.poll.interval.ms")
             .withType(Type.INT)
-            .withDefault(10_000)
+            .withDefault(DEFAULT_COMMIT_LOG_RELOCATION_DIR_POLL_INTERVAL_MS)
             .withDescription(
                     "The amount of time the CommitLogPostProcessor should wait to re-fetch all commitLog files in relocation dir, given in milliseconds. Defaults to 10 seconds (10,000 ms).");
 
