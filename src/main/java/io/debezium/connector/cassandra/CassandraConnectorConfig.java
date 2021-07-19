@@ -6,6 +6,7 @@
 package io.debezium.connector.cassandra;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -24,7 +25,6 @@ import org.apache.kafka.connect.storage.Converter;
 import com.datastax.driver.core.ConsistencyLevel;
 
 import io.debezium.config.CommonConnectorConfig;
-import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.AbstractSourceInfo;
@@ -291,16 +291,10 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
 
     protected static final int DEFAULT_SNAPSHOT_FETCH_SIZE = 0;
 
-    private static final ConfigDefinition CONFIG_DEFINITION = CommonConnectorConfig.CONFIG_DEFINITION.edit()
-            .name("cassandra")
-            .type(
-                    COMMIT_LOG_RELOCATION_DIR,
-                    OFFSET_BACKING_STORE_DIR,
-                    SCHEMA_POLL_INTERVAL_MS,
-                    SNAPSHOT_POLL_INTERVAL_MS)
-            .create();
+    public static List<Field> validationFieldList = new ArrayList<>(
+            Arrays.asList(OFFSET_BACKING_STORE_DIR, COMMIT_LOG_RELOCATION_DIR, SCHEMA_POLL_INTERVAL_MS, SNAPSHOT_POLL_INTERVAL_MS));
 
-    public static Field.Set ALL_FIELDS = Field.setOf(CONFIG_DEFINITION.all());
+    public static Field.Set VALIDATION_FIELDS = Field.setOf(validationFieldList);
 
     public CassandraConnectorConfig(Configuration config) {
         super(config, config.getString(CONNECTOR_NAME), DEFAULT_SNAPSHOT_FETCH_SIZE);
