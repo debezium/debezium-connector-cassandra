@@ -175,6 +175,10 @@
             <groupId>io.confluent</groupId>
             <artifactId>kafka-connect-avro-converter</artifactId>
         </dependency>
+        <dependency>
+            <groupId>io.confluent</groupId>
+            <artifactId>kafka-connect-protobuf-converter</artifactId>
+        </dependency>
 
         <!-- Logging -->
         <dependency>
