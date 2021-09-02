@@ -418,7 +418,12 @@ public class CassandraTypeDeserializerTest {
     @Test
     public void testUUIDType() {
         UUID uuid = UUID.randomUUID();
-        String expectedFixedUUID = Values.convertToString(CassandraTypeKafkaSchemaBuilders.UUID_TYPE, UuidUtil.asBytes(uuid));
+
+        StringBuilder sb = new StringBuilder();
+        for (byte b : UuidUtil.asBytes(uuid)) {
+            sb.append(String.format("%02x", b));
+        }
+        String expectedFixedUUID = sb.toString();
 
         ByteBuffer serializedUUID = UUIDType.instance.decompose(uuid);
 
@@ -453,9 +458,23 @@ public class CassandraTypeDeserializerTest {
         originalList.add(uuid3);
 
         List<String> expectedList = new ArrayList<>();
-        String expectedUuidStr1 = Values.convertToString(CassandraTypeKafkaSchemaBuilders.UUID_TYPE, UuidUtil.asBytes(uuid1));
-        String expectedUuidStr2 = Values.convertToString(CassandraTypeKafkaSchemaBuilders.UUID_TYPE, UuidUtil.asBytes(uuid2));
-        String expectedUuidStr3 = Values.convertToString(CassandraTypeKafkaSchemaBuilders.UUID_TYPE, UuidUtil.asBytes(uuid3));
+        StringBuilder sb1 = new StringBuilder();
+        for (byte b : UuidUtil.asBytes(uuid1)) {
+            sb1.append(String.format("%02x", b));
+        }
+        String expectedUuidStr1 = sb1.toString();
+
+        StringBuilder sb2 = new StringBuilder();
+        for (byte b : UuidUtil.asBytes(uuid2)) {
+            sb2.append(String.format("%02x", b));
+        }
+        String expectedUuidStr2 = sb2.toString();
+
+        StringBuilder sb3 = new StringBuilder();
+        for (byte b : UuidUtil.asBytes(uuid3)) {
+            sb3.append(String.format("%02x", b));
+        }
+        String expectedUuidStr3 = sb3.toString();
         expectedList.add(expectedUuidStr1);
         expectedList.add(expectedUuidStr2);
         expectedList.add(expectedUuidStr3);
