@@ -8,12 +8,9 @@ package io.debezium.connector.cassandra.transforms.type.deserializer;
 import static io.debezium.connector.cassandra.transforms.CassandraTypeKafkaSchemaBuilders.UUID_TYPE;
 
 import java.nio.ByteBuffer;
-import java.util.UUID;
 
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.kafka.connect.data.SchemaBuilder;
-
-import io.debezium.connector.cassandra.transforms.UuidUtil;
 
 public class UUIDTypeDeserializer extends LogicalTypeDeserializer {
 
@@ -30,8 +27,6 @@ public class UUIDTypeDeserializer extends LogicalTypeDeserializer {
 
     @Override
     public Object formatDeserializedValue(AbstractType<?> abstractType, Object value) {
-        byte[] bytes = UuidUtil.asBytes((UUID) value);
-        ByteBuffer bb = ByteBuffer.wrap(bytes);
-        return new UUID(bb.getLong(), bb.getLong()).toString();
+        return value.toString();
     }
 }
