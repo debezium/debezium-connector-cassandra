@@ -32,9 +32,6 @@ public class UUIDTypeDeserializer extends LogicalTypeDeserializer {
     public Object formatDeserializedValue(AbstractType<?> abstractType, Object value) {
         byte[] bytes = UuidUtil.asBytes((UUID) value);
         ByteBuffer bb = ByteBuffer.wrap(bytes);
-        long high = bb.getLong();
-        long low = bb.getLong();
-        UUID uuid = new UUID(high, low);
-        return uuid.toString();
+        return new UUID(bb.getLong(), bb.getLong()).toString();
     }
 }
