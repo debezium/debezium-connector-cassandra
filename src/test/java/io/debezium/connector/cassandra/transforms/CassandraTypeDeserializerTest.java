@@ -419,11 +419,7 @@ public class CassandraTypeDeserializerTest {
     public void testUUIDType() {
         UUID uuid = UUID.randomUUID();
 
-        StringBuilder sb = new StringBuilder();
-        for (byte b : UuidUtil.asBytes(uuid)) {
-            sb.append(String.format("%02x", b));
-        }
-        String expectedFixedUUID = sb.toString();
+        String expectedFixedUUID = uuid.toString();
 
         ByteBuffer serializedUUID = UUIDType.instance.decompose(uuid);
 
@@ -458,23 +454,9 @@ public class CassandraTypeDeserializerTest {
         originalList.add(uuid3);
 
         List<String> expectedList = new ArrayList<>();
-        StringBuilder sb1 = new StringBuilder();
-        for (byte b : UuidUtil.asBytes(uuid1)) {
-            sb1.append(String.format("%02x", b));
-        }
-        String expectedUuidStr1 = sb1.toString();
-
-        StringBuilder sb2 = new StringBuilder();
-        for (byte b : UuidUtil.asBytes(uuid2)) {
-            sb2.append(String.format("%02x", b));
-        }
-        String expectedUuidStr2 = sb2.toString();
-
-        StringBuilder sb3 = new StringBuilder();
-        for (byte b : UuidUtil.asBytes(uuid3)) {
-            sb3.append(String.format("%02x", b));
-        }
-        String expectedUuidStr3 = sb3.toString();
+        String expectedUuidStr1 = uuid1.toString();
+        String expectedUuidStr2 = uuid2.toString();
+        String expectedUuidStr3 = uuid3.toString();
         expectedList.add(expectedUuidStr1);
         expectedList.add(expectedUuidStr2);
         expectedList.add(expectedUuidStr3);
