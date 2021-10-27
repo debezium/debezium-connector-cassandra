@@ -25,6 +25,7 @@
     <modules>
         <module>core</module>
         <module>cassandra-3</module>
+        <module>cassandra-4</module>
     </modules>
 
     <properties>
