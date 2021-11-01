@@ -13,7 +13,6 @@ import static org.junit.Assert.assertTrue;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Properties;
 
 import org.junit.Test;
 
@@ -153,19 +152,32 @@ public class CassandraConnectorConfigTest {
     }
 
     private CassandraConnectorConfig buildTaskConfigs(HashMap<String, Object> map) {
-        return new CassandraConnectorConfig(Configuration.from(map));
+        Configuration config = Configuration.from(map)
+                .edit()
+                .with(CassandraConnectorConfig.CONNECTOR_NAME, "someconnector")
+                .build();
+
+        return new CassandraConnectorConfig(config);
     }
 
     private CassandraConnectorConfig buildTaskConfig(String key, Object value) {
-        Properties props = new Properties();
-        props.put(key, value);
-        return new CassandraConnectorConfig(Configuration.from(props));
+        Configuration config = Configuration.empty()
+                .edit()
+                .with(CassandraConnectorConfig.CONNECTOR_NAME, "someconnector")
+                .with(key, value)
+                .build();
+
+        return new CassandraConnectorConfig(config);
     }
 
     @Test
     public void testDefaultConfigs() {
-        Properties props = new Properties();
-        CassandraConnectorConfig config = new CassandraConnectorConfig(Configuration.from(props));
+        Configuration configuration = Configuration.empty()
+                .edit()
+                .with(CassandraConnectorConfig.CONNECTOR_NAME, "someconnector")
+                .build();
+
+        CassandraConnectorConfig config = new CassandraConnectorConfig(configuration);
         assertEquals(CassandraConnectorConfig.DEFAULT_SNAPSHOT_CONSISTENCY, config.snapshotConsistencyLevel().name().toUpperCase());
         assertEquals(CassandraConnectorConfig.DEFAULT_HTTP_PORT, config.httpPort());
         assertArrayEquals(CassandraConnectorConfig.DEFAULT_CASSANDRA_HOST.split(","), config.cassandraHosts());

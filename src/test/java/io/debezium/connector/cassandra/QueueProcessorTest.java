@@ -13,7 +13,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import java.io.File;
-import java.util.Properties;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.kafka.connect.data.Schema;
@@ -49,7 +48,13 @@ public class QueueProcessorTest extends EmbeddedCassandraConnectorTestBase {
         int recordSize = 5;
         ChangeEventQueue<Event> queue = context.getQueues().get(0);
         for (int i = 0; i < recordSize; i++) {
-            CassandraConnectorConfig config = new CassandraConnectorConfig(Configuration.from(new Properties()));
+            Configuration configuration = Configuration.empty()
+                    .edit()
+                    .with(CassandraConnectorConfig.CONNECTOR_NAME, "someconnector")
+                    .build();
+
+            CassandraConnectorConfig config = new CassandraConnectorConfig(configuration);
+
             SourceInfo sourceInfo = new SourceInfo(config, DatabaseDescriptor.getClusterName(),
                     new OffsetPosition("CommitLog-6-123.log", i),
                     new KeyspaceTable(TEST_KEYSPACE, "cdc_table"), false,
@@ -71,7 +76,13 @@ public class QueueProcessorTest extends EmbeddedCassandraConnectorTestBase {
         int recordSize = 5;
         ChangeEventQueue<Event> queue = context.getQueues().get(0);
         for (int i = 0; i < recordSize; i++) {
-            CassandraConnectorConfig config = new CassandraConnectorConfig(Configuration.from(new Properties()));
+            Configuration configuration = Configuration.empty()
+                    .edit()
+                    .with(CassandraConnectorConfig.CONNECTOR_NAME, "someconnector")
+                    .build();
+
+            CassandraConnectorConfig config = new CassandraConnectorConfig(configuration);
+
             SourceInfo sourceInfo = new SourceInfo(config, DatabaseDescriptor.getClusterName(),
                     new OffsetPosition("CommitLog-6-123.log", i),
                     new KeyspaceTable(TEST_KEYSPACE, "cdc_table"), false,
