@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.cassandra;
 
+import static io.debezium.connector.cassandra.TestUtils.TEST_KEYSPACE_NAME;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
@@ -24,7 +25,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.time.Conversions;
 
-public class QueueProcessorTest extends EmbeddedCassandraConnectorTestBase {
+public class QueueProcessorTest extends EmbeddedCassandra3ConnectorTestBase {
     private CassandraConnectorContext context;
     private QueueProcessor queueProcessor;
     private KafkaRecordEmitter emitter;
@@ -57,7 +58,7 @@ public class QueueProcessorTest extends EmbeddedCassandraConnectorTestBase {
 
             SourceInfo sourceInfo = new SourceInfo(config, DatabaseDescriptor.getClusterName(),
                     new OffsetPosition("CommitLog-6-123.log", i),
-                    new KeyspaceTable(TEST_KEYSPACE, "cdc_table"), false,
+                    new KeyspaceTable(TEST_KEYSPACE_NAME, "cdc_table"), false,
                     Conversions.toInstantFromMicros(System.currentTimeMillis() * 1000));
             Record record = new ChangeRecord(sourceInfo, new RowData(), Schema.INT32_SCHEMA, Schema.INT32_SCHEMA, Record.Operation.INSERT, false);
             queue.enqueue(record);
@@ -85,7 +86,7 @@ public class QueueProcessorTest extends EmbeddedCassandraConnectorTestBase {
 
             SourceInfo sourceInfo = new SourceInfo(config, DatabaseDescriptor.getClusterName(),
                     new OffsetPosition("CommitLog-6-123.log", i),
-                    new KeyspaceTable(TEST_KEYSPACE, "cdc_table"), false,
+                    new KeyspaceTable(TEST_KEYSPACE_NAME, "cdc_table"), false,
                     Conversions.toInstantFromMicros(System.currentTimeMillis() * 1000));
             Record record = new TombstoneRecord(sourceInfo, new RowData(), Schema.INT32_SCHEMA);
             queue.enqueue(record);
@@ -102,7 +103,7 @@ public class QueueProcessorTest extends EmbeddedCassandraConnectorTestBase {
         doNothing().when(emitter).emit(any());
 
         ChangeEventQueue<Event> queue = context.getQueues().get(0);
-        File commitLogFile = generateCommitLogFile();
+        File commitLogFile = TestUtils.generateCommitLogFile();
         queue.enqueue(new EOFEvent(commitLogFile));
 
         assertEquals(1, queue.totalCapacity() - queue.remainingCapacity());

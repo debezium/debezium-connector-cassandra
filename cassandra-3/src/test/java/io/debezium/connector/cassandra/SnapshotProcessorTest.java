@@ -5,6 +5,10 @@
  */
 package io.debezium.connector.cassandra;
 
+import static io.debezium.connector.cassandra.TestUtils.TEST_KAFKA_SERVERS;
+import static io.debezium.connector.cassandra.TestUtils.deleteTestKeyspaceTables;
+import static io.debezium.connector.cassandra.TestUtils.deleteTestOffsets;
+import static io.debezium.connector.cassandra.TestUtils.keyspaceTable;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.doNothing;
@@ -14,19 +18,19 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.kafka.clients.producer.ProducerConfig;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 
 import io.debezium.connector.base.ChangeEventQueue;
 
-public class SnapshotProcessorTest extends EmbeddedCassandraConnectorTestBase {
+public class SnapshotProcessorTest extends EmbeddedCassandra3ConnectorTestBase {
     @Test
     public void testSnapshotTable() throws Exception {
         CassandraConnectorContext context = generateTaskContext();
@@ -121,7 +125,8 @@ public class SnapshotProcessorTest extends EmbeddedCassandraConnectorTestBase {
 
     @Test
     public void testSnapshotModeAlways() throws Exception {
-        Map<String, Object> configs = new HashMap<>();
+        Map<String, Object> configs = TestUtils.propertiesForContext();
+        configs.put(CassandraConnectorConfig.KAFKA_PRODUCER_CONFIG_PREFIX + ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, TEST_KAFKA_SERVERS);
         configs.put(CassandraConnectorConfig.SNAPSHOT_MODE.name(), "always");
         configs.put(CassandraConnectorConfig.SNAPSHOT_POLL_INTERVAL_MS.name(), "0");
         CassandraConnectorContext context = generateTaskContext(configs);
@@ -138,7 +143,7 @@ public class SnapshotProcessorTest extends EmbeddedCassandraConnectorTestBase {
 
     @Test
     public void testSnapshotModeInitial() throws Exception {
-        Map<String, Object> configs = new HashMap<>();
+        Map<String, Object> configs = TestUtils.propertiesForContext();
         configs.put(CassandraConnectorConfig.SNAPSHOT_MODE.name(), "initial");
         configs.put(CassandraConnectorConfig.SNAPSHOT_POLL_INTERVAL_MS.name(), "0");
         CassandraConnectorContext context = generateTaskContext(configs);
@@ -155,7 +160,7 @@ public class SnapshotProcessorTest extends EmbeddedCassandraConnectorTestBase {
 
     @Test
     public void testSnapshotModeNever() throws Exception {
-        Map<String, Object> configs = new HashMap<>();
+        Map<String, Object> configs = TestUtils.propertiesForContext();
         configs.put(CassandraConnectorConfig.SNAPSHOT_MODE.name(), "never");
         configs.put(CassandraConnectorConfig.SNAPSHOT_POLL_INTERVAL_MS.name(), "0");
         CassandraConnectorContext context = generateTaskContext(configs);
