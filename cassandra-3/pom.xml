@@ -15,12 +15,29 @@
     <version>1.8.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
+    <properties>
+        <cassandra.version>3.11.10</cassandra.version>
+    </properties>
+
     <dependencies>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-connector-cassandra-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-connector-cassandra-core</artifactId>
+            <version>${project.version}</version>
+            <classifier>tests</classifier>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>org.apache.cassandra</groupId>
             <artifactId>cassandra-all</artifactId>
-            <!-- why is this version not controlled in this pom? -->
-            <!--version>3.11.10</version-->
+            <!-- why is this version not controlled in this pom? as of now it is somewhere in parent -->
+            <version>${cassandra.version}</version>
             <exclusions>
                 <exclusion>
                     <groupId>ch.qos.logback</groupId>
@@ -65,6 +82,15 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <systemPropertyVariables>
+                        <cassandra.version>${cassandra.version}</cassandra.version>
+                    </systemPropertyVariables>
+                </configuration>
             </plugin>
         </plugins>
     </build>
