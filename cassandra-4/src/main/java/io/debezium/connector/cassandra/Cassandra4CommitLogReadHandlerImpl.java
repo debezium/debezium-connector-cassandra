@@ -436,11 +436,10 @@ public class Cassandra4CommitLogReadHandlerImpl implements CommitLogReadHandler 
             }
             catch (Exception e) {
                 throw new DebeziumException(String.format("Failed to populate Column %s with Type %s of Table %s in KeySpace %s.",
-                                                          metadata.name, metadata.type, metadata.cfName, pu.metadata().keyspace), e);
+                        metadata.name, metadata.type, metadata.cfName, pu.metadata().keyspace), e);
             }
         }
     }
-
 
     private void populateRegularColumns(RowData after, Row row, RowType rowType, KeyValueSchema schema) {
         if (rowType == INSERT || rowType == UPDATE) {
