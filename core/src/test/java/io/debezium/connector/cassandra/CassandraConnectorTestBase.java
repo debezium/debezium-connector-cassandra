@@ -13,6 +13,7 @@ import static org.awaitility.Awaitility.await;
 
 import java.io.File;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.Map;
 
 import org.junit.After;
@@ -94,6 +95,7 @@ public abstract class CassandraConnectorTestBase {
         return new CassandraBuilder().version(Version.parse(version))
                 .jvmOptions("-Dcassandra.ring_delay_ms=1000", "-Xms1g", "-Xmx1g")
                 .workingDirectory(() -> cassandraHome)
+                .startupTimeout(Duration.ofMinutes(5))
                 .configFile(new ClassPathResource("cassandra-unit.yaml")).build();
     }
 
