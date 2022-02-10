@@ -7,7 +7,9 @@ package io.debezium.connector.cassandra;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.apache.cassandra.cql3.statements.schema.CreateTableStatement;
 import org.apache.cassandra.db.ColumnFamilyStore;
@@ -44,7 +46,15 @@ public class Cassandra4SchemaChangeListener extends AbstractSchemaChangeListener
         List<com.datastax.oss.driver.api.core.metadata.schema.TableMetadata> cdcEnabledTableMetadataList = getCdcEnabledTableMetadataList(session);
         for (com.datastax.oss.driver.api.core.metadata.schema.TableMetadata tm : cdcEnabledTableMetadataList) {
             schemaHolder.addOrUpdateTableSchema(new KeyspaceTable(tm), new KeyValueSchema(this.kafkaTopicPrefix, tm, this.sourceInfoStructMaker));
+            onTableCreated(tm);
         }
+
+        Set<String> cdcEnabledEntities = schemaHolder.getCdcEnabledTableMetadataSet()
+                .stream()
+                .map(tmd -> tmd.describe(true))
+                .collect(Collectors.toSet());
+
+        LOGGER.info("CDC enabled entities: {}", cdcEnabledEntities);
         LOGGER.info("Initialized SchemaHolder.");
     }
 
@@ -98,7 +108,7 @@ public class Cassandra4SchemaChangeListener extends AbstractSchemaChangeListener
                     new KeyValueSchema(kafkaTopicPrefix, tableMetadata, sourceInfoStructMaker));
         }
         try {
-            LOGGER.debug("Table {}.{} detected to be added!", tableMetadata.getKeyspace(), tableMetadata.getName());
+            LOGGER.info("Table {}.{} detected to be added!", tableMetadata.getKeyspace(), tableMetadata.getName());
             org.apache.cassandra.schema.TableMetadata.builder(tableMetadata.getKeyspace().toString(),
                     tableMetadata.getName().toString());
 
@@ -110,6 +120,9 @@ public class Cassandra4SchemaChangeListener extends AbstractSchemaChangeListener
                     .build();
 
             final Keyspace keyspace = Keyspace.openWithoutSSTables(tableMetadata.getKeyspace().asInternal());
+            if (keyspace.hasColumnFamilyStore(metadata.id)) {
+                return;
+            }
             keyspace.initCfCustom(ColumnFamilyStore.createColumnFamilyStore(keyspace,
                     metadata.name,
                     TableMetadataRef.forOfflineTools(metadata),
@@ -158,11 +171,13 @@ public class Cassandra4SchemaChangeListener extends AbstractSchemaChangeListener
             TableMetadata metadata = Schema.instance.getTableMetadata(TableId.fromUUID(tableMetadata.getId().get()));
             if (metadata == null) {
                 LOGGER.warn("Metadata for ColumnFamilyStore for {}.{} is not found!", ksName, tableName);
+                return;
             }
 
             Keyspace instance = Schema.instance.getKeyspaceInstance(metadata.keyspace);
             if (instance == null) {
                 LOGGER.warn("Keyspace instance for ColumnFamilyStore for {}.{} is not found!", ksName, tableName);
+                return;
             }
 
             final ColumnFamilyStore cfs = instance.hasColumnFamilyStore(metadata.id)

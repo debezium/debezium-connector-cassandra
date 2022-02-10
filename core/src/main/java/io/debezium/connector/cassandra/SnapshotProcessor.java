@@ -23,6 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.datastax.oss.driver.api.core.ConsistencyLevel;
+import com.datastax.oss.driver.api.core.CqlIdentifier;
 import com.datastax.oss.driver.api.core.DefaultConsistencyLevel;
 import com.datastax.oss.driver.api.core.cql.ResultSet;
 import com.datastax.oss.driver.api.core.cql.Row;
@@ -274,7 +275,9 @@ public class SnapshotProcessor extends AbstractProcessor {
             Object deletionTs = null;
             CellData.ColumnType type = getType(name, partitionKeyNames, clusteringKeyNames);
 
-            if (type == CellData.ColumnType.REGULAR && value != null && !collectionTypes.contains(columnMetadata.getType())) {
+            if (type == CellData.ColumnType.REGULAR
+                    && value != null
+                    && !collectionTypes.contains(columnMetadata.getType().getProtocolCode())) {
                 Object ttl = readColTtl(row, name);
                 if (ttl != null && executionTime != null) {
                     deletionTs = calculateDeletionTs(executionTime, ttl);
@@ -309,7 +312,10 @@ public class SnapshotProcessor extends AbstractProcessor {
     }
 
     private static Object readColTtl(Row row, String col) {
-        return CassandraTypeDeserializer.deserialize(CounterColumnType.instance, row.getBytesUnsafe(ttlAlias(col)));
+        if (row.getColumnDefinitions().contains(CqlIdentifier.fromInternal(ttlAlias(col)))) {
+            return CassandraTypeDeserializer.deserialize(CounterColumnType.instance, row.getBytesUnsafe(ttlAlias(col)));
+        }
+        return null;
     }
 
     /**
