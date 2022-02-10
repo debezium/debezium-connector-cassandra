@@ -5,7 +5,10 @@
  */
 package io.debezium.connector.cassandra;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.Schema;
@@ -21,6 +24,7 @@ import org.slf4j.LoggerFactory;
 import com.datastax.oss.driver.api.core.CqlIdentifier;
 import com.datastax.oss.driver.api.core.metadata.schema.KeyspaceMetadata;
 import com.datastax.oss.driver.api.core.metadata.schema.TableMetadata;
+import com.datastax.oss.driver.api.core.session.Session;
 
 import io.debezium.connector.SourceInfoStructMaker;
 
@@ -32,6 +36,24 @@ public class Cassandra3SchemaChangeListener extends AbstractSchemaChangeListener
                                           SourceInfoStructMaker<SourceInfo> sourceInfoStructMaker,
                                           SchemaHolder schemaHolder) {
         super(kafkaTopicPrefix, sourceInfoStructMaker, schemaHolder);
+    }
+
+    @Override
+    public void onSessionReady(Session session) {
+        LOGGER.info("Initializing SchemaHolder ...");
+        List<TableMetadata> cdcEnabledTableMetadataList = getCdcEnabledTableMetadataList(session);
+        for (com.datastax.oss.driver.api.core.metadata.schema.TableMetadata tm : cdcEnabledTableMetadataList) {
+            schemaHolder.addOrUpdateTableSchema(new KeyspaceTable(tm), new KeyValueSchema(this.kafkaTopicPrefix, tm, this.sourceInfoStructMaker));
+            onTableCreated(tm);
+        }
+
+        Set<String> cdcEnabledEntities = schemaHolder.getCdcEnabledTableMetadataSet()
+                .stream()
+                .map(tmd -> tmd.describe(true))
+                .collect(Collectors.toSet());
+
+        LOGGER.info("CDC enabled entities: {}", cdcEnabledEntities);
+        LOGGER.info("Initialized SchemaHolder.");
     }
 
     @Override
@@ -90,6 +112,9 @@ public class Cassandra3SchemaChangeListener extends AbstractSchemaChangeListener
             final CFMetaData newCFMetaData = rawCFMetaData.copy(tableMetadata.getId().get());
 
             final Keyspace keyspace = Keyspace.openWithoutSSTables(tableMetadata.getKeyspace().asInternal());
+            if (keyspace.hasColumnFamilyStore(newCFMetaData.cfId)) {
+                return;
+            }
             keyspace.initCfCustom(ColumnFamilyStore.createColumnFamilyStore(keyspace,
                     newCFMetaData.cfName,
                     newCFMetaData,
