@@ -34,58 +34,65 @@ public final class CommitLogUtil {
 
     /**
      * Move a commit log to a new directory. If the commit log already exists in the new directory, it would be replaced.
+     *
+     * @throws RuntimeException exception in case moving failed
      */
-    public static boolean moveCommitLog(File file, Path toDir) {
+    public static void moveCommitLog(Path file, Path toDir) {
         try {
-            Matcher filenameMatcher = FILENAME_REGEX_PATTERN.matcher(file.getName());
+            Matcher filenameMatcher = FILENAME_REGEX_PATTERN.matcher(file.getFileName().toString());
             if (!filenameMatcher.matches()) {
-                LOGGER.warn("Cannot move file {} because it does not appear to be a CommitLog.", file.getName());
-                return false;
+                LOGGER.warn("Cannot move file {} because it does not appear to be a CommitLog.", file.toAbsolutePath());
+                return;
             }
-            Files.move(file.toPath(), toDir.resolve(file.getName()), REPLACE_EXISTING);
-            LOGGER.debug("Moved CommitLog file {} from {} to {}.", file.getName(), file.getParent(), toDir);
+            Files.move(file, toDir.resolve(file.getFileName()), REPLACE_EXISTING);
+            LOGGER.info("Moved CommitLog file {} to {}.", file, toDir);
+        }
+        catch (Exception ex) {
+            LOGGER.warn("Failed to move CommitLog file {} to {}. Error:", file.getFileName().toString(), toDir, ex);
+            throw new RuntimeException(ex);
+        }
 
-            Path indexFile = Paths.get(file.toString().split("\\.")[0] + "_cdc.idx");
+        Path indexFile = file.getParent().resolve(file.getFileName().toString().split("\\.")[0] + "_cdc.idx");
 
+        try {
             if (Files.exists(indexFile)) {
                 Files.move(indexFile, toDir.resolve(indexFile.getFileName()), REPLACE_EXISTING);
-                LOGGER.debug("Moved CommitLog index file {} from {}.", indexFile.getFileName(), indexFile.getParent());
+                LOGGER.info("Moved CommitLog index file {} to {}.", indexFile, toDir);
             }
-
-            return true;
         }
-        catch (Exception e) {
-            LOGGER.warn("Failed to move CommitLog file {} from {} to {}. Error:", file.getName(), file.getParent(), toDir, e);
-            return false;
+        catch (Exception ex) {
+            LOGGER.warn("Failed to move CommitLog index file {} to {}. Error:", indexFile.toAbsolutePath(), toDir, ex);
+            throw new RuntimeException(ex);
         }
     }
 
     /**
      * Delete a commit log and logs the error in the case the deletion failed.
      */
-    public static boolean deleteCommitLog(File file) {
+    public static void deleteCommitLog(File file) {
         try {
             Matcher filenameMatcher = FILENAME_REGEX_PATTERN.matcher(file.getName());
             if (!filenameMatcher.matches()) {
                 LOGGER.warn("Cannot delete file {} because it does not appear to be a CommitLog", file.getName());
-                return false;
             }
             Files.delete(file.toPath());
-
-            LOGGER.debug("Deleted CommitLog file {} from {}.", file.getName(), file.getParent());
-
-            Path indexFile = Paths.get(file.toString().split("\\.")[0] + "_cdc.idx");
-
-            if (Files.exists(indexFile)) {
-                Files.delete(indexFile);
-                LOGGER.debug("Deleted CommitLog index file {} from {}.", indexFile.getFileName(), indexFile.getParent());
-            }
-
-            return true;
+            LOGGER.info("Deleted CommitLog file {} from {}.", file.getName(), file.getParent());
         }
         catch (Exception e) {
             LOGGER.warn("Failed to delete CommitLog file {} from {}. Error: ", file.getName(), file.getParent(), e);
-            return false;
+            throw new RuntimeException(e);
+        }
+
+        Path indexFile = Paths.get(file.toString().split("\\.")[0] + "_cdc.idx");
+
+        try {
+            if (Files.exists(indexFile)) {
+                Files.delete(indexFile);
+                LOGGER.info("Deleted CommitLog index file {} from {}.", indexFile.getFileName(), indexFile.getParent());
+            }
+        }
+        catch (Exception ex) {
+            LOGGER.warn("Failed to delete CommitLog index file {}. Error:", indexFile.toAbsolutePath(), ex);
         }
     }
 

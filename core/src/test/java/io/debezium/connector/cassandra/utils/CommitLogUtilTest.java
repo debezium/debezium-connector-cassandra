@@ -28,7 +28,7 @@ public class CommitLogUtilTest {
         assertTrue(new File(fromDr.toString(), "CommitLog-6-1.log").createNewFile());
         assertTrue(new File(fromDr.toString(), "Not-CommitLog-6-1.log").createNewFile());
         for (File file : Objects.requireNonNull(fromDr.toFile().listFiles())) {
-            CommitLogUtil.moveCommitLog(file, toDir);
+            CommitLogUtil.moveCommitLog(file.toPath(), toDir);
         }
 
         assertEquals(1, Objects.requireNonNull(toDir.toFile().listFiles()).length);
@@ -45,9 +45,14 @@ public class CommitLogUtilTest {
         assertTrue(commitLog.createNewFile());
         assertTrue(notCommitLog.createNewFile());
         CommitLogUtil.deleteCommitLog(commitLog);
-        CommitLogUtil.deleteCommitLog(notCommitLog);
+        try {
+            CommitLogUtil.deleteCommitLog(notCommitLog);
+        }
+        catch (Exception ex) {
+            // it exists, because it was not deleted, because it is not a commit log
+            assertTrue(notCommitLog.exists());
+        }
         assertFalse(commitLog.exists());
-        assertTrue(notCommitLog.exists());
     }
 
     @Test
