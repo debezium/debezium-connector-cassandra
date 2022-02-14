@@ -188,8 +188,7 @@ public class Cassandra4CommitLogProcessor extends AbstractProcessor {
             return "ProcessingResult{" +
                     "commitLog=" + commitLog +
                     ", result=" + result +
-                    ", ex=" + ex.getMessage() +
-                    '}';
+                    ", ex=" + (ex != null ? ex.getMessage() : "none") + '}';
         }
     }
 
@@ -250,14 +249,18 @@ public class Cassandra4CommitLogProcessor extends AbstractProcessor {
 
                 while (!commitLog.completed) {
                     if (completePrematurely) {
+                        LOGGER.info("{} completed prematurely", commitLog.toString());
                         return new ProcessingResult(commitLog, ProcessingResult.Result.COMPLETED_PREMATURELY);
                     }
                     // TODO make this configurable maybe
                     Thread.sleep(10000);
                     parseIndexFile();
                 }
+
+                LOGGER.info(commitLog.toString());
             }
             catch (final Exception ex) {
+                LOGGER.error("Processing of {} errored out", commitLog.toString());
                 return new ProcessingResult(commitLog, ProcessingResult.Result.ERROR, ex);
             }
 
@@ -271,6 +274,8 @@ public class Cassandra4CommitLogProcessor extends AbstractProcessor {
             catch (final Exception ex) {
                 result = new ProcessingResult(commitLog, ProcessingResult.Result.ERROR, ex);
             }
+
+            LOGGER.info("{}", result);
 
             return result;
         }

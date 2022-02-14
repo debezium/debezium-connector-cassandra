@@ -7,6 +7,7 @@ package io.debezium.connector.cassandra;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.List;
@@ -67,7 +68,12 @@ public class QueueProcessor extends AbstractProcessor {
     public void process() throws InterruptedException {
         List<Event> events = queue.poll();
         for (Event event : events) {
-            processEvent(event);
+            try {
+                processEvent(event);
+            }
+            catch (Exception ex) {
+                LOGGER.error("Processing of event {} was errorneous: {}", event, ex);
+            }
         }
     }
 
@@ -113,12 +119,12 @@ public class QueueProcessor extends AbstractProcessor {
                 break;
             case EOF_EVENT:
                 EOFEvent eofEvent = (EOFEvent) event;
-                String commitLogFileName = eofEvent.file.getName();
+                Path commitLog = Paths.get(eofEvent.file.getAbsolutePath());
+                String commitLogFileName = commitLog.getFileName().toString();
                 LOGGER.info("Encountered EOF event for {} ...", commitLogFileName);
                 String folder = erroneousCommitLogs.contains(commitLogFileName) ? ERROR_FOLDER : ARCHIVE_FOLDER;
-                if (CommitLogUtil.moveCommitLog(eofEvent.file, Paths.get(commitLogRelocationDir, folder))) {
-                    LOGGER.info("Moved {} into {} folder.", commitLogFileName, folder);
-                }
+                Path relocationDir = Paths.get(commitLogRelocationDir, folder);
+                CommitLogUtil.moveCommitLog(commitLog, relocationDir);
                 break;
             default:
                 LOGGER.warn("Encountered unexpected record with type: {}", event.getEventType());
