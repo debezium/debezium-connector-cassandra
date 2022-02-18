@@ -36,7 +36,7 @@
 
         <!-- Dependencies -->
         <version.dropwizard>4.0.1</version.dropwizard>
-        <cassandra.driver.version>4.13.0</cassandra.driver.version>
+        <cassandra.driver.version>4.14.0</cassandra.driver.version>
         <version.embedded.cassandra>4.0.2</version.embedded.cassandra>
     </properties>
 
