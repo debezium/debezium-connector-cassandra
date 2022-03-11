@@ -18,24 +18,20 @@ You are encouraged to explore this connector and test it, but it is not recommen
 
 Please see the [README.md](https://github.com/debezium/debezium#building-debezium) in the main repository for general instructions on building Debezium from source (prerequisites, usage of Docker etc).
 
-## Building the Cassandra 3.x connector
+## Cassandra compatibility
 
-Building this connector first requires the main [debezium](https://github.com/debezium/debezium) code repository to be built locally using `mvn clean install`.
+The following table list supported version of Apache Cassandra:
 
-In order to build the Cassandra connector you'll need JDK 8 because Cassandra 3.x
-doesn't support Java versions above Java 8. That also means dependencies like
-`debezium-core` have to be built as Java 8 bytecode version 52.0 as well,
-either by compiling it with Java 8 or specifying Java 8 bytecode generation
-on newer versions of Java.
 
-Then the Cassandra connector can be built like so:
+| Connector version | Apache Cassandra  |
+|--|---|
+| 1.9+ | Compatible with 3.x and 4.x version  |
+| Up to 1.8 | Compatible with only 3.x  |
+## Building the Cassandra connector
+
+The Cassandra connector can be built like so:
 
     $ mvn clean install
-    
-If you have multiple Java installation on your machine you can select the correct
-version by setting JAVA_HOME env var:
-
-    $ JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64 mvn clean install
 
 ### Building just the artifacts, without running tests, CheckStyle, etc.
 
