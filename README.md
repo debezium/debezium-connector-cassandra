@@ -18,6 +18,14 @@ You are encouraged to explore this connector and test it, but it is not recommen
 
 Please see the [README.md](https://github.com/debezium/debezium#building-debezium) in the main repository for general instructions on building Debezium from source (prerequisites, usage of Docker etc).
 
+## Cassandra compatibility
+
+The following table list supported version of Apache Cassandra:
+
+
+| Connector version | Apache Cassandra  |
+|--|---|
+| 1.9+ | 3.11  | 
 ## Building the Cassandra 3.x connector
 
 Building this connector first requires the main [debezium](https://github.com/debezium/debezium) code repository to be built locally using `mvn clean install`.
