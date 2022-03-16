@@ -10,7 +10,6 @@ import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.AbstractSourceInfoStructMaker;
-import io.debezium.util.SchemaNameAdjuster;
 
 public class CassandraSourceInfoStructMaker extends AbstractSourceInfoStructMaker<SourceInfo> {
 
@@ -19,7 +18,7 @@ public class CassandraSourceInfoStructMaker extends AbstractSourceInfoStructMake
     public CassandraSourceInfoStructMaker(String connector, String version, CommonConnectorConfig connectorConfig) {
         super(connector, version, connectorConfig);
         schema = commonSchemaBuilder()
-                .name(SchemaNameAdjuster.defaultAdjuster().adjust(Record.SOURCE))
+                .name(connectorConfig.schemaNameAdjustmentMode().createAdjuster().adjust(Record.SOURCE))
                 .field(SourceInfo.CLUSTER_KEY, Schema.STRING_SCHEMA)
                 .field(SourceInfo.COMMITLOG_FILENAME_KEY, Schema.STRING_SCHEMA)
                 .field(SourceInfo.COMMITLOG_POSITION_KEY, Schema.INT32_SCHEMA)
