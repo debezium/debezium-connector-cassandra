@@ -14,10 +14,6 @@
     <name>Debezium Connector for Cassandra 4</name>
     <packaging>jar</packaging>
 
-    <properties>
-        <cassandra.version>4.0.2</cassandra.version>
-    </properties>
-
     <dependencies>
         <dependency>
             <groupId>io.debezium</groupId>
@@ -36,7 +32,7 @@
             <groupId>org.apache.cassandra</groupId>
             <artifactId>cassandra-all</artifactId>
             <!-- why is this version not controlled in this pom? as of now it is somewhere in parent -->
-            <version>${cassandra.version}</version>
+            <version>${version.cassandra4}</version>
             <exclusions>
                 <exclusion>
                     <groupId>ch.qos.logback</groupId>
@@ -91,7 +87,7 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <systemPropertyVariables>
-                        <cassandra.version>${cassandra.version}</cassandra.version>
+                        <cassandra.version>${version.cassandra4}</cassandra.version>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>

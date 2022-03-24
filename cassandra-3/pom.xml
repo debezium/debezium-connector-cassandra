@@ -10,13 +10,9 @@
     </parent>
 
     <modelVersion>4.0.0</modelVersion>
-    <artifactId>debezium-connector-cassandra-3.11</artifactId>
+    <artifactId>debezium-connector-cassandra-3</artifactId>
     <name>Debezium Connector for Cassandra 3</name>
     <packaging>jar</packaging>
-
-    <properties>
-        <cassandra.version>3.11.12</cassandra.version>
-    </properties>
 
     <dependencies>
         <dependency>
@@ -36,7 +32,7 @@
             <groupId>org.apache.cassandra</groupId>
             <artifactId>cassandra-all</artifactId>
             <!-- why is this version not controlled in this pom? as of now it is somewhere in parent -->
-            <version>${cassandra.version}</version>
+            <version>${version.cassandra3}</version>
             <exclusions>
                 <exclusion>
                     <groupId>ch.qos.logback</groupId>
@@ -91,7 +87,7 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <systemPropertyVariables>
-                        <cassandra.version>${cassandra.version}</cassandra.version>
+                        <cassandra.version>${version.cassandra3}</cassandra.version>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>
