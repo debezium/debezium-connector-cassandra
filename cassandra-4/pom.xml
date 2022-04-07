@@ -87,6 +87,7 @@
                 <configuration>
                     <systemPropertyVariables>
                         <cassandra.version>${version.cassandra4}</cassandra.version>
+                        <docker.dir>${project.basedir}/src/test/resources/docker</docker.dir>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>

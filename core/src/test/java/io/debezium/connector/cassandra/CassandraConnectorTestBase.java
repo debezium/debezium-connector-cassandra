@@ -12,21 +12,30 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.awaitility.Awaitility.await;
 
 import java.io.File;
-import java.nio.file.Path;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.time.Duration;
 import java.util.Map;
+import java.util.Set;
+import java.util.function.Consumer;
 
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.ClassRule;
+import org.testcontainers.containers.BindMode;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.images.builder.ImageFromDockerfile;
 
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.querybuilder.SchemaBuilder;
-import com.github.nosan.embedded.cassandra.Cassandra;
-import com.github.nosan.embedded.cassandra.CassandraBuilder;
-import com.github.nosan.embedded.cassandra.Version;
-import com.github.nosan.embedded.cassandra.commons.ClassPathResource;
+import com.github.dockerjava.api.command.CreateContainerCmd;
+import com.github.dockerjava.api.model.ExposedPort;
+import com.github.dockerjava.api.model.PortBinding;
+import com.github.dockerjava.api.model.Ports;
 
 import io.debezium.config.Configuration;
 import io.debezium.kafka.KafkaCluster;
@@ -34,28 +43,48 @@ import io.debezium.util.Testing;
 
 public abstract class CassandraConnectorTestBase {
 
-    public static final String EMBEDDED_CASSANDRA_VERSION = System.getProperty("cassandra.version", "3.11.10");
+    public static final String CASSANDRA_SERVER_DIR = "/var/lib/cassandra";
+    private static final String cassandraDir = createCassandraDir();
+    private static final String dockerDir = System.getProperty("docker.dir", "docker");
+    private static final Consumer<CreateContainerCmd> cmd = e -> e.getHostConfig().withPortBindings(new PortBinding(Ports.Binding.bindPort(9042), new ExposedPort(9042)));
 
-    public static Cassandra cassandra;
-    private static Path cassandraDir;
+    @ClassRule
+    public static GenericContainer cassandra = new GenericContainer(new ImageFromDockerfile().withFileFromPath(".", (new File(dockerDir)).toPath()))
+            .withExposedPorts(9042)
+            .withStartupTimeout(Duration.ofMinutes(3))
+            .withCreateContainerCmdModifier(cmd)
+            .withFileSystemBind(cassandraDir, CASSANDRA_SERVER_DIR, BindMode.READ_WRITE);
 
     private KafkaCluster kafkaCluster;
     private File kafkaDataDir;
 
     @BeforeClass
     public static void setUpClass() {
-        cassandraDir = Testing.Files.createTestingDirectory("embeddedCassandra").toPath();
-        cassandra = getCassandra(cassandraDir, EMBEDDED_CASSANDRA_VERSION);
-        cassandra.start();
         waitForCql();
         createTestKeyspace();
     }
 
     @AfterClass
-    public static void tearDownClass() {
+    public static void tearDownClass() throws IOException, InterruptedException {
         destroyTestKeyspace();
         cassandra.stop();
-        Testing.Files.delete(cassandraDir);
+
+        GenericContainer clenaup = new GenericContainer(new ImageFromDockerfile()
+                .withDockerfileFromBuilder(builder -> builder
+                        .from("eclipse-temurin:8-jre-focal")
+                        .volume("/var/lib/cassandra")
+                        .cmd("sleep", "10") // Give testcontainers some time to find out container is running.
+                        .build()))
+                                .withFileSystemBind(cassandraDir, CASSANDRA_SERVER_DIR, BindMode.READ_WRITE);
+        clenaup.start();
+        clenaup.execInContainer(
+                "rm", "-rf",
+                CASSANDRA_SERVER_DIR + "/data",
+                CASSANDRA_SERVER_DIR + "/cdc_raw_directory",
+                CASSANDRA_SERVER_DIR + "/commitlog",
+                CASSANDRA_SERVER_DIR + "/hints",
+                CASSANDRA_SERVER_DIR + "/saved_caches");
+        clenaup.stop();
     }
 
     @Before
@@ -91,14 +120,6 @@ public abstract class CassandraConnectorTestBase {
         return generateTaskContext(Configuration.from(configs));
     }
 
-    protected static Cassandra getCassandra(final Path cassandraHome, final String version) {
-        return new CassandraBuilder().version(Version.parse(version))
-                .jvmOptions("-Dcassandra.ring_delay_ms=1000", "-Xms1g", "-Xmx1g")
-                .workingDirectory(() -> cassandraHome)
-                .startupTimeout(Duration.ofMinutes(5))
-                .configFile(new ClassPathResource("cassandra-unit.yaml")).build();
-    }
-
     protected static void waitForCql() {
         await()
                 .pollInterval(10, SECONDS)
@@ -112,5 +133,19 @@ public abstract class CassandraConnectorTestBase {
                         return false;
                     }
                 });
+    }
+
+    protected static String createCassandraDir() {
+        File cassandraDir = Testing.Files.createTestingDirectory("cassandra");
+        // The directory will be bind-mounted into container where Cassandra runs under cassandra user.
+        // Therefor we have to change permissions for all users so that Cassandra from container can write into this dir.
+        Set<PosixFilePermission> permissions = PosixFilePermissions.fromString("rwxrwxrwx");
+        try {
+            Files.setPosixFilePermissions(cassandraDir.toPath(), permissions);
+        }
+        catch (IOException e) {
+            throw new IllegalStateException(e);
+        }
+        return cassandraDir.toString();
     }
 }
