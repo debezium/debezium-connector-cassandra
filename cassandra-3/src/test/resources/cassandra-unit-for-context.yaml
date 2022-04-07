@@ -70,7 +70,7 @@ max_hints_delivery_threads: 2
 
 # Directory where Cassandra should store hints.
 # If not set, the default directory is $CASSANDRA_HOME/data/hints.
-hints_directory: target/embeddedCassandra/data/hints
+hints_directory: target/data/cassandra/hints
 
 # How often hints should be flushed from the internal buffers to disk.
 # Will *not* trigger fsync.
@@ -188,12 +188,12 @@ partitioner: org.apache.cassandra.dht.Murmur3Partitioner
 # the configured compaction strategy.
 # If not set, the default directory is $CASSANDRA_HOME/data/data.
 data_file_directories:
-  - target/data/embeddedCassandra/data/data
+  - target/data/cassandra/data
 
 # commit log.  when running on magnetic HDD, this should be a
 # separate spindle than the data directories.
 # If not set, the default directory is $CASSANDRA_HOME/data/commitlog.
-commitlog_directory: target/data/embeddedCassandra/data/commitlog
+commitlog_directory: target/data/cassandra/commitlog
 
 # Enable / disable CDC functionality on a per-node basis. This modifies the logic used
 # for write path allocation rejection (standard: never reject. cdc: reject Mutation
@@ -205,7 +205,7 @@ cdc_enabled: true
 # separate spindle than the data directories. If not set, the default directory is
 # $CASSANDRA_HOME/data/cdc_raw.
 # cdc_raw_directory: /var/lib/cassandra/cdc_raw
-cdc_raw_directory: target/data/embeddedCassandra/data/commitlog
+cdc_raw_directory: target/data/cassandra/commitlog
 
 # Policy for data disk failures:
 #
@@ -366,7 +366,7 @@ counter_cache_save_period: 7200
 
 # saved caches
 # If not set, the default directory is $CASSANDRA_HOME/data/saved_caches.
-saved_caches_directory: target/embeddedCassandra/data/saved_caches
+saved_caches_directory: target/data/cassandra/saved_caches
 
 # commitlog_sync may be either "periodic" or "batch."
 #

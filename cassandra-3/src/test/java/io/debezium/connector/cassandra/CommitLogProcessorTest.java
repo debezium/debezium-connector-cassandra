@@ -12,20 +12,12 @@ import static io.debezium.connector.cassandra.TestUtils.keyspaceTable;
 import static io.debezium.connector.cassandra.TestUtils.runCql;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.util.List;
 import java.util.concurrent.Callable;
 
-import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.config.Schema;
-import org.apache.cassandra.db.Mutation;
-import org.apache.cassandra.db.SimpleBuilders;
-import org.apache.cassandra.db.commitlog.CommitLog;
-import org.apache.cassandra.db.partitions.PartitionUpdate;
-import org.apache.cassandra.db.rows.Row;
 import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.Before;
@@ -65,17 +57,9 @@ public class CommitLogProcessorTest extends EmbeddedCassandra3ConnectorTestBase 
             }
         });
 
-        // programmatically add insertion and deletion events into commit log, this is because running an 'INSERT' or 'DELETE'
-        // cql against the embedded Cassandra does not modify the commit log file on disk.
-        CFMetaData cfMetaData = Schema.instance.getCFMetaData(TEST_KEYSPACE_NAME, "cdc_table");
         for (int i = 0; i < commitLogRowSize; i++) {
-            SimpleBuilders.PartitionUpdateBuilder puBuilder = new SimpleBuilders.PartitionUpdateBuilder(cfMetaData, i);
-            Row row = puBuilder.row().add("b", i).build();
-            PartitionUpdate pu = PartitionUpdate.singleRowUpdate(cfMetaData, puBuilder.build().partitionKey(), row);
-            Mutation m = new Mutation(pu);
-            CommitLog.instance.add(m);
+            runCql("INSERT INTO " + keyspaceTable("cdc_table") + String.format("(a,b) VALUES (%s,%s);", i, i));
         }
-        CommitLog.instance.sync(true);
 
         // check to make sure there are no records in the queue to begin with
         ChangeEventQueue<Event> queue = context.getQueues().get(0);
@@ -100,7 +84,6 @@ public class CommitLogProcessorTest extends EmbeddedCassandra3ConnectorTestBase 
                 assertEquals(record.getSource().cluster, DatabaseDescriptor.getClusterName());
                 assertFalse(record.getSource().snapshot);
                 assertEquals(record.getSource().keyspaceTable.name(), keyspaceTable("cdc_table"));
-                assertTrue(record.getSource().offsetPosition.fileName.contains(String.valueOf(CommitLog.instance.getCurrentPosition().segmentId)));
             }
             else if (event instanceof EOFEvent) {
                 EOFEvent eofEvent = (EOFEvent) event;
@@ -110,5 +93,8 @@ public class CommitLogProcessorTest extends EmbeddedCassandra3ConnectorTestBase 
                 throw new Exception("unexpected event type");
             }
         }
+
+        deleteTestKeyspaceTables();
+        deleteTestOffsets(context);
     }
 }
