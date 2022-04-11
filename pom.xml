@@ -30,10 +30,7 @@
     <properties>
         <!-- Debezium parent -->
         <version.debezium>${project.version}</version.debezium>
-
-        <!-- Enforce JDK 1.8 for building -->
-        <jdk.min.version>1.8</jdk.min.version>
-
+        
         <!-- Dependencies -->
         <version.dropwizard>4.0.1</version.dropwizard>
         <version.embedded.cassandra>4.0.6</version.embedded.cassandra>
@@ -346,15 +343,5 @@
                 </plugin>
             </plugins>
         </pluginManagement>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <source>1.8</source>
-                    <target>1.8</target>
-                </configuration>
-            </plugin>
-        </plugins>
     </build>
 </project>

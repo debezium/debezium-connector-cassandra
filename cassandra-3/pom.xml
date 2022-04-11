@@ -85,6 +85,11 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
+                    <argLine>
+                        --add-exports=java.base/sun.nio.ch=ALL-UNNAMED
+                        --add-opens=java.base/sun.nio.ch=ALL-UNNAMED
+                        --add-opens=java.base/java.io=ALL-UNNAMED
+                    </argLine>
                     <systemPropertyVariables>
                         <cassandra.version>${version.cassandra3}</cassandra.version>
                         <docker.dir>${project.basedir}/src/test/resources/docker</docker.dir>
