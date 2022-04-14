@@ -44,8 +44,10 @@ public final class CommitLogUtil {
                 LOGGER.warn("Cannot move file {} because it does not appear to be a CommitLog.", file.toAbsolutePath());
                 return;
             }
-            Files.move(file, toDir.resolve(file.getFileName()), REPLACE_EXISTING);
-            LOGGER.info("Moved CommitLog file {} to {}.", file, toDir);
+            if (Files.exists(file)) {
+                Files.move(file, toDir.resolve(file.getFileName()), REPLACE_EXISTING);
+                LOGGER.info("Moved CommitLog file {} to {}.", file, toDir);
+            }
         }
         catch (Exception ex) {
             LOGGER.warn("Failed to move CommitLog file {} to {}. Error:", file.getFileName().toString(), toDir, ex);

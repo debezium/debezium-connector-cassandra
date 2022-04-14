@@ -43,7 +43,7 @@ public class Cassandra3SchemaChangeListener extends AbstractSchemaChangeListener
         LOGGER.info("Initializing SchemaHolder ...");
         List<TableMetadata> cdcEnabledTableMetadataList = getCdcEnabledTableMetadataList(session);
         for (com.datastax.oss.driver.api.core.metadata.schema.TableMetadata tm : cdcEnabledTableMetadataList) {
-            schemaHolder.addOrUpdateTableSchema(new KeyspaceTable(tm), new KeyValueSchema(this.kafkaTopicPrefix, tm, this.sourceInfoStructMaker));
+            schemaHolder.addOrUpdateTableSchema(new KeyspaceTable(tm), getKeyValueSchema(tm));
             onKeyspaceCreated(session.getMetadata().getKeyspace(tm.getKeyspace().toString()).get());
             onTableCreated(tm);
         }
@@ -103,8 +103,7 @@ public class Cassandra3SchemaChangeListener extends AbstractSchemaChangeListener
         boolean cdcEnabled = cdc.toString().equals("true");
 
         if (cdcEnabled) {
-            schemaHolder.addOrUpdateTableSchema(new KeyspaceTable(tableMetadata),
-                    new KeyValueSchema(kafkaTopicPrefix, tableMetadata, sourceInfoStructMaker));
+            schemaHolder.addOrUpdateTableSchema(new KeyspaceTable(tableMetadata), getKeyValueSchema(tableMetadata));
         }
         try {
             LOGGER.debug("Table {}.{} detected to be added!", tableMetadata.getKeyspace(), tableMetadata.getName());
@@ -204,8 +203,7 @@ public class Cassandra3SchemaChangeListener extends AbstractSchemaChangeListener
             // if it was cdc before and now it is too, add it, because its schema might change
             // however if it is CDC-enabled but it was not, update it in schema too because its cdc flag has changed
             // this basically means we add / update every time if new has cdc flag equals to true
-            schemaHolder.addOrUpdateTableSchema(new KeyspaceTable(newTableMetadata),
-                    new KeyValueSchema(kafkaTopicPrefix, newTableMetadata, sourceInfoStructMaker));
+            schemaHolder.addOrUpdateTableSchema(new KeyspaceTable(newTableMetadata), getKeyValueSchema(newTableMetadata));
         }
         else if (oldCdc) {
             // if new table is not on cdc anymore, and we see the old one was, remove it

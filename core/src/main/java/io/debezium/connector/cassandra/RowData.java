@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.cassandra;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,6 +19,10 @@ import org.apache.kafka.connect.data.Struct;
 
 import com.datastax.oss.driver.api.core.metadata.schema.ColumnMetadata;
 import com.datastax.oss.driver.api.core.metadata.schema.TableMetadata;
+import com.datastax.oss.driver.api.core.type.DataType;
+
+import io.debezium.connector.cassandra.transforms.CassandraTypeConverter;
+import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;
 
 /**
  * Row-level data about the source event. Contains a map where the key is the table column
@@ -25,6 +30,25 @@ import com.datastax.oss.driver.api.core.metadata.schema.TableMetadata;
  */
 public class RowData implements KafkaRecord {
     private final Map<String, CellData> cellMap = new LinkedHashMap<>();
+
+    private Object start = null;
+    private Object end = null;
+
+    public void addStart(Object start) {
+        this.start = start;
+    }
+
+    public void addEnd(Object end) {
+        this.end = end;
+    }
+
+    public Object getStart() {
+        return start;
+    }
+
+    public Object getEnd() {
+        return end;
+    }
 
     public void addCell(CellData cellData) {
         this.cellMap.put(cellData.name, cellData);
@@ -40,15 +64,26 @@ public class RowData implements KafkaRecord {
         return cellMap.containsKey(columnName);
     }
 
+    public boolean hasAnyCell() {
+        return !cellMap.isEmpty();
+    }
+
     @Override
     public Struct record(Schema schema) {
         Struct struct = new Struct(schema);
         for (Field field : schema.fields()) {
             Schema cellSchema = KeyValueSchema.getFieldSchema(field.name(), schema);
-            CellData cellData = cellMap.get(field.name());
-            // only add the cell if it is not null
-            if (cellData != null) {
-                struct.put(field.name(), cellData.record(cellSchema));
+            if (field.name().equals(".range_start") && start != null) {
+                struct.put(field.name(), start);
+            }
+            else if (field.name().equals(".range_end") && end != null) {
+                struct.put(field.name(), end);
+            }
+            else {
+                CellData cellData = cellMap.get(field.name());
+                if (cellData != null) {
+                    struct.put(field.name(), cellData.record(cellSchema));
+                }
             }
         }
         return struct;
@@ -65,17 +100,37 @@ public class RowData implements KafkaRecord {
     /**
      * Assemble the Kafka connect {@link Schema} for the "after" field of the change event
      * based on the Cassandra table schema.
+     *
      * @param tm metadata of a table that contains the Cassandra table schema
      * @return a schema for the "after" field of a change event
      */
     static Schema rowSchema(TableMetadata tm) {
-        SchemaBuilder schemaBuilder = SchemaBuilder.struct().name(Record.AFTER);
+        List<String> columnNames = new ArrayList<>();
+        List<DataType> columnTypes = new ArrayList<>();
+
         for (ColumnMetadata cm : tm.getColumns().values()) {
-            Schema optionalCellSchema = CellData.cellSchema(cm, true);
+            columnNames.add(cm.getName().toString());
+            columnTypes.add(cm.getType());
+        }
+
+        return rowSchema(columnNames, columnTypes);
+    }
+
+    static Schema rowSchema(List<String> columnNames, List<DataType> columnsTypes) {
+        SchemaBuilder schemaBuilder = SchemaBuilder.struct().name(Record.AFTER);
+
+        for (int i = 0; i < columnNames.size(); i++) {
+            Schema valueSchema = CassandraTypeDeserializer.getSchemaBuilder(CassandraTypeConverter.convert(columnsTypes.get(i))).build();
+            String columnName = columnNames.get(i);
+            Schema optionalCellSchema = CellData.cellSchema(columnName, valueSchema, true);
             if (optionalCellSchema != null) {
-                schemaBuilder.field(cm.getName().toString(), optionalCellSchema);
+                schemaBuilder.field(columnName, optionalCellSchema);
             }
         }
+
+        schemaBuilder.field(".range_start", Schema.OPTIONAL_STRING_SCHEMA);
+        schemaBuilder.field(".range_end", Schema.OPTIONAL_STRING_SCHEMA);
+
         return schemaBuilder.build();
     }
 

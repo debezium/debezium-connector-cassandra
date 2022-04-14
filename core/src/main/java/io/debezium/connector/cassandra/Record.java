@@ -32,7 +32,8 @@ public abstract class Record implements Event {
     public enum Operation {
         INSERT("i"),
         UPDATE("u"),
-        DELETE("d");
+        DELETE("d"),
+        RANGE_TOMBSTONE("r");
 
         private String value;
 
