@@ -23,24 +23,31 @@ import io.debezium.connector.common.CdcSourceTaskContext;
  */
 public class CassandraConnectorContext extends CdcSourceTaskContext {
     private final CassandraConnectorConfig config;
-    private final CassandraClient cassandraClient;
+    private CassandraClient cassandraClient;
     private final List<ChangeEventQueue<Event>> queues = new ArrayList<>();
-    private final KafkaProducer kafkaProducer;
-    private final SchemaHolder schemaHolder;
-    private final OffsetWriter offsetWriter;
-    private final Set<String> erroneousCommitLogs;
-    private final AbstractSchemaChangeListener schemaChangeListener;
+    private KafkaProducer kafkaProducer;
+    private SchemaHolder schemaHolder;
+    private OffsetWriter offsetWriter;
+    private Set<String> erroneousCommitLogs;
+    private AbstractSchemaChangeListener schemaChangeListener;
+
+    public CassandraConnectorContext(CassandraConnectorConfig config) {
+        super(config.getContextName(), config.getLogicalName(), Collections::emptySet);
+        this.config = config;
+        prepareQueues();
+    }
 
     public CassandraConnectorContext(CassandraConnectorConfig config,
                                      SchemaLoader schemaLoader,
-                                     SchemaChangeListenerProvider schemaChangeListenerProvider)
-            throws Exception {
+                                     SchemaChangeListenerProvider schemaChangeListenerProvider) {
         super(config.getContextName(), config.getLogicalName(), Collections::emptySet);
         this.config = config;
 
         try {
             // Create a HashSet to record names of CommitLog Files which are not successfully read or streamed.
             this.erroneousCommitLogs = ConcurrentHashMap.newKeySet();
+
+            prepareQueues();
 
             // Loading up DDL schemas from disk
             schemaLoader.load(this.config.cassandraConfig());
@@ -49,8 +56,6 @@ public class CassandraConnectorContext extends CdcSourceTaskContext {
 
             // Setting up Cassandra driver
             this.cassandraClient = new CassandraClient(config.cassandraDriverConfig(), schemaChangeListener);
-
-            prepareQueues();
 
             // Creating Kafka Producer
             this.kafkaProducer = new KafkaProducer(this.config.getKafkaConfigs());
@@ -66,7 +71,6 @@ public class CassandraConnectorContext extends CdcSourceTaskContext {
             cleanUp();
             throw new CassandraConnectorTaskException("Failed to initialize Cassandra Connector Context.", e);
         }
-
     }
 
     private void prepareQueues() {

@@ -47,6 +47,13 @@ public class RecordMaker {
                 data, keySchema, valueSchema, markOffset, consumer, Record.Operation.DELETE);
     }
 
+    public void rangeTombstone(String cluster, OffsetPosition offsetPosition, KeyspaceTable keyspaceTable, boolean snapshot,
+                               Instant tsMicro, RowData data, Schema keySchema, Schema valueSchema,
+                               boolean markOffset, BlockingConsumer<Record> consumer) {
+        createRecord(cluster, offsetPosition, keyspaceTable, snapshot, tsMicro,
+                data, keySchema, valueSchema, markOffset, consumer, Record.Operation.RANGE_TOMBSTONE);
+    }
+
     private void createRecord(String cluster, OffsetPosition offsetPosition, KeyspaceTable keyspaceTable, boolean snapshot,
                               Instant tsMicro, RowData data, Schema keySchema, Schema valueSchema,
                               boolean markOffset, BlockingConsumer<Record> consumer, Record.Operation operation) {
@@ -71,7 +78,7 @@ public class RecordMaker {
         catch (InterruptedException e) {
             e.printStackTrace();
             throw new CassandraConnectorTaskException(String.format(
-                    "Enqueuing has been interrupted while enqueuing Change Event %s", record.toString()), e);
+                    "Enqueuing has been interrupted while enqueuing Change Event %s", record), e);
         }
         if (operation == Record.Operation.DELETE && emitTombstoneOnDelete) {
             // generate kafka tombstone event
@@ -82,7 +89,7 @@ public class RecordMaker {
             catch (InterruptedException e) {
                 e.printStackTrace();
                 throw new CassandraConnectorTaskException(String.format(
-                        "Enqueuing has been interrupted while enqueuing Tombstone Event %s", record.toString()), e);
+                        "Enqueuing has been interrupted while enqueuing Tombstone Event %s", record), e);
             }
         }
     }

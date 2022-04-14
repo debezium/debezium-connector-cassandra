@@ -42,4 +42,15 @@ public class AbstractSchemaChangeListener extends SchemaChangeListenerBase {
     public SchemaHolder getSchemaHolder() {
         return schemaHolder;
     }
+
+    protected KeyValueSchema getKeyValueSchema(TableMetadata tm) {
+        return new KeyValueSchema.KeyValueSchemaBuilder()
+                .withTableMetadata(tm)
+                .withKafkaTopicPrefix(kafkaTopicPrefix)
+                .withPrimaryKeyNames(KeyValueSchema.getPrimaryKeyNames(tm))
+                .withPrimaryKeySchemas(KeyValueSchema.getPrimaryKeySchemas(tm))
+                .withSourceInfoStructMarker(sourceInfoStructMaker)
+                .withRowSchema(RowData.rowSchema(tm))
+                .build();
+    }
 }

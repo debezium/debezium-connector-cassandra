@@ -7,17 +7,12 @@ package io.debezium.connector.cassandra;
 
 import java.util.Objects;
 
-import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
 
-import com.datastax.oss.driver.api.core.metadata.schema.ColumnMetadata;
-
 import io.debezium.DebeziumException;
-import io.debezium.connector.cassandra.transforms.CassandraTypeConverter;
-import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;
 
 /**
  * Cell-level data about the source event. Each cell contains the name, value and
@@ -70,33 +65,29 @@ public class CellData implements KafkaRecord {
     @Override
     public Struct record(Schema schema) {
         try {
-            Struct cellStruct = new Struct(schema)
+            return new Struct(schema)
                     .put(CELL_DELETION_TS_KEY, deletionTs)
                     .put(CELL_SET_KEY, true)
                     .put(CELL_VALUE_KEY, value);
-            return cellStruct;
         }
         catch (DataException e) {
             throw new DebeziumException(String.format("Failed to record Cell. Name: %s, Schema: %s, Value: %s", name, schema.toString(), value), e);
         }
     }
 
-    static Schema cellSchema(ColumnMetadata cm, boolean optional) {
-        AbstractType<?> convertedType = CassandraTypeConverter.convert(cm.getType());
-        Schema valueSchema = CassandraTypeDeserializer.getSchemaBuilder(convertedType).build();
-        if (valueSchema != null) {
-            SchemaBuilder schemaBuilder = SchemaBuilder.struct().name(cm.getName().toString())
-                    .field(CELL_VALUE_KEY, valueSchema)
-                    .field(CELL_DELETION_TS_KEY, Schema.OPTIONAL_INT64_SCHEMA)
-                    .field(CELL_SET_KEY, Schema.BOOLEAN_SCHEMA);
-            if (optional) {
-                schemaBuilder.optional();
-            }
-            return schemaBuilder.build();
-        }
-        else {
+    static Schema cellSchema(String columnName, Schema columnSchema, boolean optional) {
+        if (columnSchema == null) {
             return null;
         }
+
+        SchemaBuilder schemaBuilder = SchemaBuilder.struct().name(columnName)
+                .field(CELL_VALUE_KEY, columnSchema)
+                .field(CELL_DELETION_TS_KEY, Schema.OPTIONAL_INT64_SCHEMA)
+                .field(CELL_SET_KEY, Schema.BOOLEAN_SCHEMA);
+        if (optional) {
+            schemaBuilder.optional();
+        }
+        return schemaBuilder.build();
     }
 
     @Override

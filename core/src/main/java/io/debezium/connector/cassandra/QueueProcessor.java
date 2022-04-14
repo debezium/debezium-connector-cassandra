@@ -29,7 +29,7 @@ public class QueueProcessor extends AbstractProcessor {
     private static final Logger LOGGER = LoggerFactory.getLogger(QueueProcessor.class);
 
     private final ChangeEventQueue<Event> queue;
-    private final KafkaRecordEmitter kafkaRecordEmitter;
+    private final Emitter kafkaRecordEmitter;
     private final String commitLogRelocationDir;
     private final Set<String> erroneousCommitLogs;
 
@@ -56,7 +56,7 @@ public class QueueProcessor extends AbstractProcessor {
     }
 
     @VisibleForTesting
-    public QueueProcessor(CassandraConnectorContext context, int index, KafkaRecordEmitter emitter) {
+    public QueueProcessor(CassandraConnectorContext context, int index, Emitter emitter) {
         super(NAME_PREFIX + "[" + index + "]", Duration.ZERO);
         this.queue = context.getQueues().get(index);
         this.kafkaRecordEmitter = emitter;
@@ -100,7 +100,7 @@ public class QueueProcessor extends AbstractProcessor {
     }
 
     @Override
-    public void destroy() {
+    public void destroy() throws Exception {
         kafkaRecordEmitter.close();
     }
 
