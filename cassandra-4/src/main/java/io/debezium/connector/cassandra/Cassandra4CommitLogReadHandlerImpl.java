@@ -7,14 +7,21 @@ package io.debezium.connector.cassandra;
 
 import static io.debezium.connector.cassandra.Cassandra4CommitLogReadHandlerImpl.RowType.DELETE;
 import static io.debezium.connector.cassandra.Cassandra4CommitLogReadHandlerImpl.RowType.INSERT;
+import static io.debezium.connector.cassandra.Cassandra4CommitLogReadHandlerImpl.RowType.RANGE_TOMBSTONE;
 import static io.debezium.connector.cassandra.Cassandra4CommitLogReadHandlerImpl.RowType.UPDATE;
+import static io.debezium.connector.cassandra.CellData.ColumnType.CLUSTERING;
+import static io.debezium.connector.cassandra.CellData.ColumnType.PARTITION;
+import static io.debezium.connector.cassandra.CellData.ColumnType.REGULAR;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
@@ -27,6 +34,7 @@ import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.CollectionType;
 import org.apache.cassandra.db.partitions.PartitionUpdate;
 import org.apache.cassandra.db.rows.ComplexColumnData;
+import org.apache.cassandra.db.rows.RangeTombstoneBoundMarker;
 import org.apache.cassandra.db.rows.Row;
 import org.apache.cassandra.db.rows.Unfiltered;
 import org.apache.cassandra.db.rows.UnfilteredRowIterator;
@@ -35,6 +43,7 @@ import org.apache.kafka.connect.data.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.datastax.oss.driver.api.core.metadata.schema.ClusteringOrder;
 import com.datastax.oss.driver.api.core.metadata.schema.ColumnMetadata;
 import com.datastax.oss.driver.api.core.metadata.schema.TableMetadata;
 import com.google.common.collect.ImmutableList;
@@ -109,7 +118,9 @@ public class Cassandra4CommitLogReadHandlerImpl implements CommitLogReadHandler 
          */
         COUNTER;
 
-        static final Set<PartitionType> supportedPartitionTypes = new HashSet<>(Arrays.asList(PARTITION_KEY_ROW_DELETION, ROW_LEVEL_MODIFICATION));
+        static final Set<PartitionType> supportedPartitionTypes = new HashSet<>(Arrays.asList(PARTITION_KEY_ROW_DELETION,
+                PARTITION_AND_CLUSTERING_KEY_ROW_DELETION,
+                ROW_LEVEL_MODIFICATION));
 
         public static PartitionType getPartitionType(PartitionUpdate pu) {
             if (pu.metadata().isCounter()) {
@@ -175,7 +186,7 @@ public class Cassandra4CommitLogReadHandlerImpl implements CommitLogReadHandler 
          */
         UNKNOWN;
 
-        static final Set<RowType> supportedRowTypes = new HashSet<>(Arrays.asList(INSERT, UPDATE, DELETE));
+        static final Set<RowType> supportedRowTypes = new HashSet<>(Arrays.asList(INSERT, UPDATE, DELETE, RANGE_TOMBSTONE));
 
         public static RowType getRowType(Unfiltered unfiltered) {
             if (unfiltered.isRangeTombstoneMarker()) {
@@ -212,6 +223,36 @@ public class Cassandra4CommitLogReadHandlerImpl implements CommitLogReadHandler 
             return row.primaryKeyLivenessInfo().timestamp() == LivenessInfo.NO_TIMESTAMP;
         }
     }
+
+    /**
+     * Range tombstone which comes in PartitionUpdate is consisting of 2 RangeTombstoneBoundMarker's
+     * which are logically related to each other as the first one is for "start" and the second one for "end" marker.
+     * We need to group these markers together into one even otherwise it does not make too much sense to
+     * send an even with a start marker without an end marker because it would be problematic to decouple it on the
+     * consumer's side.
+     */
+    private static final class RangeTombStoneContext {
+        public Map<org.apache.cassandra.schema.TableMetadata, RowData> map = new ConcurrentHashMap<>();
+
+        public static boolean isComplete(RowData rowData) {
+            return rowData.getEnd() != null && rowData.getStart() != null;
+        }
+
+        public RowData getOrCreate(org.apache.cassandra.schema.TableMetadata metadata) {
+            RowData rowData = map.get(metadata);
+            if (rowData == null) {
+                rowData = new RowData();
+                map.put(metadata, rowData);
+            }
+            return rowData;
+        }
+
+        public void remove(org.apache.cassandra.schema.TableMetadata metadata) {
+            map.remove(metadata);
+        }
+    }
+
+    private final RangeTombStoneContext context = new RangeTombStoneContext();
 
     @Override
     public void handleMutation(Mutation mutation, int size, int entryLocation, CommitLogDescriptor descriptor) {
@@ -276,9 +317,9 @@ public class Cassandra4CommitLogReadHandlerImpl implements CommitLogReadHandler 
 
         switch (partitionType) {
             case PARTITION_KEY_ROW_DELETION:
+            case PARTITION_AND_CLUSTERING_KEY_ROW_DELETION:
                 handlePartitionDeletion(pu, offsetPosition, keyspaceTable);
                 break;
-
             case ROW_LEVEL_MODIFICATION:
                 UnfilteredRowIterator it = pu.unfilteredIterator();
                 while (it.hasNext()) {
@@ -288,8 +329,17 @@ public class Cassandra4CommitLogReadHandlerImpl implements CommitLogReadHandler 
                         LOGGER.warn("Encountered an unsupported row type {}, skipping...", rowType);
                         continue;
                     }
-                    Row row = (Row) rowOrRangeTombstone;
-                    handleRowModifications(row, rowType, pu, offsetPosition, keyspaceTable);
+                    if (rowOrRangeTombstone instanceof Row) {
+                        Row row = (Row) rowOrRangeTombstone;
+                        handleRowModifications(row, rowType, pu, offsetPosition, keyspaceTable);
+                    }
+                    else if (rowOrRangeTombstone instanceof RangeTombstoneBoundMarker) {
+                        handleRangeTombstoneBoundMarker((RangeTombstoneBoundMarker) rowOrRangeTombstone,
+                                rowType, pu, offsetPosition, keyspaceTable);
+                    }
+                    else {
+                        throw new CassandraConnectorSchemaException("Encountered unsupported Unfiltered type " + rowOrRangeTombstone.getClass());
+                    }
                 }
                 break;
 
@@ -313,7 +363,6 @@ public class Cassandra4CommitLogReadHandlerImpl implements CommitLogReadHandler 
      * (4) Assemble a {@link Record} object from the populated data and queue the record
      */
     private void handlePartitionDeletion(PartitionUpdate pu, OffsetPosition offsetPosition, KeyspaceTable keyspaceTable) {
-
         KeyValueSchema keyValueSchema = schemaHolder.getKeyValueSchema(keyspaceTable);
         if (keyValueSchema == null) {
             LOGGER.warn("Unable to get KeyValueSchema for table {}. It might have been deleted or CDC disabled.", keyspaceTable.toString());
@@ -322,6 +371,7 @@ public class Cassandra4CommitLogReadHandlerImpl implements CommitLogReadHandler 
 
         Schema keySchema = keyValueSchema.keySchema();
         Schema valueSchema = keyValueSchema.valueSchema();
+        TableMetadata tableMetadata = keyValueSchema.tableMetadata();
 
         RowData after = new RowData();
 
@@ -331,17 +381,27 @@ public class Cassandra4CommitLogReadHandlerImpl implements CommitLogReadHandler 
         // contains any info on regular (non-partition) columns, as if they were not modified. In order
         // to differentiate deleted columns from unmodified columns, we populate the deleted columns
         // with null value and timestamps
-        TableMetadata tableMetadata = keyValueSchema.tableMetadata();
-        Set<ColumnMetadata> clusteringColumns = tableMetadata.getClusteringColumns().keySet();
-        if (!clusteringColumns.isEmpty()) {
-            throw new CassandraConnectorSchemaException("Uh-oh... clustering key should not exist for partition deletion");
-        }
+
+        // clustering columns if any
+
         List<ColumnMetadata> columns = new ArrayList<>(tableMetadata.getColumns().values());
+        Map<ColumnMetadata, ClusteringOrder> clusteringColumns = tableMetadata.getClusteringColumns();
+
+        for (Map.Entry<ColumnMetadata, ClusteringOrder> clustering : clusteringColumns.entrySet()) {
+            ColumnMetadata clusteringKey = clustering.getKey();
+            long deletionTs = pu.deletionInfo().getPartitionDeletion().markedForDeleteAt();
+            after.addCell(new CellData(clusteringKey.getName().toString(), null, deletionTs, CLUSTERING));
+        }
+
         columns.removeAll(tableMetadata.getPartitionKey());
+        columns.removeAll(tableMetadata.getClusteringColumns().keySet());
+
+        // regular columns if any
+
         for (ColumnMetadata cm : columns) {
             String name = cm.getName().toString();
             long deletionTs = pu.deletionInfo().getPartitionDeletion().markedForDeleteAt();
-            CellData cellData = new CellData(name, null, deletionTs, CellData.ColumnType.REGULAR);
+            CellData cellData = new CellData(name, null, deletionTs, REGULAR);
             after.addCell(cellData);
         }
 
@@ -400,13 +460,57 @@ public class Cassandra4CommitLogReadHandlerImpl implements CommitLogReadHandler 
                         queues.get(Math.abs(offsetPosition.fileName.hashCode() % queues.size()))::enqueue);
                 break;
 
+            case RANGE_TOMBSTONE:
+                recordMaker.rangeTombstone(DatabaseDescriptor.getClusterName(), offsetPosition, keyspaceTable, false,
+                        Conversions.toInstantFromMicros(ts), after, keySchema, valueSchema, MARK_OFFSET,
+                        queues.get(Math.abs(offsetPosition.fileName.hashCode() % queues.size()))::enqueue);
+                break;
+
             default: {
                 throw new CassandraConnectorSchemaException("Unsupported row type " + rowType + " should have been skipped");
             }
         }
     }
 
+    private void handleRangeTombstoneBoundMarker(RangeTombstoneBoundMarker rangeTombstoneMarker,
+                                                 RowType rowType,
+                                                 PartitionUpdate pu,
+                                                 OffsetPosition offsetPosition,
+                                                 KeyspaceTable keyspaceTable) {
+        if (rowType != RowType.RANGE_TOMBSTONE) {
+            throw new IllegalStateException("Row type has to be " + RANGE_TOMBSTONE.name());
+        }
+        KeyValueSchema keyValueSchema = schemaHolder.getKeyValueSchema(keyspaceTable);
+        if (keyValueSchema == null) {
+            LOGGER.warn("Unable to get KeyValueSchema for table {}. It might have been deleted or CDC disabled.", keyspaceTable.toString());
+            return;
+        }
+
+        RowData after = context.getOrCreate(pu.metadata());
+
+        Optional.ofNullable(rangeTombstoneMarker.openBound(false)).ifPresent(cb -> after.addStart(cb.toString(pu.metadata())));
+        Optional.ofNullable(rangeTombstoneMarker.closeBound(false)).ifPresent(cb -> after.addEnd(cb.toString(pu.metadata())));
+
+        if (RangeTombStoneContext.isComplete(after)) {
+            try {
+                populatePartitionColumns(after, pu);
+                long ts = rangeTombstoneMarker.deletionTime().markedForDeleteAt();
+
+                recordMaker.rangeTombstone(DatabaseDescriptor.getClusterName(), offsetPosition, keyspaceTable, false,
+                        Conversions.toInstantFromMicros(ts), after, keyValueSchema.keySchema(), keyValueSchema.valueSchema(), MARK_OFFSET,
+                        queues.get(Math.abs(offsetPosition.fileName.hashCode() % queues.size()))::enqueue);
+            }
+            finally {
+                context.remove(pu.metadata());
+            }
+        }
+    }
+
     private void populatePartitionColumns(RowData after, PartitionUpdate pu) {
+        // if it has any cells it was already populated
+        if (after.hasAnyCell()) {
+            return;
+        }
         List<Object> partitionKeys = getPartitionKeys(pu);
 
         ImmutableList<org.apache.cassandra.schema.ColumnMetadata> columns = pu.metadata().partitionKeyColumns();
@@ -416,7 +520,7 @@ public class Cassandra4CommitLogReadHandlerImpl implements CommitLogReadHandler 
             try {
                 String name = columns.get(i).name.toString();
                 Object value = partitionKeys.get(columnMetadata.position());
-                CellData cellData = new CellData(name, value, null, CellData.ColumnType.PARTITION);
+                CellData cellData = new CellData(name, value, null, PARTITION);
                 after.addCell(cellData);
             }
             catch (Exception e) {
@@ -431,7 +535,7 @@ public class Cassandra4CommitLogReadHandlerImpl implements CommitLogReadHandler 
             try {
                 ByteBuffer bufferAtClustering = row.clustering().bufferAt(metadata.position());
                 Object value = CassandraTypeDeserializer.deserialize(metadata.type, bufferAtClustering);
-                CellData cellData = new CellData(metadata.name.toString(), value, null, CellData.ColumnType.CLUSTERING);
+                CellData cellData = new CellData(metadata.name.toString(), value, null, CLUSTERING);
                 after.addCell(cellData);
             }
             catch (Exception e) {
@@ -458,7 +562,7 @@ public class Cassandra4CommitLogReadHandlerImpl implements CommitLogReadHandler 
                         deletionTs = cell.isExpiring() ? TimeUnit.MICROSECONDS.convert(cell.localDeletionTime(), TimeUnit.SECONDS) : null;
                     }
                     String name = cd.name.toString();
-                    CellData cellData = new CellData(name, value, deletionTs, CellData.ColumnType.REGULAR);
+                    CellData cellData = new CellData(name, value, deletionTs, REGULAR);
                     after.addCell(cellData);
                 }
                 catch (Exception e) {
@@ -478,7 +582,7 @@ public class Cassandra4CommitLogReadHandlerImpl implements CommitLogReadHandler 
             for (ColumnMetadata cm : columns) {
                 String name = cm.getName().toString();
                 long deletionTs = row.deletion().time().markedForDeleteAt();
-                CellData cellData = new CellData(name, null, deletionTs, CellData.ColumnType.REGULAR);
+                CellData cellData = new CellData(name, null, deletionTs, REGULAR);
                 after.addCell(cellData);
             }
         }

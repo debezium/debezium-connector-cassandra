@@ -25,7 +25,7 @@ import io.debezium.schema.TopicSelector;
 /**
  * This emitter is responsible for emitting records to Kafka broker and managing offsets post send.
  */
-public class KafkaRecordEmitter implements AutoCloseable {
+public class KafkaRecordEmitter implements Emitter {
     private static final Logger LOGGER = LoggerFactory.getLogger(KafkaRecordEmitter.class);
 
     private final KafkaProducer<byte[], byte[]> producer;
@@ -36,10 +36,10 @@ public class KafkaRecordEmitter implements AutoCloseable {
     private final CommitLogTransfer commitLogTransfer;
     private final Map<Record, Future<RecordMetadata>> futures = new LinkedHashMap<>();
     private final Object lock = new Object();
+    private final Converter keyConverter;
+    private final Converter valueConverter;
     private long timeOfLastFlush;
     private long emitCount = 0;
-    private Converter keyConverter;
-    private Converter valueConverter;
 
     public KafkaRecordEmitter(String kafkaTopicPrefix, String heartbeatPrefix, KafkaProducer kafkaProducer,
                               OffsetWriter offsetWriter, Duration offsetFlushIntervalMs, long maxOffsetFlushSize,
@@ -55,6 +55,7 @@ public class KafkaRecordEmitter implements AutoCloseable {
         this.valueConverter = valueConverter;
     }
 
+    @Override
     public void emit(Record record) {
         try {
             synchronized (lock) {
@@ -75,7 +76,7 @@ public class KafkaRecordEmitter implements AutoCloseable {
         }
     }
 
-    private ProducerRecord<byte[], byte[]> toProducerRecord(Record record) {
+    protected ProducerRecord<byte[], byte[]> toProducerRecord(Record record) {
         String topic = topicSelector.topicNameFor(record.getSource().keyspaceTable);
         byte[] serializedKey = keyConverter.fromConnectData(topic, record.getKeySchema(), record.buildKey());
         byte[] serializedValue = valueConverter.fromConnectData(topic, record.getValueSchema(), record.buildValue());
@@ -131,7 +132,7 @@ public class KafkaRecordEmitter implements AutoCloseable {
         }
     }
 
-    public void close() {
+    public void close() throws Exception {
         producer.close();
     }
 }
