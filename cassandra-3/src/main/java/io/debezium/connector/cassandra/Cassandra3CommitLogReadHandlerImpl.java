@@ -12,7 +12,6 @@ import static io.debezium.connector.cassandra.Cassandra3CommitLogReadHandlerImpl
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -337,7 +336,7 @@ public class Cassandra3CommitLogReadHandlerImpl implements CommitLogReadHandler 
         if (!clusteringColumns.isEmpty()) {
             throw new CassandraConnectorSchemaException("Uh-oh... clustering key should not exist for partition deletion");
         }
-        Collection<ColumnMetadata> columns = tableMetadata.getColumns().values();
+        List<ColumnMetadata> columns = new ArrayList<>(tableMetadata.getColumns().values());
         columns.removeAll(tableMetadata.getPartitionKey());
         for (ColumnMetadata cm : columns) {
             String name = cm.getName().toString();
