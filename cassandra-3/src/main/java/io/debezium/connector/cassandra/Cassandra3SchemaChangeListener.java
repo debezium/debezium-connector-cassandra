@@ -44,6 +44,7 @@ public class Cassandra3SchemaChangeListener extends AbstractSchemaChangeListener
         List<TableMetadata> cdcEnabledTableMetadataList = getCdcEnabledTableMetadataList(session);
         for (com.datastax.oss.driver.api.core.metadata.schema.TableMetadata tm : cdcEnabledTableMetadataList) {
             schemaHolder.addOrUpdateTableSchema(new KeyspaceTable(tm), new KeyValueSchema(this.kafkaTopicPrefix, tm, this.sourceInfoStructMaker));
+            onKeyspaceCreated(session.getMetadata().getKeyspace(tm.getKeyspace().toString()).get());
             onTableCreated(tm);
         }
 
