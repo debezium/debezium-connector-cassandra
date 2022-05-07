@@ -20,7 +20,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
-import io.debezium.schema.TopicSelector;
+import io.debezium.config.CommonConnectorConfig;
+import io.debezium.spi.topic.TopicNamingStrategy;
 
 /**
  * This emitter is responsible for emitting records to Kafka broker and managing offsets post send.
@@ -29,7 +30,7 @@ public class KafkaRecordEmitter implements Emitter {
     private static final Logger LOGGER = LoggerFactory.getLogger(KafkaRecordEmitter.class);
 
     private final KafkaProducer<byte[], byte[]> producer;
-    private final TopicSelector<KeyspaceTable> topicSelector;
+    private final TopicNamingStrategy<KeyspaceTable> topicNamingStrategy;
     private final OffsetWriter offsetWriter;
     private final OffsetFlushPolicy offsetFlushPolicy;
     private final Set<String> erroneousCommitLogs;
@@ -41,12 +42,12 @@ public class KafkaRecordEmitter implements Emitter {
     private long timeOfLastFlush;
     private long emitCount = 0;
 
-    public KafkaRecordEmitter(String kafkaTopicPrefix, String heartbeatPrefix, KafkaProducer kafkaProducer,
+    public KafkaRecordEmitter(CassandraConnectorConfig connectorConfig, KafkaProducer kafkaProducer,
                               OffsetWriter offsetWriter, Duration offsetFlushIntervalMs, long maxOffsetFlushSize,
                               Converter keyConverter, Converter valueConverter, Set<String> erroneousCommitLogs,
                               CommitLogTransfer commitLogTransfer) {
         this.producer = kafkaProducer;
-        this.topicSelector = CassandraTopicSelector.defaultSelector(kafkaTopicPrefix, heartbeatPrefix);
+        this.topicNamingStrategy = connectorConfig.getTopicNamingStrategy(CommonConnectorConfig.TOPIC_NAMING_STRATEGY);
         this.offsetWriter = offsetWriter;
         this.offsetFlushPolicy = offsetFlushIntervalMs.isZero() ? OffsetFlushPolicy.always() : OffsetFlushPolicy.periodic(offsetFlushIntervalMs, maxOffsetFlushSize);
         this.erroneousCommitLogs = erroneousCommitLogs;
@@ -77,7 +78,7 @@ public class KafkaRecordEmitter implements Emitter {
     }
 
     protected ProducerRecord<byte[], byte[]> toProducerRecord(Record record) {
-        String topic = topicSelector.topicNameFor(record.getSource().keyspaceTable);
+        String topic = topicNamingStrategy.dataChangeTopic(record.getSource().keyspaceTable);
         byte[] serializedKey = keyConverter.fromConnectData(topic, record.getKeySchema(), record.buildKey());
         byte[] serializedValue = valueConverter.fromConnectData(topic, record.getValueSchema(), record.buildValue());
         return new ProducerRecord<>(topic, serializedKey, serializedValue);

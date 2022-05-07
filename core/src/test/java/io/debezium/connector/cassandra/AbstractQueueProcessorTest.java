@@ -42,8 +42,7 @@ public abstract class AbstractQueueProcessorTest {
     public void setUp() throws Exception {
         context = generateTaskContext(Configuration.from(TestUtils.generateDefaultConfigMap()));
         emitter = new TestingKafkaRecordEmitter(
-                context.getCassandraConnectorConfig().kafkaTopicPrefix(),
-                context.getCassandraConnectorConfig().getHeartbeatTopicsPrefix(),
+                context.getCassandraConnectorConfig(),
                 context.getKafkaProducer(),
                 context.getOffsetWriter(),
                 context.getCassandraConnectorConfig().offsetFlushIntervalMs(),
