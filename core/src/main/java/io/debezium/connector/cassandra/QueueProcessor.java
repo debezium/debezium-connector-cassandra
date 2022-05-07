@@ -43,8 +43,7 @@ public class QueueProcessor extends AbstractProcessor {
         this.erroneousCommitLogs = context.getErroneousCommitLogs();
         this.commitLogRelocationDir = context.getCassandraConnectorConfig().commitLogRelocationDir();
         this.kafkaRecordEmitter = new KafkaRecordEmitter(
-                context.getCassandraConnectorConfig().kafkaTopicPrefix(),
-                context.getCassandraConnectorConfig().getHeartbeatTopicsPrefix(),
+                context.getCassandraConnectorConfig(),
                 context.getKafkaProducer(),
                 context.getOffsetWriter(),
                 context.getCassandraConnectorConfig().offsetFlushIntervalMs(),

@@ -18,11 +18,11 @@ public class TestingKafkaRecordEmitter extends KafkaRecordEmitter {
 
     public List<ProducerRecord<byte[], byte[]>> records = new ArrayList<>();
 
-    public TestingKafkaRecordEmitter(String kafkaTopicPrefix, String heartbeatPrefix, KafkaProducer kafkaProducer,
+    public TestingKafkaRecordEmitter(CassandraConnectorConfig connectorConfig, KafkaProducer kafkaProducer,
                                      OffsetWriter offsetWriter, Duration offsetFlushIntervalMs, long maxOffsetFlushSize,
                                      Converter keyConverter, Converter valueConverter, Set<String> erroneousCommitLogs,
                                      CommitLogTransfer commitLogTransfer) {
-        super(kafkaTopicPrefix, heartbeatPrefix, kafkaProducer, offsetWriter, offsetFlushIntervalMs, maxOffsetFlushSize, keyConverter, valueConverter,
+        super(connectorConfig, kafkaProducer, offsetWriter, offsetFlushIntervalMs, maxOffsetFlushSize, keyConverter, valueConverter,
                 erroneousCommitLogs, commitLogTransfer);
     }
 
