@@ -21,7 +21,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
@@ -71,6 +70,7 @@ public class Cassandra4CommitLogReadHandlerImpl implements CommitLogReadHandler 
     private final OffsetWriter offsetWriter;
     private final SchemaHolder schemaHolder;
     private final CommitLogProcessorMetrics metrics;
+    private final RangeTombstoneContext<org.apache.cassandra.schema.TableMetadata> rangeTombstoneContext = new RangeTombstoneContext<>();
 
     Cassandra4CommitLogReadHandlerImpl(SchemaHolder schemaHolder,
                                        List<ChangeEventQueue<Event>> queues,
@@ -85,7 +85,7 @@ public class Cassandra4CommitLogReadHandlerImpl implements CommitLogReadHandler 
     }
 
     /**
-     * A PartitionType represents the type of a PartitionUpdate.
+     * A PartitionType represents the type of PartitionUpdate.
      */
     enum PartitionType {
         /**
@@ -224,36 +224,6 @@ public class Cassandra4CommitLogReadHandlerImpl implements CommitLogReadHandler 
         }
     }
 
-    /**
-     * Range tombstone which comes in PartitionUpdate is consisting of 2 RangeTombstoneBoundMarker's
-     * which are logically related to each other as the first one is for "start" and the second one for "end" marker.
-     * We need to group these markers together into one even otherwise it does not make too much sense to
-     * send an even with a start marker without an end marker because it would be problematic to decouple it on the
-     * consumer's side.
-     */
-    private static final class RangeTombStoneContext {
-        public Map<org.apache.cassandra.schema.TableMetadata, RowData> map = new ConcurrentHashMap<>();
-
-        public static boolean isComplete(RowData rowData) {
-            return rowData.getEnd() != null && rowData.getStart() != null;
-        }
-
-        public RowData getOrCreate(org.apache.cassandra.schema.TableMetadata metadata) {
-            RowData rowData = map.get(metadata);
-            if (rowData == null) {
-                rowData = new RowData();
-                map.put(metadata, rowData);
-            }
-            return rowData;
-        }
-
-        public void remove(org.apache.cassandra.schema.TableMetadata metadata) {
-            map.remove(metadata);
-        }
-    }
-
-    private final RangeTombStoneContext context = new RangeTombStoneContext();
-
     @Override
     public void handleMutation(Mutation mutation, int size, int entryLocation, CommitLogDescriptor descriptor) {
         if (!mutation.trackedByCDC()) {
@@ -353,14 +323,15 @@ public class Cassandra4CommitLogReadHandlerImpl implements CommitLogReadHandler 
      * Handle a valid deletion event resulted from a partition-level deletion by converting Cassandra representation
      * of this event into a {@link Record} object and queue the record to {@link ChangeEventQueue}. A valid deletion
      * event means a partition only has a single row, this implies there are no clustering keys.
-     * <p>
+     *
      * The steps are:
-     * (1) Populate the "source" field for this event
-     * (2) Fetch the cached key/value schemas from {@link SchemaHolder}
-     * (3) Populate the "after" field for this event
-     * a. populate partition columns
-     * b. populate regular columns with null values
-     * (4) Assemble a {@link Record} object from the populated data and queue the record
+     *      (1) Populate the "source" field for this event
+     *      (2) Fetch the cached key/value schemas from {@link SchemaHolder}
+     *      (3) Populate the "after" field for this event
+     *          a. populate partition columns
+     *          b. populate clustering columns if any
+     *          b. populate regular columns with null values
+     *      (4) Assemble a {@link Record} object from the populated data and queue the record
      */
     private void handlePartitionDeletion(PartitionUpdate pu, OffsetPosition offsetPosition, KeyspaceTable keyspaceTable) {
         KeyValueSchema keyValueSchema = schemaHolder.getKeyValueSchema(keyspaceTable);
@@ -378,7 +349,7 @@ public class Cassandra4CommitLogReadHandlerImpl implements CommitLogReadHandler 
         populatePartitionColumns(after, pu);
 
         // For partition deletions, the PartitionUpdate only specifies the partition key, it does not
-        // contains any info on regular (non-partition) columns, as if they were not modified. In order
+        // contain any info on regular (non-partition) columns, as if they were not modified. In order
         // to differentiate deleted columns from unmodified columns, we populate the deleted columns
         // with null value and timestamps
 
@@ -414,16 +385,16 @@ public class Cassandra4CommitLogReadHandlerImpl implements CommitLogReadHandler 
      * Handle a valid event resulted from a row-level modification by converting Cassandra representation of
      * this event into a {@link Record} object and queue the record to {@link ChangeEventQueue}. A valid event
      * implies this must be an insert, update, or delete.
-     * <p>
+     *
      * The steps are:
-     * (1) Populate the "source" field for this event
-     * (2) Fetch the cached key/value schemas from {@link SchemaHolder}
-     * (3) Populate the "after" field for this event
-     * a. populate partition columns
-     * b. populate clustering columns
-     * c. populate regular columns
-     * d. for deletions, populate regular columns with null values
-     * (4) Assemble a {@link Record} object from the populated data and queue the record
+     *      (1) Populate the "source" field for this event
+     *      (2) Fetch the cached key/value schemas from {@link SchemaHolder}
+     *      (3) Populate the "after" field for this event
+     *          a. populate partition columns
+     *          b. populate clustering columns
+     *          c. populate regular columns
+     *          d. for deletions, populate regular columns with null values
+     *      (4) Assemble a {@link Record} object from the populated data and queue the record
      */
     private void handleRowModifications(Row row, RowType rowType, PartitionUpdate pu, OffsetPosition offsetPosition, KeyspaceTable keyspaceTable) {
         KeyValueSchema keyValueSchema = schemaHolder.getKeyValueSchema(keyspaceTable);
@@ -486,12 +457,12 @@ public class Cassandra4CommitLogReadHandlerImpl implements CommitLogReadHandler 
             return;
         }
 
-        RowData after = context.getOrCreate(pu.metadata());
+        RowData after = rangeTombstoneContext.getOrCreate(pu.metadata());
 
         Optional.ofNullable(rangeTombstoneMarker.openBound(false)).ifPresent(cb -> after.addStart(cb.toString(pu.metadata())));
         Optional.ofNullable(rangeTombstoneMarker.closeBound(false)).ifPresent(cb -> after.addEnd(cb.toString(pu.metadata())));
 
-        if (RangeTombStoneContext.isComplete(after)) {
+        if (RangeTombstoneContext.isComplete(after)) {
             try {
                 populatePartitionColumns(after, pu);
                 long ts = rangeTombstoneMarker.deletionTime().markedForDeleteAt();
@@ -501,7 +472,7 @@ public class Cassandra4CommitLogReadHandlerImpl implements CommitLogReadHandler 
                         queues.get(Math.abs(offsetPosition.fileName.hashCode() % queues.size()))::enqueue);
             }
             finally {
-                context.remove(pu.metadata());
+                rangeTombstoneContext.remove(pu.metadata());
             }
         }
     }
