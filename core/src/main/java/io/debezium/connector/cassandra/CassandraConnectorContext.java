@@ -28,7 +28,8 @@ public class CassandraConnectorContext extends CdcSourceTaskContext {
     private KafkaProducer kafkaProducer;
     private SchemaHolder schemaHolder;
     private OffsetWriter offsetWriter;
-    private Set<String> erroneousCommitLogs;
+    // Create a HashSet to record names of CommitLog Files which are not successfully read or streamed.
+    private Set<String> erroneousCommitLogs = ConcurrentHashMap.newKeySet();
     private AbstractSchemaChangeListener schemaChangeListener;
 
     public CassandraConnectorContext(CassandraConnectorConfig config) {
@@ -44,9 +45,6 @@ public class CassandraConnectorContext extends CdcSourceTaskContext {
         this.config = config;
 
         try {
-            // Create a HashSet to record names of CommitLog Files which are not successfully read or streamed.
-            this.erroneousCommitLogs = ConcurrentHashMap.newKeySet();
-
             prepareQueues();
 
             // Loading up DDL schemas from disk
