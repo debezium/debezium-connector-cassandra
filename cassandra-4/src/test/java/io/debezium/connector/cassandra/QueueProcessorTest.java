@@ -19,20 +19,16 @@ import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
 import java.io.File;
-import java.nio.ByteBuffer;
 
-import org.apache.cassandra.db.marshal.AbstractType;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.base.ChangeEventQueue;
-import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;
-import io.debezium.connector.cassandra.transforms.DebeziumTypeDeserializer;
 import io.debezium.time.Conversions;
 
-public class QueueProcessorTest {
+public class QueueProcessorTest extends EmbeddedCassandra4ConnectorTestBase {
     private CassandraConnectorContext context;
     private QueueProcessor queueProcessor;
     private TestingKafkaRecordEmitter emitter;
@@ -145,17 +141,5 @@ public class QueueProcessorTest {
         queueProcessor.process();
         assertEquals(0, emitter.records.size());
         assertEquals(queue.totalCapacity(), queue.remainingCapacity());
-    }
-
-    private CassandraConnectorContext generateTaskContext(Configuration configuration) throws Exception {
-
-        CassandraTypeDeserializer.init(new DebeziumTypeDeserializer() {
-            @Override
-            public Object deserialize(AbstractType abstractType, ByteBuffer bb) {
-                return abstractType.getSerializer().deserialize(bb);
-            }
-        });
-
-        return new CassandraConnectorContext(new CassandraConnectorConfig(configuration));
     }
 }
