@@ -91,9 +91,6 @@ public class CassandraConnectorConfigTest {
         config = buildTaskConfig(CassandraConnectorConfig.FIELD_EXCLUDE_LIST.name(), fieldExcludeList);
         assertEquals(fieldExcludeListExpected, config.fieldExcludeList());
 
-        config = buildTaskConfig(CassandraConnectorConfig.FIELD_BLACKLIST.name(), fieldExcludeList);
-        assertEquals(fieldExcludeListExpected, config.fieldExcludeList());
-
         config = buildTaskConfig(CassandraConnectorConfig.TOMBSTONES_ON_DELETE.name(), "true");
         assertTrue(config.tombstonesOnDelete());
 

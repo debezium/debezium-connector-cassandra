@@ -240,18 +240,6 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
             .withDescription("Path to Cassandra driver configuration file");
 
     /**
-     * Old, backwards-compatible "blacklist" property.
-     */
-    @Deprecated
-    public static final Field FIELD_BLACKLIST = Field.create("field.blacklist")
-            .withDisplayName("Deprecated: Exclude Fields")
-            .withType(Type.STRING)
-            .withWidth(Width.LONG)
-            .withImportance(Importance.LOW)
-            .withInvisibleRecommender()
-            .withDescription("Regular expressions matching fields to include in change events (deprecated, use \"" + FIELD_EXCLUDE_LIST.name() + "\" instead)");
-
-    /**
      * Instead of parsing commit logs from CDC directory, this will look for the commit log with the
      * latest modified timestamp in the commit log directory and attempt to process this file only.
      * Only used for Testing!
@@ -421,7 +409,7 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
     }
 
     public List<String> fieldExcludeList() {
-        String fieldExcludeList = this.getConfig().getFallbackStringProperty(FIELD_EXCLUDE_LIST, FIELD_BLACKLIST);
+        String fieldExcludeList = this.getConfig().getString(FIELD_EXCLUDE_LIST);
         if (fieldExcludeList == null) {
             return Collections.emptyList();
         }
