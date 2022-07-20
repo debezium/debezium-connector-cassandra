@@ -12,11 +12,14 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.WatchEvent;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
@@ -55,6 +58,9 @@ public class Cassandra4CommitLogProcessor extends AbstractProcessor {
     private final boolean errorCommitLogReprocessEnabled;
     private final CommitLogTransfer commitLogTransfer;
     private final ExecutorService executorService;
+    private static final Map<Long, Integer> segmentToOffset = new HashMap<>();
+    public static final String ARCHIVE_FOLDER = "archive";
+    public static final String ERROR_FOLDER = "error";
 
     public Cassandra4CommitLogProcessor(CassandraConnectorContext context) {
         super(NAME, Duration.ZERO);
@@ -205,6 +211,7 @@ public class Cassandra4CommitLogProcessor extends AbstractProcessor {
         private final CommitLogTransfer commitLogTransfer;
         private final Set<String> erroneousCommitLogs;
         private boolean completePrematurely = false;
+        private String commitLogRelocationDirectory;
 
         public CommitLogProcessingCallable(final LogicalCommitLog commitLog,
                                            final List<ChangeEventQueue<Event>> queues,
@@ -224,6 +231,7 @@ public class Cassandra4CommitLogProcessor extends AbstractProcessor {
                             context.getCassandraConnectorConfig()),
                     metrics);
 
+            this.commitLogRelocationDirectory = context.getCassandraConnectorConfig().commitLogRelocationDir();
             commitLogTransfer = context.getCassandraConnectorConfig().getCommitLogTransfer();
             erroneousCommitLogs = context.getErroneousCommitLogs();
         }
@@ -246,38 +254,67 @@ public class Cassandra4CommitLogProcessor extends AbstractProcessor {
 
             try {
                 parseIndexFile();
-
                 while (!commitLog.completed) {
+                    LOGGER.info("Polling for completeness of idx file for: {}", commitLog.toString());
                     if (completePrematurely) {
                         LOGGER.info("{} completed prematurely", commitLog.toString());
                         return new ProcessingResult(commitLog, ProcessingResult.Result.COMPLETED_PREMATURELY);
                     }
-                    // TODO make this configurable maybe
+
+                    CommitLogPosition commitLogPosition = null;
+                    if ((segmentToOffset.get(commitLog.commitLogSegmentId) == null)) {
+                        LOGGER.info("Start to read the partial file : {}", commitLog.toString());
+                        commitLogPosition = new CommitLogPosition(commitLog.commitLogSegmentId, 0);
+                    }
+                    else if (segmentToOffset.get(commitLog.commitLogSegmentId) < commitLog.offsetOfEndOfLastWrittenCDCMutation) {
+                        LOGGER.info("Resume to read the partial file : {}", commitLog.toString());
+                        commitLogPosition = new CommitLogPosition(commitLog.commitLogSegmentId, segmentToOffset.get(commitLog.commitLogSegmentId));
+                    }
+                    else {
+                        LOGGER.info("No movement in HWM in IDX file: {}", commitLog.toString());
+                    }
+
+                    if (commitLogPosition != null) {
+                        processCommitLog(commitLog, commitLogPosition);
+                        segmentToOffset.put(commitLog.commitLogSegmentId, commitLog.offsetOfEndOfLastWrittenCDCMutation);
+                    }
+
+                    LOGGER.info("Sleep for idx file to be complete");
+                    // TODO: Make it configurable
                     Thread.sleep(10000);
                     parseIndexFile();
                 }
 
-                LOGGER.info(commitLog.toString());
+                LOGGER.info("IDX file is completed for: {}", commitLog.toString());
+                CommitLogPosition commitLogPosition;
+                if (segmentToOffset.containsKey(commitLog.commitLogSegmentId)) {
+                    commitLogPosition = new CommitLogPosition(commitLog.commitLogSegmentId, segmentToOffset.get(commitLog.commitLogSegmentId));
+                }
+                else {
+                    commitLogPosition = new CommitLogPosition(commitLog.commitLogSegmentId, 0);
+                }
+
+                processCommitLog(commitLog, commitLogPosition);
+                segmentToOffset.remove(commitLog.commitLogSegmentId);
+                moveCommitLog();
+                return new ProcessingResult(commitLog);
             }
             catch (final Exception ex) {
-                LOGGER.error("Processing of {} errored out", commitLog.toString());
+                LOGGER.error("Processing of {} errorred out", commitLog.toString(), ex);
                 return new ProcessingResult(commitLog, ProcessingResult.Result.ERROR, ex);
             }
+        }
 
-            ProcessingResult result;
-
-            // process commit log from start to the end as it is completed at this point
-            try {
-                processCommitLog(commitLog, new CommitLogPosition(commitLog.commitLogSegmentId, 0));
-                result = new ProcessingResult(commitLog);
+        private void moveCommitLog() {
+            if (erroneousCommitLogs.contains(commitLog)) {
+                Path relocationDir = Paths.get(commitLogRelocationDirectory, ERROR_FOLDER);
+                CommitLogUtil.moveCommitLog(commitLog.log.toPath(), relocationDir);
             }
-            catch (final Exception ex) {
-                result = new ProcessingResult(commitLog, ProcessingResult.Result.ERROR, ex);
+            else {
+                LOGGER.info("Successfully processed: {}, will move to archive folder", commitLog.toString());
+                Path relocationDir = Paths.get(commitLogRelocationDirectory, ARCHIVE_FOLDER);
+                CommitLogUtil.moveCommitLog(commitLog.log.toPath(), relocationDir);
             }
-
-            LOGGER.info("{}", result);
-
-            return result;
         }
 
         @Override
@@ -291,7 +328,6 @@ public class Cassandra4CommitLogProcessor extends AbstractProcessor {
             try {
                 try {
                     commitLogReader.readCommitLogSegment(commitLogReadHandler, logicalCommitLog.log, position, false);
-                    queues.get(Math.abs(logicalCommitLog.log.getName().hashCode() % queues.size())).enqueue(new EOFEvent(logicalCommitLog.log));
                 }
                 catch (Exception e) {
                     if (commitLogTransfer.getClass().getName().equals(CassandraConnectorConfig.DEFAULT_COMMIT_LOG_TRANSFER_CLASS)) {
