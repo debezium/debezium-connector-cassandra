@@ -9,7 +9,10 @@ import io.debezium.schema.TopicSelector;
 
 /**
  * Responsible for selecting the Kafka topic that the record will get send to.
+ *
+ * @deprecated Use {@link io.debezium.schema.SchemaTopicNamingStrategy} instead.
  */
+@Deprecated
 public class CassandraTopicSelector {
     public static TopicSelector<KeyspaceTable> defaultSelector(String prefix, String heartbeatPrefix) {
         return TopicSelector.defaultSelector(prefix, heartbeatPrefix, ".",
