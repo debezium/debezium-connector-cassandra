@@ -151,6 +151,19 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
             .withDescription("Determines whether or not the CommitLogProcessor should re-process error commitLogFiles.");
 
     /**
+     * Only valid for Cassandra4 and if enabled, commit logs would be read incrementally instead of reading complete log file
+     */
+    public static final boolean DEFAULT_COMMIT_LOG_REAL_TIME_PROCESSING_ENABLED = false;
+    public static final Field COMMIT_LOG_REAL_TIME_PROCESSING_ENABLED = Field.create("commit.log.real.time.processing.enabled")
+            .withType(Type.BOOLEAN)
+            .withDefault(DEFAULT_COMMIT_LOG_REAL_TIME_PROCESSING_ENABLED)
+            .withDescription("Enables the near real time processing of commit logs for Cassandra4 by reading commit log files incrementally");
+
+    public boolean isCommitLogRealTimeProcessingEnabled() {
+        return this.getConfig().getBoolean(COMMIT_LOG_REAL_TIME_PROCESSING_ENABLED);
+    }
+
+    /**
      * The fully qualified {@link CommitLogTransfer} class used to transfer commit logs.
      * The default option will delete all commit log files after processing (successful or otherwise).
      * You can extend a custom implementation.
