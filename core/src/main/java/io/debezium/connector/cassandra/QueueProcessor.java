@@ -7,6 +7,8 @@ package io.debezium.connector.cassandra;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.List;
 import java.util.Set;
@@ -113,6 +115,15 @@ public class QueueProcessor extends AbstractProcessor {
             case TOMBSTONE_EVENT:
                 TombstoneRecord tombstoneRecord = (TombstoneRecord) event;
                 kafkaRecordEmitter.emit(tombstoneRecord);
+                break;
+            case EOF_EVENT:
+                EOFEvent eofEvent = (EOFEvent) event;
+                Path commitLog = Paths.get(eofEvent.file.getAbsolutePath());
+                String commitLogFileName = commitLog.getFileName().toString();
+                LOGGER.info("Encountered EOF event for {} ...", commitLogFileName);
+                String folder = erroneousCommitLogs.contains(commitLogFileName) ? ERROR_FOLDER : ARCHIVE_FOLDER;
+                Path relocationDir = Paths.get(commitLogRelocationDir, folder);
+                CommitLogUtil.moveCommitLog(commitLog, relocationDir);
                 break;
             default:
                 LOGGER.warn("Encountered unexpected record with type: {}", event.getEventType());

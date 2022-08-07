@@ -17,13 +17,13 @@ public class Cassandra4CommitLogBatchParser extends Cassandra4CommitLogParserBas
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Cassandra4CommitLogBatchParser.class);
 
-    public Cassandra4CommitLogBatchParser(List<ChangeEventQueue<Event>> queues,
+    public Cassandra4CommitLogBatchParser(Cassandra4CommitLogProcessor.LogicalCommitLog commitLog, List<ChangeEventQueue<Event>> queues,
                                           CommitLogProcessorMetrics metrics, CassandraConnectorContext context) {
-        super(queues, metrics, context);
+        super(commitLog, queues, metrics, context);
     }
 
     @Override
-    public Cassandra4CommitLogProcessor.ProcessingResult parse(Cassandra4CommitLogProcessor.LogicalCommitLog commitLog) {
+    public Cassandra4CommitLogProcessor.ProcessingResult parse() {
         if (!commitLog.exists()) {
             LOGGER.warn("Commit log " + commitLog + " does not exist!");
             return new Cassandra4CommitLogProcessor.ProcessingResult(commitLog, Cassandra4CommitLogProcessor.ProcessingResult.Result.DOES_NOT_EXIST);
@@ -67,7 +67,6 @@ public class Cassandra4CommitLogBatchParser extends Cassandra4CommitLogParserBas
         }
 
         LOGGER.info("Processing result: {}", result);
-        markAndMoveCommitLog(commitLog);
         return result;
     }
 }

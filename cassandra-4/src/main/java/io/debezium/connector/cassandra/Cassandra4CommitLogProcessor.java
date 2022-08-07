@@ -17,9 +17,15 @@ import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.commitlog.CommitLogPosition;
+import org.apache.commons.math3.util.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,7 +51,8 @@ public class Cassandra4CommitLogProcessor extends AbstractProcessor {
     private boolean initial = true;
     private final boolean errorCommitLogReprocessEnabled;
     private final CommitLogTransfer commitLogTransfer;
-    private final Cassandra4CommitLogParserBase cassandra4CommitLogParserBase;
+    private final ExecutorService executorService;
+    final static Set<Pair<Cassandra4CommitLogParserBase, Future<ProcessingResult>>> submittedProcessings = ConcurrentHashMap.newKeySet();
 
     public Cassandra4CommitLogProcessor(CassandraConnectorContext context) {
         super(NAME, Duration.ZERO);
@@ -54,13 +61,7 @@ public class Cassandra4CommitLogProcessor extends AbstractProcessor {
         commitLogTransfer = this.context.getCassandraConnectorConfig().getCommitLogTransfer();
         errorCommitLogReprocessEnabled = this.context.getCassandraConnectorConfig().errorCommitLogReprocessEnabled();
         cdcDir = new File(DatabaseDescriptor.getCDCLogLocation());
-
-        if (context.getCassandraConnectorConfig().isCommitLogRealTimeProcessingEnabled()) {
-            cassandra4CommitLogParserBase = new Cassandra4CommitLogNearRealTimeParser(queues, metrics, this.context);
-        }
-        else {
-            cassandra4CommitLogParserBase = new Cassandra4CommitLogBatchParser(queues, metrics, this.context);
-        }
+        executorService = Executors.newSingleThreadExecutor();
     }
 
     @Override
@@ -75,17 +76,41 @@ public class Cassandra4CommitLogProcessor extends AbstractProcessor {
 
     @Override
     public void stop() {
-        cassandra4CommitLogParserBase.stop();
+        try {
+            executorService.shutdown();
+            for (final Pair<Cassandra4CommitLogParserBase, Future<ProcessingResult>> submittedProcessing : submittedProcessings) {
+                try {
+                    submittedProcessing.getFirst().complete();
+                    submittedProcessing.getSecond().get();
+                }
+                catch (final Exception ex) {
+                    LOGGER.warn("Waiting for submitted task to finish has failed.");
+                }
+            }
+        }
+        catch (final Exception ex) {
+            throw new RuntimeException("Unable to close executor service in CommitLogProcessor in a timely manner");
+        }
         super.stop();
     }
 
     private void submit(Path index) {
-        cassandra4CommitLogParserBase.process(new LogicalCommitLog(index.toFile()));
+        final Cassandra4CommitLogParserBase cassandra4CommitLogParserBase;
+
+        if (context.getCassandraConnectorConfig().isCommitLogRealTimeProcessingEnabled()) {
+            cassandra4CommitLogParserBase = new Cassandra4CommitLogNearRealTimeParser(new LogicalCommitLog(index.toFile()), queues, metrics, this.context);
+        }
+        else {
+            cassandra4CommitLogParserBase = new Cassandra4CommitLogBatchParser(new LogicalCommitLog(index.toFile()), queues, metrics, this.context);
+        }
+
+        Future<ProcessingResult> future = executorService.submit(() -> cassandra4CommitLogParserBase.process());
+        submittedProcessings.add(new Pair<>(cassandra4CommitLogParserBase, future));
     }
 
     @Override
     public boolean isRunning() {
-        return super.isRunning() && cassandra4CommitLogParserBase.isRunning();
+        return super.isRunning() && !executorService.isShutdown() && !executorService.isTerminated();
     }
 
     @Override
