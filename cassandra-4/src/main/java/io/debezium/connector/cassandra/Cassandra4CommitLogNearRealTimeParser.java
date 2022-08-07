@@ -24,15 +24,6 @@ public class Cassandra4CommitLogNearRealTimeParser extends Cassandra4CommitLogPa
 
     @Override
     public Cassandra4CommitLogProcessor.ProcessingResult parse() {
-        if (!commitLog.exists()) {
-            LOGGER.warn("Commit log " + commitLog + " does not exist!");
-            return new Cassandra4CommitLogProcessor.ProcessingResult(commitLog, Cassandra4CommitLogProcessor.ProcessingResult.Result.DOES_NOT_EXIST);
-        }
-
-        LOGGER.info("Processing commit log {}", commitLog.log.toString());
-        metrics.setCommitLogFilename(commitLog.log.toString());
-        metrics.setCommitLogPosition(0);
-
         try {
             parseIndexFile(commitLog);
             while (!commitLog.completed) {

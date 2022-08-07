@@ -24,17 +24,6 @@ public class Cassandra4CommitLogBatchParser extends Cassandra4CommitLogParserBas
 
     @Override
     public Cassandra4CommitLogProcessor.ProcessingResult parse() {
-        if (!commitLog.exists()) {
-            LOGGER.warn("Commit log " + commitLog + " does not exist!");
-            return new Cassandra4CommitLogProcessor.ProcessingResult(commitLog, Cassandra4CommitLogProcessor.ProcessingResult.Result.DOES_NOT_EXIST);
-        }
-
-        LOGGER.info("Processing commit log {}", commitLog.log.toString());
-
-        CommitLogPosition position = new CommitLogPosition(commitLog.commitLogSegmentId, 0);
-        metrics.setCommitLogFilename(commitLog.log.toString());
-        metrics.setCommitLogPosition(position.position);
-
         try {
             parseIndexFile(commitLog);
 

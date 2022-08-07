@@ -59,6 +59,15 @@ public abstract class Cassandra4CommitLogParserBase {
     public abstract Cassandra4CommitLogProcessor.ProcessingResult parse();
 
     public Cassandra4CommitLogProcessor.ProcessingResult process() {
+        if (!commitLog.exists()) {
+            LOGGER.warn("Commit log " + commitLog + " does not exist!");
+            return new Cassandra4CommitLogProcessor.ProcessingResult(commitLog, Cassandra4CommitLogProcessor.ProcessingResult.Result.DOES_NOT_EXIST);
+        }
+
+        LOGGER.info("Processing commit log {}", commitLog.log.toString());
+        metrics.setCommitLogFilename(commitLog.log.toString());
+        metrics.setCommitLogPosition(0);
+
         Cassandra4CommitLogProcessor.ProcessingResult result = parse();
         enqueueEOFEvent();
         Cassandra4CommitLogProcessor.submittedProcessings.remove(this);
