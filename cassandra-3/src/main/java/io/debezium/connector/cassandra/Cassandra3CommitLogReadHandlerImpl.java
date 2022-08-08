@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
@@ -229,6 +230,14 @@ public class Cassandra3CommitLogReadHandlerImpl implements CommitLogReadHandler 
     @Override
     public void handleMutation(Mutation mutation, int size, int entryLocation, CommitLogDescriptor descriptor) {
         if (!mutation.trackedByCDC()) {
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("not tracked by cdc {}.{{}}",
+                        mutation.getKeyspaceName(),
+                        mutation.getPartitionUpdates()
+                                .stream()
+                                .map(pa -> pa.metadata().cfName)
+                                .collect(Collectors.toSet()));
+            }
             return;
         }
 
@@ -399,7 +408,7 @@ public class Cassandra3CommitLogReadHandlerImpl implements CommitLogReadHandler 
     private void handleRowModifications(Row row, RowType rowType, PartitionUpdate pu, OffsetPosition offsetPosition, KeyspaceTable keyspaceTable) {
         KeyValueSchema keyValueSchema = schemaHolder.getKeyValueSchema(keyspaceTable);
         if (keyValueSchema == null) {
-            LOGGER.warn("Unable to get KeyValueSchema for table {}. It might have been deleted or CDC disabled.", keyspaceTable.toString());
+            LOGGER.trace("Unable to get KeyValueSchema for table {}. It might have been deleted or CDC disabled.", keyspaceTable.toString());
             return;
         }
         Schema keySchema = keyValueSchema.keySchema();
