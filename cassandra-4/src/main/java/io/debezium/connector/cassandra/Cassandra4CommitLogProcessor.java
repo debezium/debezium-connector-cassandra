@@ -96,6 +96,13 @@ public class Cassandra4CommitLogProcessor extends AbstractProcessor {
         super.stop();
     }
 
+    protected synchronized static void removeProcessing(CommitLogProcessingCallable callable) {
+        submittedProcessings.stream()
+                .filter(p -> p.getFirst() == callable)
+                .findFirst()
+                .map(submittedProcessings::remove);
+    }
+
     final static Set<Pair<CommitLogProcessingCallable, Future<ProcessingResult>>> submittedProcessings = ConcurrentHashMap.newKeySet();
 
     private void submit(Path index) {
@@ -106,6 +113,7 @@ public class Cassandra4CommitLogProcessor extends AbstractProcessor {
 
         Future<ProcessingResult> future = executorService.submit(callable);
         submittedProcessings.add(new Pair<>(callable, future));
+        LOGGER.debug("Processing {} callables.", submittedProcessings.size());
     }
 
     @Override
@@ -115,8 +123,6 @@ public class Cassandra4CommitLogProcessor extends AbstractProcessor {
 
     @Override
     public void process() throws IOException, InterruptedException {
-        LOGGER.debug("Processing commitLogFiles while initial is {}", initial);
-
         if (watcher == null) {
             watcher = new AbstractDirectoryWatcher(cdcDir.toPath(),
                     this.context.getCassandraConnectorConfig().cdcDirPollInterval(),
@@ -249,7 +255,7 @@ public class Cassandra4CommitLogProcessor extends AbstractProcessor {
 
                 while (!commitLog.completed) {
                     if (completePrematurely) {
-                        LOGGER.info("{} completed prematurely", commitLog.toString());
+                        LOGGER.info("{} completed prematurely", commitLog);
                         return new ProcessingResult(commitLog, ProcessingResult.Result.COMPLETED_PREMATURELY);
                     }
                     // TODO make this configurable maybe
@@ -260,7 +266,7 @@ public class Cassandra4CommitLogProcessor extends AbstractProcessor {
                 LOGGER.info(commitLog.toString());
             }
             catch (final Exception ex) {
-                LOGGER.error("Processing of {} errored out", commitLog.toString());
+                LOGGER.error("Processing of {} errored out", commitLog);
                 return new ProcessingResult(commitLog, ProcessingResult.Result.ERROR, ex);
             }
 
@@ -283,14 +289,17 @@ public class Cassandra4CommitLogProcessor extends AbstractProcessor {
         @Override
         public ProcessingResult call() {
             ProcessingResult result = callInternal();
-            Cassandra4CommitLogProcessor.submittedProcessings.remove(this);
+            Cassandra4CommitLogProcessor.removeProcessing(CommitLogProcessingCallable.this);
+            LOGGER.debug("Processing {} callables.", submittedProcessings.size());
             return result;
         }
 
         private void processCommitLog(LogicalCommitLog logicalCommitLog, CommitLogPosition position) {
             try {
                 try {
+                    LOGGER.debug("starting to read commit log segments {} on position {}", logicalCommitLog, position);
                     commitLogReader.readCommitLogSegment(commitLogReadHandler, logicalCommitLog.log, position, false);
+                    LOGGER.debug("finished reading commit log segments {} on position {}", logicalCommitLog, position);
                     queues.get(Math.abs(logicalCommitLog.log.getName().hashCode() % queues.size())).enqueue(new EOFEvent(logicalCommitLog.log));
                 }
                 catch (Exception e) {
