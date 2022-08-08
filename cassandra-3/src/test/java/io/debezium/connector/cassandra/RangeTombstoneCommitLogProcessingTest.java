@@ -12,6 +12,7 @@ import static io.debezium.connector.cassandra.Event.EventType.CHANGE_EVENT;
 import static io.debezium.connector.cassandra.Record.Operation.INSERT;
 import static io.debezium.connector.cassandra.Record.Operation.RANGE_TOMBSTONE;
 import static io.debezium.connector.cassandra.TestUtils.TEST_KEYSPACE_NAME;
+import static io.debezium.connector.cassandra.TestUtils.TEST_TABLE_NAME;
 import static io.debezium.connector.cassandra.TestUtils.runCql;
 import static org.junit.Assert.assertEquals;
 
@@ -20,11 +21,11 @@ import java.util.List;
 public class RangeTombstoneCommitLogProcessingTest extends AbstractCommitLogProcessorTest {
 
     @Override
-    public void initialiseData() {
+    public void initialiseData() throws Exception {
         createTable("CREATE TABLE IF NOT EXISTS %s.%s (a int, b int, c int, d int, e int, PRIMARY KEY (a,b,c,d)) WITH cdc = true;");
 
         // INSERT INTO test_keyspace.table_name (a, b, c, d, e) VALUES (1, 1, 1, 1, 1);
-        runCql(insertInto(TEST_KEYSPACE_NAME, tableName)
+        runCql(insertInto(TEST_KEYSPACE_NAME, TEST_TABLE_NAME)
                 .value("a", literal(1))
                 .value("b", literal(1))
                 .value("c", literal(1))
@@ -33,7 +34,7 @@ public class RangeTombstoneCommitLogProcessingTest extends AbstractCommitLogProc
                 .build());
 
         // INSERT INTO test_keyspace.table_name (a, b, c, d, e) VALUES (1, 1, 2, 3, 2);
-        runCql(insertInto(TEST_KEYSPACE_NAME, tableName)
+        runCql(insertInto(TEST_KEYSPACE_NAME, TEST_TABLE_NAME)
                 .value("a", literal(1))
                 .value("b", literal(1))
                 .value("c", literal(2))
@@ -42,7 +43,7 @@ public class RangeTombstoneCommitLogProcessingTest extends AbstractCommitLogProc
                 .build());
 
         // "DELETE FROM ks.tb WHERE a = 1 AND b = 1 AND c <= 2";
-        runCql(deleteFrom(TEST_KEYSPACE_NAME, tableName)
+        runCql(deleteFrom(TEST_KEYSPACE_NAME, TEST_TABLE_NAME)
                 .whereColumn("a").isEqualTo(literal(1))
                 .whereColumn("b").isEqualTo(literal(1))
                 .whereColumn("c").isLessThanOrEqualTo(literal(2))

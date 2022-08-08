@@ -6,6 +6,7 @@
 package io.debezium.connector.cassandra;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -62,10 +63,17 @@ public class Cassandra4SchemaChangeListener extends AbstractSchemaChangeListener
     @Override
     public void onKeyspaceCreated(final KeyspaceMetadata keyspaceMetadata) {
         try {
-            Schema.instance.load(org.apache.cassandra.schema.KeyspaceMetadata.create(
+            org.apache.cassandra.schema.KeyspaceMetadata existingKMD = Schema.instance.getKeyspaceMetadata(keyspaceMetadata.getName().asInternal());
+            if (existingKMD != null) {
+                return;
+            }
+
+            org.apache.cassandra.schema.KeyspaceMetadata newKMD = org.apache.cassandra.schema.KeyspaceMetadata.create(
                     keyspaceMetadata.getName().toString(),
                     KeyspaceParams.create(keyspaceMetadata.isDurableWrites(),
-                            keyspaceMetadata.getReplication())));
+                            keyspaceMetadata.getReplication()));
+
+            Schema.instance.load(newKMD);
             Keyspace.openWithoutSSTables(keyspaceMetadata.getName().toString());
             LOGGER.info("Added keyspace [{}] to schema instance.", keyspaceMetadata.describe(true));
         }
@@ -78,7 +86,7 @@ public class Cassandra4SchemaChangeListener extends AbstractSchemaChangeListener
     public void onKeyspaceUpdated(final KeyspaceMetadata current, final KeyspaceMetadata previous) {
         try {
             Schema.instance.load(org.apache.cassandra.schema.KeyspaceMetadata.create(
-                    current.getName().toString(),
+                    current.getName().asInternal(),
                     KeyspaceParams.create(current.isDurableWrites(),
                             current.getReplication())));
             LOGGER.info("Updated keyspace [{}] in schema instance.", current.describe(true));
@@ -91,6 +99,9 @@ public class Cassandra4SchemaChangeListener extends AbstractSchemaChangeListener
     @Override
     public void onKeyspaceDropped(final KeyspaceMetadata keyspaceMetadata) {
         try {
+            for (Map.Entry<CqlIdentifier, com.datastax.oss.driver.api.core.metadata.schema.TableMetadata> entries : keyspaceMetadata.getTables().entrySet()) {
+                onTableDropped(entries.getValue());
+            }
             Schema.instance.removeKeyspaceInstance(keyspaceMetadata.getName().toString());
             LOGGER.info("Removed keyspace [{}] from schema instance.", keyspaceMetadata.describe(true));
         }

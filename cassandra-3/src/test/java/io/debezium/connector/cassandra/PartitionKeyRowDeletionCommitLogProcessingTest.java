@@ -12,6 +12,7 @@ import static io.debezium.connector.cassandra.Event.EventType.CHANGE_EVENT;
 import static io.debezium.connector.cassandra.Record.Operation.DELETE;
 import static io.debezium.connector.cassandra.Record.Operation.INSERT;
 import static io.debezium.connector.cassandra.TestUtils.TEST_KEYSPACE_NAME;
+import static io.debezium.connector.cassandra.TestUtils.TEST_TABLE_NAME;
 import static io.debezium.connector.cassandra.TestUtils.runCql;
 import static org.junit.Assert.assertEquals;
 
@@ -20,15 +21,15 @@ import java.util.List;
 public class PartitionKeyRowDeletionCommitLogProcessingTest extends AbstractCommitLogProcessorTest {
 
     @Override
-    public void initialiseData() {
+    public void initialiseData() throws Exception {
         createTable("CREATE TABLE IF NOT EXISTS %s.%s (a int, b int, PRIMARY KEY(a)) WITH cdc = true;");
 
-        runCql(insertInto(TEST_KEYSPACE_NAME, tableName)
+        runCql(insertInto(TEST_KEYSPACE_NAME, TEST_TABLE_NAME)
                 .value("a", literal(1))
                 .value("b", literal(1))
                 .build());
 
-        runCql(deleteFrom(TEST_KEYSPACE_NAME, tableName).whereColumn("a").isEqualTo(literal(1)).build());
+        runCql(deleteFrom(TEST_KEYSPACE_NAME, TEST_TABLE_NAME).whereColumn("a").isEqualTo(literal(1)).build());
     }
 
     @Override

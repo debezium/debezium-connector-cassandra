@@ -21,4 +21,9 @@ public class EOFEvent implements Event {
     public EventType getEventType() {
         return EventType.EOF_EVENT;
     }
+
+    @Override
+    public String toString() {
+        return "EOFEvent{file=" + file + '}';
+    }
 }

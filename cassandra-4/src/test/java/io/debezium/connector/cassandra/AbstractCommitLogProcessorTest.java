@@ -6,6 +6,8 @@
 package io.debezium.connector.cassandra;
 
 import static io.debezium.connector.cassandra.TestUtils.TEST_KEYSPACE_NAME;
+import static io.debezium.connector.cassandra.TestUtils.TEST_TABLE_NAME;
+import static io.debezium.connector.cassandra.TestUtils.TEST_TABLE_NAME_2;
 import static io.debezium.connector.cassandra.TestUtils.deleteTestKeyspaceTables;
 import static io.debezium.connector.cassandra.TestUtils.deleteTestOffsets;
 import static io.debezium.connector.cassandra.TestUtils.runCql;
@@ -16,7 +18,6 @@ import static org.junit.Assert.assertFalse;
 
 import java.io.File;
 import java.util.List;
-import java.util.UUID;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.commitlog.CommitLogReader;
@@ -31,13 +32,11 @@ public abstract class AbstractCommitLogProcessorTest extends EmbeddedCassandra4C
     public CassandraConnectorContext context;
     public Cassandra4CommitLogProcessor commitLogProcessor;
 
-    protected String tableName = "table_" + UUID.randomUUID().toString().replace("-", "");
-
     @Before
     public void setUp() throws Exception {
         initialiseData();
         context = generateTaskContext();
-        await().forever().until(() -> context.getSchemaHolder().getKeyValueSchema(new KeyspaceTable(TEST_KEYSPACE_NAME, tableName)) != null);
+        await().forever().until(() -> context.getSchemaHolder().getKeyValueSchema(new KeyspaceTable(TEST_KEYSPACE_NAME, TEST_TABLE_NAME)) != null);
         commitLogProcessor = new Cassandra4CommitLogProcessor(context);
         commitLogProcessor.initialize();
         queue = context.getQueues().get(0);
@@ -61,8 +60,17 @@ public abstract class AbstractCommitLogProcessorTest extends EmbeddedCassandra4C
 
     public abstract void verifyEvents() throws Exception;
 
-    public void createTable(String query) {
-        runCql(format(query, TEST_KEYSPACE_NAME, tableName));
+    public void createTable(String query) throws Exception {
+        createTable(query, TEST_KEYSPACE_NAME, TEST_TABLE_NAME);
+    }
+
+    public void createTable2(String query) throws Exception {
+        createTable(query, TEST_KEYSPACE_NAME, TEST_TABLE_NAME_2);
+    }
+
+    public void createTable(String query, String keyspace, String tableName) throws Exception {
+        runCql(format(query, keyspace, tableName));
+        Thread.sleep(5000);
     }
 
     public List<Event> getEvents() throws Exception {

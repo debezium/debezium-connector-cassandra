@@ -6,6 +6,7 @@
 package io.debezium.connector.cassandra;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -16,7 +17,6 @@ import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.Directories;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.schema.KeyspaceParams;
-import org.apache.cassandra.schema.Tables;
 import org.apache.cassandra.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,10 +60,15 @@ public class Cassandra3SchemaChangeListener extends AbstractSchemaChangeListener
     @Override
     public void onKeyspaceCreated(final KeyspaceMetadata keyspaceMetadata) {
         try {
-            Schema.instance.setKeyspaceMetadata(org.apache.cassandra.schema.KeyspaceMetadata.create(
-                    keyspaceMetadata.getName().toString(),
-                    KeyspaceParams.create(keyspaceMetadata.isDurableWrites(),
-                            keyspaceMetadata.getReplication())));
+            org.apache.cassandra.schema.KeyspaceMetadata kmd = Schema.instance.getKSMetaData(keyspaceMetadata.getName().asInternal());
+            if (kmd == null) {
+                kmd = org.apache.cassandra.schema.KeyspaceMetadata.create(
+                        keyspaceMetadata.getName().toString(),
+                        KeyspaceParams.create(keyspaceMetadata.isDurableWrites(),
+                                keyspaceMetadata.getReplication()));
+            }
+
+            Schema.instance.setKeyspaceMetadata(kmd);
             Keyspace.openWithoutSSTables(keyspaceMetadata.getName().toString());
             LOGGER.info("Added keyspace [{}] to schema instance.", keyspaceMetadata.describe(true));
         }
@@ -86,10 +91,14 @@ public class Cassandra3SchemaChangeListener extends AbstractSchemaChangeListener
     @Override
     public void onKeyspaceDropped(final KeyspaceMetadata keyspaceMetadata) {
         try {
+            for (Map.Entry<CqlIdentifier, com.datastax.oss.driver.api.core.metadata.schema.TableMetadata> entries : keyspaceMetadata.getTables().entrySet()) {
+                onTableDropped(entries.getValue());
+            }
             Schema.instance.clearKeyspaceMetadata(org.apache.cassandra.schema.KeyspaceMetadata.create(
                     keyspaceMetadata.getName().toString(),
                     KeyspaceParams.create(keyspaceMetadata.isDurableWrites(),
                             keyspaceMetadata.getReplication())));
+            Schema.instance.removeKeyspaceInstance(keyspaceMetadata.getName().asInternal());
             LOGGER.info("Removed keyspace [{}] from schema instance.", keyspaceMetadata.describe(true));
         }
         catch (Exception e) {
@@ -132,7 +141,8 @@ public class Cassandra3SchemaChangeListener extends AbstractSchemaChangeListener
                 LOGGER.debug("Table {}.{} is already added!", tableMetadata.getKeyspace(), tableMetadata.getName());
                 return;
             }
-            org.apache.cassandra.schema.KeyspaceMetadata transformed = current.withSwapped(Tables.of(newCFMetaData));
+
+            org.apache.cassandra.schema.KeyspaceMetadata transformed = current.withSwapped(current.tables.with(newCFMetaData));
             Schema.instance.setKeyspaceMetadata(transformed);
             if (Schema.instance.hasCF(Pair.create(newCFMetaData.ksName, newCFMetaData.cfName))) {
                 Schema.instance.unload(newCFMetaData);
