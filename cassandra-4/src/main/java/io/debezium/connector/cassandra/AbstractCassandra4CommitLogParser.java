@@ -18,8 +18,8 @@ import io.debezium.DebeziumException;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorTaskException;
 
-public abstract class Cassandra4CommitLogParserBase {
-    private static final Logger LOGGER = LoggerFactory.getLogger(Cassandra4CommitLogParserBase.class);
+public abstract class AbstractCassandra4CommitLogParser {
+    private static final Logger LOGGER = LoggerFactory.getLogger(AbstractCassandra4CommitLogParser.class);
 
     private final CommitLogReader commitLogReader;
     protected final List<ChangeEventQueue<Event>> queues;
@@ -30,10 +30,11 @@ public abstract class Cassandra4CommitLogParserBase {
     private final Set<String> erroneousCommitLogs;
     protected boolean completePrematurely = false;
     protected Cassandra4CommitLogProcessor.LogicalCommitLog commitLog;
+    protected int pollingInterval;
 
-    public Cassandra4CommitLogParserBase(Cassandra4CommitLogProcessor.LogicalCommitLog commitLog, final List<ChangeEventQueue<Event>> queues,
-                                         final CommitLogProcessorMetrics metrics,
-                                         final CassandraConnectorContext context) {
+    public AbstractCassandra4CommitLogParser(Cassandra4CommitLogProcessor.LogicalCommitLog commitLog, final List<ChangeEventQueue<Event>> queues,
+                                             final CommitLogProcessorMetrics metrics,
+                                             final CassandraConnectorContext context) {
         this.commitLogReader = new CommitLogReader();
         this.queues = queues;
         this.metrics = metrics;
@@ -50,6 +51,7 @@ public abstract class Cassandra4CommitLogParserBase {
 
         this.commitLogTransfer = context.getCassandraConnectorConfig().getCommitLogTransfer();
         this.erroneousCommitLogs = context.getErroneousCommitLogs();
+        this.pollingInterval = context.getCassandraConnectorConfig().getCommitLogMarkedCompletePollInterval();
     }
 
     public void complete() {

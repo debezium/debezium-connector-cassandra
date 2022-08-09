@@ -52,7 +52,7 @@ public class Cassandra4CommitLogProcessor extends AbstractProcessor {
     private final boolean errorCommitLogReprocessEnabled;
     private final CommitLogTransfer commitLogTransfer;
     private final ExecutorService executorService;
-    final static Set<Pair<Cassandra4CommitLogParserBase, Future<ProcessingResult>>> submittedProcessings = ConcurrentHashMap.newKeySet();
+    final static Set<Pair<AbstractCassandra4CommitLogParser, Future<ProcessingResult>>> submittedProcessings = ConcurrentHashMap.newKeySet();
 
     public Cassandra4CommitLogProcessor(CassandraConnectorContext context) {
         super(NAME, Duration.ZERO);
@@ -78,7 +78,7 @@ public class Cassandra4CommitLogProcessor extends AbstractProcessor {
     public void stop() {
         try {
             executorService.shutdown();
-            for (final Pair<Cassandra4CommitLogParserBase, Future<ProcessingResult>> submittedProcessing : submittedProcessings) {
+            for (final Pair<AbstractCassandra4CommitLogParser, Future<ProcessingResult>> submittedProcessing : submittedProcessings) {
                 try {
                     submittedProcessing.getFirst().complete();
                     submittedProcessing.getSecond().get();
@@ -95,17 +95,17 @@ public class Cassandra4CommitLogProcessor extends AbstractProcessor {
     }
 
     private void submit(Path index) {
-        final Cassandra4CommitLogParserBase cassandra4CommitLogParserBase;
+        final AbstractCassandra4CommitLogParser parser;
 
         if (context.getCassandraConnectorConfig().isCommitLogRealTimeProcessingEnabled()) {
-            cassandra4CommitLogParserBase = new Cassandra4CommitLogNearRealTimeParser(new LogicalCommitLog(index.toFile()), queues, metrics, this.context);
+            parser = new Cassandra4CommitLogRealTimeParser(new LogicalCommitLog(index.toFile()), queues, metrics, this.context);
         }
         else {
-            cassandra4CommitLogParserBase = new Cassandra4CommitLogBatchParser(new LogicalCommitLog(index.toFile()), queues, metrics, this.context);
+            parser = new Cassandra4CommitLogBatchParser(new LogicalCommitLog(index.toFile()), queues, metrics, this.context);
         }
 
-        Future<ProcessingResult> future = executorService.submit(() -> cassandra4CommitLogParserBase.process());
-        submittedProcessings.add(new Pair<>(cassandra4CommitLogParserBase, future));
+        Future<ProcessingResult> future = executorService.submit(() -> parser.process());
+        submittedProcessings.add(new Pair<>(parser, future));
     }
 
     @Override

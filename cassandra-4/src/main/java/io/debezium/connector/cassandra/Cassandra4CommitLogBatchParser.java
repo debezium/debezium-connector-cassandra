@@ -5,6 +5,9 @@
  */
 package io.debezium.connector.cassandra;
 
+import static io.debezium.connector.cassandra.Cassandra4CommitLogProcessor.ProcessingResult.Result.COMPLETED_PREMATURELY;
+import static io.debezium.connector.cassandra.Cassandra4CommitLogProcessor.ProcessingResult.Result.ERROR;
+
 import java.util.List;
 
 import org.apache.cassandra.db.commitlog.CommitLogPosition;
@@ -13,7 +16,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.base.ChangeEventQueue;
 
-public class Cassandra4CommitLogBatchParser extends Cassandra4CommitLogParserBase {
+public class Cassandra4CommitLogBatchParser extends AbstractCassandra4CommitLogParser {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Cassandra4CommitLogBatchParser.class);
 
@@ -30,10 +33,9 @@ public class Cassandra4CommitLogBatchParser extends Cassandra4CommitLogParserBas
             while (!commitLog.completed) {
                 if (completePrematurely) {
                     LOGGER.info("{} completed prematurely", commitLog.toString());
-                    return new Cassandra4CommitLogProcessor.ProcessingResult(commitLog, Cassandra4CommitLogProcessor.ProcessingResult.Result.COMPLETED_PREMATURELY);
+                    return new Cassandra4CommitLogProcessor.ProcessingResult(commitLog, COMPLETED_PREMATURELY);
                 }
-                // TODO make this configurable maybe
-                Thread.sleep(10000);
+                Thread.sleep(pollingInterval);
                 parseIndexFile(commitLog);
             }
 
@@ -41,7 +43,7 @@ public class Cassandra4CommitLogBatchParser extends Cassandra4CommitLogParserBas
         }
         catch (final Exception ex) {
             LOGGER.error("Processing of {} errored out", commitLog.toString(), ex);
-            return new Cassandra4CommitLogProcessor.ProcessingResult(commitLog, Cassandra4CommitLogProcessor.ProcessingResult.Result.ERROR, ex);
+            return new Cassandra4CommitLogProcessor.ProcessingResult(commitLog, ERROR, ex);
         }
 
         Cassandra4CommitLogProcessor.ProcessingResult result;
@@ -52,7 +54,7 @@ public class Cassandra4CommitLogBatchParser extends Cassandra4CommitLogParserBas
             result = new Cassandra4CommitLogProcessor.ProcessingResult(commitLog);
         }
         catch (final Exception ex) {
-            result = new Cassandra4CommitLogProcessor.ProcessingResult(commitLog, Cassandra4CommitLogProcessor.ProcessingResult.Result.ERROR, ex);
+            result = new Cassandra4CommitLogProcessor.ProcessingResult(commitLog, ERROR, ex);
         }
 
         LOGGER.info("Processing result: {}", result);

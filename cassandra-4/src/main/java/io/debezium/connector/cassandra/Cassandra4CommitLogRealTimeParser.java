@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.cassandra;
 
+import static io.debezium.connector.cassandra.Cassandra4CommitLogProcessor.ProcessingResult.Result.ERROR;
+
 import java.util.List;
 
 import org.apache.cassandra.db.commitlog.CommitLogPosition;
@@ -13,12 +15,12 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.base.ChangeEventQueue;
 
-public class Cassandra4CommitLogNearRealTimeParser extends Cassandra4CommitLogParserBase {
-    private static final Logger LOGGER = LoggerFactory.getLogger(Cassandra4CommitLogNearRealTimeParser.class);
+public class Cassandra4CommitLogRealTimeParser extends AbstractCassandra4CommitLogParser {
+    private static final Logger LOGGER = LoggerFactory.getLogger(Cassandra4CommitLogRealTimeParser.class);
     private Integer offset = null;
 
-    public Cassandra4CommitLogNearRealTimeParser(Cassandra4CommitLogProcessor.LogicalCommitLog commitLog, List<ChangeEventQueue<Event>> queues,
-                                                 CommitLogProcessorMetrics metrics, CassandraConnectorContext context) {
+    public Cassandra4CommitLogRealTimeParser(Cassandra4CommitLogProcessor.LogicalCommitLog commitLog, List<ChangeEventQueue<Event>> queues,
+                                             CommitLogProcessorMetrics metrics, CassandraConnectorContext context) {
         super(commitLog, queues, metrics, context);
     }
 
@@ -53,8 +55,7 @@ public class Cassandra4CommitLogNearRealTimeParser extends Cassandra4CommitLogPa
                 }
 
                 LOGGER.info("Sleep for idx file to be complete");
-                // TODO: Make it configurable
-                Thread.sleep(10000);
+                Thread.sleep(pollingInterval);
                 parseIndexFile(commitLog);
             }
 
@@ -72,7 +73,7 @@ public class Cassandra4CommitLogNearRealTimeParser extends Cassandra4CommitLogPa
         }
         catch (final Exception ex) {
             LOGGER.error("Processing of {} errored out", commitLog.toString(), ex);
-            return new Cassandra4CommitLogProcessor.ProcessingResult(commitLog, Cassandra4CommitLogProcessor.ProcessingResult.Result.ERROR, ex);
+            return new Cassandra4CommitLogProcessor.ProcessingResult(commitLog, ERROR, ex);
         }
     }
 }
