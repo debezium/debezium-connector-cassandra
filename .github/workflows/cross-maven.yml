@@ -53,6 +53,7 @@ jobs:
         uses: actions/checkout@v2
         with:
           repository: debezium/debezium
+          ref: ${{ github.base_ref }}
           path: core
       - name: Cache Maven packages
         uses: actions/cache@v1
