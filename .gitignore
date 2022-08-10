@@ -28,3 +28,5 @@ generated-sources/
 
 /state/
 bin/
+cassandra-3/driver.log
+cassandra-4/driver.log
