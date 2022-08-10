@@ -27,19 +27,10 @@ The following table list supported version of Apache Cassandra:
 |--|---|
 | 1.9+ | Compatible with 3.x and 4.x version  |
 | Up to 1.8 | Compatible with only 3.x  |
-## Building the Cassandra connector
 
-The Cassandra connector can be built like so:
+## Building the Debezium Cassandra connector
 
-    $ mvn clean install
-
-### Building just the artifacts, without running tests, CheckStyle, etc.
-
-You can skip all non-essential plug-ins (tests, integration tests, CheckStyle, formatter, API compatibility check, etc.) using the "quick" build profile:
-
-    $ mvn clean verify -Dquick
-
-This provides the fastes way for solely producing the output artifacts, without running any of the QA related Maven plug-ins.
+Please follow the steps described in the main repository to build the connector: [building-debezium](https://github.com/debezium/debezium#building-debezium)
 
 ## Getting Started
 
