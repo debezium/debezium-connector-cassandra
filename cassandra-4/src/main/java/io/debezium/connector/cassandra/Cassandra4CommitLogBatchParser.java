@@ -32,17 +32,17 @@ public class Cassandra4CommitLogBatchParser extends AbstractCassandra4CommitLogP
 
             while (!commitLog.completed) {
                 if (completePrematurely) {
-                    LOGGER.info("{} completed prematurely", commitLog.toString());
+                    LOGGER.info("{} completed prematurely", commitLog);
                     return new Cassandra4CommitLogProcessor.ProcessingResult(commitLog, COMPLETED_PREMATURELY);
                 }
                 Thread.sleep(pollingInterval);
                 parseIndexFile(commitLog);
             }
 
-            LOGGER.info("Starting to read Commit log file: {} ", commitLog.toString());
+            LOGGER.info("Starting to read Commit log file: {} ", commitLog);
         }
         catch (final Exception ex) {
-            LOGGER.error("Processing of {} errored out", commitLog.toString(), ex);
+            LOGGER.error("Processing of {} errored out", commitLog, ex);
             return new Cassandra4CommitLogProcessor.ProcessingResult(commitLog, ERROR, ex);
         }
 

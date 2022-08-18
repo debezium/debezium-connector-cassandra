@@ -72,7 +72,8 @@ public abstract class AbstractCassandra4CommitLogParser {
 
         Cassandra4CommitLogProcessor.ProcessingResult result = parse();
         enqueueEOFEvent();
-        Cassandra4CommitLogProcessor.submittedProcessings.remove(this);
+        Cassandra4CommitLogProcessor.removeProcessing(this);
+        LOGGER.debug("Processing {} callables.", Cassandra4CommitLogProcessor.submittedProcessings.size());
         return result;
     }
 
@@ -88,7 +89,9 @@ public abstract class AbstractCassandra4CommitLogParser {
 
     protected void processCommitLog(Cassandra4CommitLogProcessor.LogicalCommitLog logicalCommitLog, CommitLogPosition position) {
         try {
+            LOGGER.debug("starting to read commit log segments {} on position {}", logicalCommitLog, position);
             commitLogReader.readCommitLogSegment(commitLogReadHandler, logicalCommitLog.log, position, false);
+            LOGGER.debug("finished reading commit log segments {} on position {}", logicalCommitLog, position);
         }
         catch (Exception e) {
             if (commitLogTransfer.getClass().getName().equals(CassandraConnectorConfig.DEFAULT_COMMIT_LOG_TRANSFER_CLASS)) {

@@ -94,6 +94,13 @@ public class Cassandra4CommitLogProcessor extends AbstractProcessor {
         super.stop();
     }
 
+    protected synchronized static void removeProcessing(AbstractCassandra4CommitLogParser parser) {
+        submittedProcessings.stream()
+                .filter(p -> p.getFirst() == parser)
+                .findFirst()
+                .map(submittedProcessings::remove);
+    }
+
     private void submit(Path index) {
         final AbstractCassandra4CommitLogParser parser;
 
@@ -106,6 +113,7 @@ public class Cassandra4CommitLogProcessor extends AbstractProcessor {
 
         Future<ProcessingResult> future = executorService.submit(() -> parser.process());
         submittedProcessings.add(new Pair<>(parser, future));
+        LOGGER.debug("Processing {} callables.", submittedProcessings.size());
     }
 
     @Override
@@ -115,8 +123,6 @@ public class Cassandra4CommitLogProcessor extends AbstractProcessor {
 
     @Override
     public void process() throws IOException, InterruptedException {
-        LOGGER.debug("Processing commitLogFiles while initial is {}", initial);
-
         if (watcher == null) {
             watcher = new AbstractDirectoryWatcher(cdcDir.toPath(),
                     this.context.getCassandraConnectorConfig().cdcDirPollInterval(),

@@ -15,6 +15,7 @@ import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Properties;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -34,6 +35,10 @@ public class TestUtils {
     public static final String TEST_KAFKA_TOPIC_PREFIX = "test_topic";
 
     public static final String TEST_KEYSPACE_NAME = "test_keyspace";
+    public static final String TEST_KEYSPACE_NAME_2 = "test_keyspace2";
+
+    public static String TEST_TABLE_NAME = "table_" + UUID.randomUUID().toString().replace("-", "");
+    public static String TEST_TABLE_NAME_2 = "table2_" + UUID.randomUUID().toString().replace("-", "");
 
     protected static Properties generateDefaultConfigMap() throws IOException {
         Properties props = new Properties();
@@ -69,18 +74,23 @@ public class TestUtils {
         };
     }
 
-    public static void createTestKeyspace() {
+    public static void createTestKeyspace() throws Exception {
+        createTestKeyspace(TEST_KEYSPACE_NAME);
+    }
+
+    public static void createTestKeyspace(String keyspace) throws Exception {
         try (CqlSession session = CqlSession.builder().build()) {
-            session.execute(SchemaBuilder.createKeyspace(TEST_KEYSPACE_NAME)
+            session.execute(SchemaBuilder.createKeyspace(keyspace)
                     .ifNotExists()
                     .withNetworkTopologyStrategy(of("datacenter1", 1))
                     .build());
         }
+        Thread.sleep(5000);
     }
 
-    public static List<String> getTables(CqlSession session) {
+    public static List<String> getTables(String keyspace, CqlSession session) {
         return session.getMetadata()
-                .getKeyspace(TEST_KEYSPACE_NAME).get()
+                .getKeyspace(keyspace).get()
                 .getTables()
                 .values()
                 .stream()
@@ -89,19 +99,28 @@ public class TestUtils {
     }
 
     public static void truncateTestKeyspaceTableData() {
+        truncateTestKeyspaceTableData(TEST_KEYSPACE_NAME);
+    }
+
+    public static void truncateTestKeyspaceTableData(String keyspace) {
         try (CqlSession session = CqlSession.builder().build()) {
-            for (String table : getTables(session)) {
-                session.execute(SimpleStatement.newInstance(String.format("TRUNCATE %s.%s", TEST_KEYSPACE_NAME, table)));
+            for (String table : getTables(keyspace, session)) {
+                session.execute(SimpleStatement.newInstance(String.format("TRUNCATE %s.%s", keyspace, table)));
             }
         }
     }
 
-    public static void deleteTestKeyspaceTables() {
+    public static void deleteTestKeyspaceTables() throws Exception {
+        deleteTestKeyspaceTables(TEST_KEYSPACE_NAME);
+    }
+
+    public static void deleteTestKeyspaceTables(String keyspaceName) throws Exception {
         try (CqlSession session = CqlSession.builder().build()) {
-            for (String table : getTables(session)) {
-                session.execute(SimpleStatement.newInstance(String.format("DROP TABLE IF EXISTS %s.%s", TEST_KEYSPACE_NAME, table)));
+            for (String table : getTables(keyspaceName, session)) {
+                session.execute(SimpleStatement.newInstance(String.format("DROP TABLE IF EXISTS %s.%s", keyspaceName, table)));
             }
         }
+        Thread.sleep(5000);
     }
 
     public static void runCql(String statement) {

@@ -60,10 +60,9 @@ public class KafkaRecordEmitter implements Emitter {
     public void emit(Record record) {
         try {
             synchronized (lock) {
-                LOGGER.debug("Sending the record '{}'", record.toString());
                 ProducerRecord<byte[], byte[]> producerRecord = toProducerRecord(record);
                 Future<RecordMetadata> future = producer.send(producerRecord);
-                LOGGER.debug("The record '{}' has been sent", record);
+                LOGGER.trace("Sent to topic {}: {}", producerRecord.topic(), record);
                 futures.put(record, future);
                 maybeFlushAndMarkOffset();
             }

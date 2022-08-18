@@ -6,7 +6,9 @@
 package io.debezium.connector.cassandra;
 
 import static io.debezium.connector.cassandra.TestUtils.TEST_KEYSPACE_NAME;
+import static io.debezium.connector.cassandra.TestUtils.TEST_KEYSPACE_NAME_2;
 import static io.debezium.connector.cassandra.TestUtils.createTestKeyspace;
+import static io.debezium.connector.cassandra.TestUtils.deleteTestKeyspaceTables;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.awaitility.Awaitility.await;
@@ -59,14 +61,15 @@ public abstract class CassandraConnectorTestBase {
     private File kafkaDataDir;
 
     @BeforeClass
-    public static void setUpClass() {
+    public static void setUpClass() throws Exception {
         waitForCql();
         createTestKeyspace();
     }
 
     @AfterClass
     public static void tearDownClass() throws IOException, InterruptedException {
-        destroyTestKeyspace();
+        destroyTestKeyspace(TEST_KEYSPACE_NAME);
+        destroyTestKeyspace(TEST_KEYSPACE_NAME_2);
         cassandra.stop();
 
         GenericContainer clenaup = new GenericContainer(new ImageFromDockerfile()
@@ -104,9 +107,13 @@ public abstract class CassandraConnectorTestBase {
         Testing.Files.delete(kafkaDataDir);
     }
 
-    public static void destroyTestKeyspace() {
+    public static void destroyTestKeyspace() throws Exception {
+        deleteTestKeyspaceTables(TEST_KEYSPACE_NAME);
+    }
+
+    public static void destroyTestKeyspace(String keyspace) {
         try (CqlSession session = CqlSession.builder().build()) {
-            session.execute(SchemaBuilder.dropKeyspace(TEST_KEYSPACE_NAME).build());
+            session.execute(SchemaBuilder.dropKeyspace(keyspace).ifExists().build());
         }
     }
 
