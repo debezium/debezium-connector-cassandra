@@ -5,10 +5,12 @@
  */
 package io.debezium.connector.cassandra;
 
+import io.debezium.pipeline.Sizeable;
+
 /**
  * An Event is a single unit that can be enqueued and processed by the QueueProcessor
  */
-public interface Event {
+public interface Event extends Sizeable {
     enum EventType {
         /**
          * A create, update, or delete event.
@@ -29,4 +31,10 @@ public interface Event {
     }
 
     EventType getEventType();
+
+    @Override
+    default long objectSize() {
+        // Queue size limiting for Cassandra is not supported
+        return 0;
+    }
 }
