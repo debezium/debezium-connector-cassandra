@@ -222,7 +222,7 @@ cdc_enabled: true
 # separate spindle than the data directories. If not set, the default directory is
 # $CASSANDRA_HOME/data/cdc_raw.
 # cdc_raw_directory: /var/lib/cassandra/cdc_raw
-cdc_raw_directory: /var/lib/cassandra/cdc_raw_directory
+cdc_raw_directory: /var/lib/cassandra/cdc_raw
 
 # Policy for data disk failures:
 #
@@ -395,7 +395,7 @@ saved_caches_directory: /var/lib/cassandra/saved_caches
 # and the CommitLog is simply synced every commitlog_sync_period_in_ms
 # milliseconds.
 commitlog_sync: periodic
-commitlog_sync_period_in_ms: 10000
+commitlog_sync_period_in_ms: 1000
 
 # When in periodic commitlog mode, the number of milliseconds to block writes
 # while waiting for a slow disk flush to complete.

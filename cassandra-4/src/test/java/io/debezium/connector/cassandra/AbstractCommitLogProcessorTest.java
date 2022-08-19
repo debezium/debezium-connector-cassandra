@@ -26,6 +26,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.connector.base.ChangeEventQueue;
+import io.debezium.util.Testing;
 
 public abstract class AbstractCommitLogProcessorTest extends EmbeddedCassandra4ConnectorTestBase {
     public ChangeEventQueue<Event> queue;
@@ -49,6 +50,7 @@ public abstract class AbstractCommitLogProcessorTest extends EmbeddedCassandra4C
         commitLogProcessor.destroy();
         deleteTestKeyspaceTables();
         context.cleanUp();
+        Testing.Files.delete(DatabaseDescriptor.getCDCLogLocation());
     }
 
     @Test
