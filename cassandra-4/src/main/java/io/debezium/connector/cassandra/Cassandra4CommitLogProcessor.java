@@ -9,8 +9,6 @@ import static java.nio.file.StandardWatchEventKinds.ENTRY_CREATE;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.WatchEvent;
 import java.time.Duration;
@@ -18,22 +16,17 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.db.commitlog.CommitLogPosition;
-import org.apache.cassandra.db.commitlog.CommitLogReader;
 import org.apache.commons.math3.util.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.DebeziumException;
 import io.debezium.connector.base.ChangeEventQueue;
-import io.debezium.connector.cassandra.exceptions.CassandraConnectorTaskException;
 
 /**
  * The {@link Cassandra4CommitLogProcessor} is used to process CommitLog in CDC directory.
@@ -55,15 +48,16 @@ public class Cassandra4CommitLogProcessor extends AbstractProcessor {
     private final boolean errorCommitLogReprocessEnabled;
     private final CommitLogTransfer commitLogTransfer;
     private final ExecutorService executorService;
+    final static Set<Pair<AbstractCassandra4CommitLogParser, Future<CommitLogProcessingResult>>> submittedProcessings = ConcurrentHashMap.newKeySet();
 
     public Cassandra4CommitLogProcessor(CassandraConnectorContext context) {
         super(NAME, Duration.ZERO);
         this.context = context;
-        executorService = Executors.newSingleThreadExecutor();
         queues = this.context.getQueues();
         commitLogTransfer = this.context.getCassandraConnectorConfig().getCommitLogTransfer();
         errorCommitLogReprocessEnabled = this.context.getCassandraConnectorConfig().errorCommitLogReprocessEnabled();
         cdcDir = new File(DatabaseDescriptor.getCDCLogLocation());
+        executorService = Executors.newSingleThreadExecutor();
     }
 
     @Override
@@ -80,7 +74,7 @@ public class Cassandra4CommitLogProcessor extends AbstractProcessor {
     public void stop() {
         try {
             executorService.shutdown();
-            for (final Pair<CommitLogProcessingCallable, Future<ProcessingResult>> submittedProcessing : submittedProcessings) {
+            for (final Pair<AbstractCassandra4CommitLogParser, Future<CommitLogProcessingResult>> submittedProcessing : submittedProcessings) {
                 try {
                     submittedProcessing.getFirst().complete();
                     submittedProcessing.getSecond().get();
@@ -96,23 +90,25 @@ public class Cassandra4CommitLogProcessor extends AbstractProcessor {
         super.stop();
     }
 
-    protected synchronized static void removeProcessing(CommitLogProcessingCallable callable) {
+    protected synchronized static void removeProcessing(AbstractCassandra4CommitLogParser parser) {
         submittedProcessings.stream()
-                .filter(p -> p.getFirst() == callable)
+                .filter(p -> p.getFirst() == parser)
                 .findFirst()
                 .map(submittedProcessings::remove);
     }
 
-    final static Set<Pair<CommitLogProcessingCallable, Future<ProcessingResult>>> submittedProcessings = ConcurrentHashMap.newKeySet();
+    void submit(Path index) {
+        final AbstractCassandra4CommitLogParser parser;
 
-    private void submit(Path index) {
-        CommitLogProcessingCallable callable = new CommitLogProcessingCallable(new LogicalCommitLog(index.toFile()),
-                queues,
-                metrics,
-                Cassandra4CommitLogProcessor.this.context);
+        if (context.getCassandraConnectorConfig().isCommitLogRealTimeProcessingEnabled()) {
+            parser = new Cassandra4CommitLogRealTimeParser(new LogicalCommitLog(index.toFile()), queues, metrics, this.context);
+        }
+        else {
+            parser = new Cassandra4CommitLogBatchParser(new LogicalCommitLog(index.toFile()), queues, metrics, this.context);
+        }
 
-        Future<ProcessingResult> future = executorService.submit(callable);
-        submittedProcessings.add(new Pair<>(callable, future));
+        Future<CommitLogProcessingResult> future = executorService.submit(parser::process);
+        submittedProcessings.add(new Pair<>(parser, future));
         LOGGER.debug("Processing {} callables.", submittedProcessings.size());
     }
 
@@ -161,234 +157,5 @@ public class Cassandra4CommitLogProcessor extends AbstractProcessor {
             initial = false;
         }
         watcher.poll();
-    }
-
-    public static class ProcessingResult {
-        public enum Result {
-            OK,
-            ERROR,
-            DOES_NOT_EXIST,
-            COMPLETED_PREMATURELY;
-        }
-
-        public final LogicalCommitLog commitLog;
-        public final Result result;
-        public final Exception ex;
-
-        public ProcessingResult(LogicalCommitLog commitLog) {
-            this(commitLog, Result.OK, null);
-        }
-
-        public ProcessingResult(LogicalCommitLog commitLog, Result result) {
-            this(commitLog, result, null);
-        }
-
-        public ProcessingResult(LogicalCommitLog commitLog, Result result, Exception ex) {
-            this.commitLog = commitLog;
-            this.result = result;
-            this.ex = ex;
-        }
-
-        @Override
-        public String toString() {
-            return "ProcessingResult{" +
-                    "commitLog=" + commitLog +
-                    ", result=" + result +
-                    ", ex=" + (ex != null ? ex.getMessage() : "none") + '}';
-        }
-    }
-
-    public static class CommitLogProcessingCallable implements Callable<ProcessingResult> {
-
-        private static final Logger LOGGER = LoggerFactory.getLogger(CommitLogProcessingCallable.class);
-
-        private final LogicalCommitLog commitLog;
-        private CommitLogReader commitLogReader;
-        private final List<ChangeEventQueue<Event>> queues;
-        private final CommitLogProcessorMetrics metrics;
-        private final Cassandra4CommitLogReadHandlerImpl commitLogReadHandler;
-
-        private final CommitLogTransfer commitLogTransfer;
-        private final Set<String> erroneousCommitLogs;
-        private boolean completePrematurely = false;
-
-        public CommitLogProcessingCallable(final LogicalCommitLog commitLog,
-                                           final List<ChangeEventQueue<Event>> queues,
-                                           final CommitLogProcessorMetrics metrics,
-                                           CassandraConnectorContext context) {
-            this.commitLog = commitLog;
-            this.commitLogReader = new CommitLogReader();
-            this.queues = queues;
-            this.metrics = metrics;
-
-            this.commitLogReadHandler = new Cassandra4CommitLogReadHandlerImpl(
-                    context.getSchemaHolder(),
-                    context.getQueues(),
-                    context.getOffsetWriter(),
-                    new RecordMaker(context.getCassandraConnectorConfig().tombstonesOnDelete(),
-                            new Filters(context.getCassandraConnectorConfig().fieldExcludeList()),
-                            context.getCassandraConnectorConfig()),
-                    metrics);
-
-            commitLogTransfer = context.getCassandraConnectorConfig().getCommitLogTransfer();
-            erroneousCommitLogs = context.getErroneousCommitLogs();
-        }
-
-        public void complete() {
-            completePrematurely = true;
-        }
-
-        private ProcessingResult callInternal() {
-            if (!commitLog.exists()) {
-                LOGGER.warn("Commit log " + commitLog + " does not exist!");
-                return new ProcessingResult(commitLog, ProcessingResult.Result.DOES_NOT_EXIST);
-            }
-
-            LOGGER.info("Processing commit log {}", commitLog.log.toString());
-
-            CommitLogPosition position = new CommitLogPosition(commitLog.commitLogSegmentId, 0);
-            metrics.setCommitLogFilename(commitLog.log.toString());
-            metrics.setCommitLogPosition(position.position);
-
-            try {
-                parseIndexFile();
-
-                while (!commitLog.completed) {
-                    if (completePrematurely) {
-                        LOGGER.info("{} completed prematurely", commitLog);
-                        return new ProcessingResult(commitLog, ProcessingResult.Result.COMPLETED_PREMATURELY);
-                    }
-                    // TODO make this configurable maybe
-                    Thread.sleep(10000);
-                    parseIndexFile();
-                }
-
-                LOGGER.info(commitLog.toString());
-            }
-            catch (final Exception ex) {
-                LOGGER.error("Processing of {} errored out", commitLog);
-                return new ProcessingResult(commitLog, ProcessingResult.Result.ERROR, ex);
-            }
-
-            ProcessingResult result;
-
-            // process commit log from start to the end as it is completed at this point
-            try {
-                processCommitLog(commitLog, new CommitLogPosition(commitLog.commitLogSegmentId, 0));
-                result = new ProcessingResult(commitLog);
-            }
-            catch (final Exception ex) {
-                result = new ProcessingResult(commitLog, ProcessingResult.Result.ERROR, ex);
-            }
-
-            LOGGER.info("{}", result);
-
-            return result;
-        }
-
-        @Override
-        public ProcessingResult call() {
-            ProcessingResult result = callInternal();
-            Cassandra4CommitLogProcessor.removeProcessing(CommitLogProcessingCallable.this);
-            LOGGER.debug("Processing {} callables.", submittedProcessings.size());
-            return result;
-        }
-
-        private void processCommitLog(LogicalCommitLog logicalCommitLog, CommitLogPosition position) {
-            try {
-                try {
-                    LOGGER.debug("starting to read commit log segments {} on position {}", logicalCommitLog, position);
-                    commitLogReader.readCommitLogSegment(commitLogReadHandler, logicalCommitLog.log, position, false);
-                    LOGGER.debug("finished reading commit log segments {} on position {}", logicalCommitLog, position);
-                    queues.get(Math.abs(logicalCommitLog.log.getName().hashCode() % queues.size())).enqueue(new EOFEvent(logicalCommitLog.log));
-                }
-                catch (Exception e) {
-                    if (commitLogTransfer.getClass().getName().equals(CassandraConnectorConfig.DEFAULT_COMMIT_LOG_TRANSFER_CLASS)) {
-                        throw new DebeziumException(String.format("Error occurred while processing commit log %s",
-                                logicalCommitLog.log), e);
-                    }
-                    Cassandra4CommitLogProcessor.LOGGER.error("Error occurred while processing commit log " + logicalCommitLog.log, e);
-                    queues.get(Math.abs(logicalCommitLog.log.getName().hashCode() % queues.size())).enqueue(new EOFEvent(logicalCommitLog.log));
-                    erroneousCommitLogs.add(logicalCommitLog.log.getName());
-                }
-            }
-            catch (InterruptedException e) {
-                throw new CassandraConnectorTaskException(String.format(
-                        "Enqueuing has been interrupted while enqueuing EOF Event for file %s", logicalCommitLog.log.getName()), e);
-            }
-        }
-
-        private void parseIndexFile() throws DebeziumException {
-            try {
-                commitLog.parseCommitLogIndex();
-            }
-            catch (final DebeziumException ex) {
-                erroneousCommitLogs.add(commitLog.log.getName());
-                throw ex;
-            }
-        }
-    }
-
-    public static class LogicalCommitLog {
-        CommitLogPosition commitLogPosition;
-        File log;
-        File index;
-        long commitLogSegmentId;
-        int offsetOfEndOfLastWrittenCDCMutation = 0;
-        boolean completed = false;
-
-        public LogicalCommitLog(File index) {
-            this.index = index;
-            this.log = parseCommitLogName(index);
-            this.commitLogSegmentId = parseSegmentId(log);
-            this.commitLogPosition = new CommitLogPosition(commitLogSegmentId, 0);
-        }
-
-        public static File parseCommitLogName(File index) {
-            String newFileName = index.toPath().getFileName().toString().replace("_cdc.idx", ".log");
-            return index.toPath().getParent().resolve(newFileName).toFile();
-        }
-
-        public static long parseSegmentId(File logName) {
-            return Long.parseLong(logName.getName().split("-")[2].split("\\.")[0]);
-        }
-
-        public boolean exists() {
-            return log.exists();
-        }
-
-        public void parseCommitLogIndex() throws DebeziumException {
-            if (!index.exists()) {
-                return;
-            }
-            try {
-                List<String> lines = Files.readAllLines(index.toPath(), StandardCharsets.UTF_8);
-                if (lines.isEmpty()) {
-                    return;
-                }
-
-                offsetOfEndOfLastWrittenCDCMutation = Integer.parseInt(lines.get(0));
-
-                if (lines.size() == 2) {
-                    completed = "COMPLETED".equals(lines.get(1));
-                }
-            }
-            catch (final Exception ex) {
-                throw new DebeziumException(String.format("Unable to parse commit log index file %s", index.toPath()),
-                        ex);
-            }
-        }
-
-        @Override
-        public String toString() {
-            return "LogicalCommitLog{" +
-                    "commitLogPosition=" + commitLogPosition +
-                    ", synced=" + offsetOfEndOfLastWrittenCDCMutation +
-                    ", completed=" + completed +
-                    ", log=" + log +
-                    ", index=" + index +
-                    ", commitLogSegmentId=" + commitLogSegmentId +
-                    '}';
-        }
     }
 }
