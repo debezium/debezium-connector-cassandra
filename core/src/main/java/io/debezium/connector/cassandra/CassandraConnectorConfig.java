@@ -90,9 +90,9 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
             .withDescription(
                     "Logical name for the Cassandra connector. This name should uniquely identify the connector from those that reside in other Cassandra nodes.");
 
-    public static final Field KAFKA_TOPIC_PREFIX = Field.create("kafka.topic.prefix")
+    public static final Field TOPIC_PREFIX = Field.create("topic.prefix")
             .withType(Type.STRING)
-            .withDescription("Logical name for the Cassandra cluster. This name should be identical across all Cassandra connectors in a Cassandra cluster");
+            .withDescription("Topic prefix for the Cassandra cluster. This name should be identical across all Cassandra connectors in a Cassandra cluster");
 
     public static final Field KEY_CONVERTER_CLASS_CONFIG = Field.create("key.converter")
             .withType(Type.STRING)
@@ -296,7 +296,7 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
     }
 
     public String kafkaTopicPrefix() {
-        return this.getConfig().getString(KAFKA_TOPIC_PREFIX);
+        return this.getConfig().getString(TOPIC_PREFIX);
     }
 
     public Properties getKafkaConfigs() {

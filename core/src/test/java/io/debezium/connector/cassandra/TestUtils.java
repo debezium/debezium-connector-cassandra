@@ -44,7 +44,7 @@ public class TestUtils {
         Properties props = new Properties();
         props.put(CassandraConnectorConfig.CONNECTOR_NAME.name(), TEST_CONNECTOR_NAME);
         props.put(CassandraConnectorConfig.CASSANDRA_CONFIG.name(), Paths.get("src/test/resources/cassandra-unit-for-context.yaml").toAbsolutePath().toString());
-        props.put(CassandraConnectorConfig.KAFKA_TOPIC_PREFIX.name(), TEST_KAFKA_TOPIC_PREFIX);
+        props.put(CassandraConnectorConfig.TOPIC_PREFIX.name(), TEST_KAFKA_TOPIC_PREFIX);
         props.put(CassandraConnectorConfig.OFFSET_BACKING_STORE_DIR.name(), Files.createTempDirectory("offset").toString());
         props.put(CassandraConnectorConfig.KAFKA_PRODUCER_CONFIG_PREFIX + ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, TEST_KAFKA_SERVERS);
         props.put(CassandraConnectorConfig.COMMIT_LOG_RELOCATION_DIR.name(), Files.createTempDirectory("cdc_raw_relocation").toString());
@@ -61,7 +61,7 @@ public class TestUtils {
             {
                 put(CassandraConnectorConfig.CONNECTOR_NAME.name(), TEST_CONNECTOR_NAME);
                 put(CassandraConnectorConfig.CASSANDRA_CONFIG.name(), Paths.get("src/test/resources/cassandra-unit-for-context.yaml").toAbsolutePath().toString());
-                put(CassandraConnectorConfig.KAFKA_TOPIC_PREFIX.name(), TEST_KAFKA_TOPIC_PREFIX);
+                put(CassandraConnectorConfig.TOPIC_PREFIX.name(), TEST_KAFKA_TOPIC_PREFIX);
                 put(CassandraConnectorConfig.OFFSET_BACKING_STORE_DIR.name(), Files.createTempDirectory("offset").toString());
                 put(CassandraConnectorConfig.KAFKA_PRODUCER_CONFIG_PREFIX + ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, TEST_KAFKA_SERVERS);
                 put(CassandraConnectorConfig.COMMIT_LOG_RELOCATION_DIR.name(), Files.createTempDirectory("cdc_raw_relocation").toString());
