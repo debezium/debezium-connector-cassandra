@@ -27,7 +27,7 @@ public class CassandraConnectorConfigTest {
         assertEquals(connectorName, config.connectorName());
 
         String kafkaTopicPrefix = "test_prefix";
-        config = buildTaskConfig(CassandraConnectorConfig.KAFKA_TOPIC_PREFIX.name(), kafkaTopicPrefix);
+        config = buildTaskConfig(CassandraConnectorConfig.TOPIC_PREFIX.name(), kafkaTopicPrefix);
         assertEquals(kafkaTopicPrefix, config.kafkaTopicPrefix());
 
         String snapshotConsistency = "ALL";
