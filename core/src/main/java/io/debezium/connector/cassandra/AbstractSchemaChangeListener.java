@@ -5,8 +5,13 @@
  */
 package io.debezium.connector.cassandra;
 
+import static java.lang.String.format;
+
 import java.util.List;
 import java.util.stream.Collectors;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.datastax.oss.driver.api.core.CqlIdentifier;
 import com.datastax.oss.driver.api.core.metadata.schema.SchemaChangeListenerBase;
@@ -16,6 +21,8 @@ import com.datastax.oss.driver.api.core.session.Session;
 import io.debezium.connector.SourceInfoStructMaker;
 
 public class AbstractSchemaChangeListener extends SchemaChangeListenerBase {
+
+    private static final Logger logger = LoggerFactory.getLogger(AbstractSchemaChangeListener.class);
 
     protected final String kafkaTopicPrefix;
     protected final SourceInfoStructMaker<SourceInfo> sourceInfoStructMaker;
@@ -35,7 +42,19 @@ public class AbstractSchemaChangeListener extends SchemaChangeListenerBase {
                 .values()
                 .stream()
                 .flatMap(kmd -> kmd.getTables().values().stream())
-                .filter(tm -> tm.getOptions().get(CqlIdentifier.fromCql("cdc")).toString().equals("true"))
+                .filter(tm -> {
+                    if (tm.isVirtual()) {
+                        logger.info(format("Skipping virtual table %s.%s", tm.getKeyspace().asInternal(), tm.getName()));
+                        return false;
+                    }
+                    Object cdc = tm.getOptions().get(CqlIdentifier.fromCql("cdc"));
+                    if (cdc == null) {
+                        logger.warn(format("There is no cdc option for table %s.%s. Available options are: %s",
+                                tm.getKeyspace().asInternal(), tm.getName(), tm.getOptions()));
+                        return false;
+                    }
+                    return cdc.toString().equals("true");
+                })
                 .collect(Collectors.toList());
     }
 
