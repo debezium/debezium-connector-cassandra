@@ -113,7 +113,7 @@ public class CassandraConnectorTaskTemplate {
             httpServer.start();
 
             LOGGER.info("Starting JMX reporter ...");
-            initJmxReporter(config.connectorName());
+            initJmxReporter(config.getLogicalName());
             jmxReporter.start();
 
             while (processorGroup.isRunning()) {

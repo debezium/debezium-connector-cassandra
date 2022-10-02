@@ -42,7 +42,7 @@ public class TestUtils {
 
     protected static Properties generateDefaultConfigMap() throws IOException {
         Properties props = new Properties();
-        props.put(CassandraConnectorConfig.CONNECTOR_NAME.name(), TEST_CONNECTOR_NAME);
+        props.put(CassandraConnectorConfig.TOPIC_PREFIX.name(), TEST_CONNECTOR_NAME);
         props.put(CassandraConnectorConfig.CASSANDRA_CONFIG.name(), Paths.get("src/test/resources/cassandra-unit-for-context.yaml").toAbsolutePath().toString());
         props.put(CassandraConnectorConfig.TOPIC_PREFIX.name(), TEST_KAFKA_TOPIC_PREFIX);
         props.put(CassandraConnectorConfig.OFFSET_BACKING_STORE_DIR.name(), Files.createTempDirectory("offset").toString());
@@ -57,9 +57,9 @@ public class TestUtils {
     }
 
     protected static HashMap<String, Object> propertiesForContext() throws IOException {
-        return new HashMap<String, Object>() {
+        return new HashMap<>() {
             {
-                put(CassandraConnectorConfig.CONNECTOR_NAME.name(), TEST_CONNECTOR_NAME);
+                put(CassandraConnectorConfig.TOPIC_PREFIX.name(), TEST_CONNECTOR_NAME);
                 put(CassandraConnectorConfig.CASSANDRA_CONFIG.name(), Paths.get("src/test/resources/cassandra-unit-for-context.yaml").toAbsolutePath().toString());
                 put(CassandraConnectorConfig.TOPIC_PREFIX.name(), TEST_KAFKA_TOPIC_PREFIX);
                 put(CassandraConnectorConfig.OFFSET_BACKING_STORE_DIR.name(), Files.createTempDirectory("offset").toString());

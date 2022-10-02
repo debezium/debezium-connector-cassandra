@@ -130,7 +130,7 @@ public class FileOffsetWriterTest {
     private ChangeRecord generateRecord(boolean markOffset, boolean isSnapshot, OffsetPosition offsetPosition, KeyspaceTable keyspaceTable) {
         Configuration configuration = Configuration.empty()
                 .edit()
-                .with(CassandraConnectorConfig.CONNECTOR_NAME, "someconnector")
+                .with(CassandraConnectorConfig.TOPIC_PREFIX, "someconnector")
                 .build();
 
         CassandraConnectorConfig config = new CassandraConnectorConfig(configuration);
