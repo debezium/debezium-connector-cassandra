@@ -85,11 +85,6 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
      */
     public static final String COMMIT_LOG_TRANSFER_CONFIG_PREFIX = "commit.log.transfer.";
 
-    public static final Field CONNECTOR_NAME = Field.create("connector.name")
-            .withType(Type.STRING)
-            .withDescription(
-                    "Logical name for the Cassandra connector. This name should uniquely identify the connector from those that reside in other Cassandra nodes.");
-
     public static final Field TOPIC_PREFIX = Field.create("topic.prefix")
             .withType(Type.STRING)
             .withDescription("Topic prefix for the Cassandra cluster. This name should be identical across all Cassandra connectors in a Cassandra cluster");
@@ -288,15 +283,7 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
     public static Field.Set VALIDATION_FIELDS = Field.setOf(validationFieldList);
 
     public CassandraConnectorConfig(Configuration config) {
-        super(config, config.getString(CONNECTOR_NAME), DEFAULT_SNAPSHOT_FETCH_SIZE);
-    }
-
-    public String connectorName() {
-        return this.getConfig().getString(CONNECTOR_NAME);
-    }
-
-    public String kafkaTopicPrefix() {
-        return this.getConfig().getString(TOPIC_PREFIX);
+        super(config, DEFAULT_SNAPSHOT_FETCH_SIZE);
     }
 
     public Properties getKafkaConfigs() {

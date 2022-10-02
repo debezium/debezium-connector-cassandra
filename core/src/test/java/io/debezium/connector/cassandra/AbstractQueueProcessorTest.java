@@ -57,7 +57,7 @@ public abstract class AbstractQueueProcessorTest {
         keyValueSchema = new KeyValueSchema.KeyValueSchemaBuilder()
                 .withKeyspace(TEST_KEYSPACE_NAME)
                 .withTable("cdc_table")
-                .withKafkaTopicPrefix(context.getCassandraConnectorConfig().kafkaTopicPrefix())
+                .withKafkaTopicPrefix(context.getCassandraConnectorConfig().getLogicalName())
                 .withSourceInfoStructMarker(context.getCassandraConnectorConfig().getSourceInfoStructMaker())
                 .withRowSchema(rowSchema(asList("col1", "col2"), asList(TEXT, INT)))
                 .withPrimaryKeyNames(asList("p1", "c1"))

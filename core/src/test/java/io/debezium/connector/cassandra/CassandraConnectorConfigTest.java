@@ -22,13 +22,9 @@ public class CassandraConnectorConfigTest {
 
     @Test
     public void testConfigs() {
-        String connectorName = "test_connector";
-        CassandraConnectorConfig config = buildTaskConfig(CassandraConnectorConfig.CONNECTOR_NAME.name(), connectorName);
-        assertEquals(connectorName, config.connectorName());
-
         String kafkaTopicPrefix = "test_prefix";
-        config = buildTaskConfig(CassandraConnectorConfig.TOPIC_PREFIX.name(), kafkaTopicPrefix);
-        assertEquals(kafkaTopicPrefix, config.kafkaTopicPrefix());
+        CassandraConnectorConfig config = buildTaskConfig(CassandraConnectorConfig.TOPIC_PREFIX.name(), kafkaTopicPrefix);
+        assertEquals(kafkaTopicPrefix, config.getLogicalName());
 
         String snapshotConsistency = "ALL";
         config = buildTaskConfig(CassandraConnectorConfig.SNAPSHOT_CONSISTENCY.name(), snapshotConsistency);
@@ -127,7 +123,7 @@ public class CassandraConnectorConfigTest {
     private CassandraConnectorConfig buildTaskConfigs(HashMap<String, Object> map) {
         Configuration config = Configuration.from(map)
                 .edit()
-                .with(CassandraConnectorConfig.CONNECTOR_NAME, "someconnector")
+                .with(CassandraConnectorConfig.TOPIC_PREFIX, "someconnector")
                 .build();
 
         return new CassandraConnectorConfig(config);
@@ -136,7 +132,7 @@ public class CassandraConnectorConfigTest {
     private CassandraConnectorConfig buildTaskConfig(String key, Object value) {
         Configuration config = Configuration.empty()
                 .edit()
-                .with(CassandraConnectorConfig.CONNECTOR_NAME, "someconnector")
+                .with(CassandraConnectorConfig.TOPIC_PREFIX, "someconnector")
                 .with(key, value)
                 .build();
 
@@ -147,7 +143,7 @@ public class CassandraConnectorConfigTest {
     public void testDefaultConfigs() {
         Configuration configuration = Configuration.empty()
                 .edit()
-                .with(CassandraConnectorConfig.CONNECTOR_NAME, "someconnector")
+                .with(CassandraConnectorConfig.TOPIC_PREFIX, "someconnector")
                 .build();
 
         CassandraConnectorConfig config = new CassandraConnectorConfig(configuration);

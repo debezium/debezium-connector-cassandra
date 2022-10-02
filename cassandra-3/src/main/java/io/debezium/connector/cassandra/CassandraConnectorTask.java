@@ -35,7 +35,7 @@ public class CassandraConnectorTask {
 
         @Override
         public AbstractSchemaChangeListener provide(CassandraConnectorConfig config) {
-            return new Cassandra3SchemaChangeListener(config.kafkaTopicPrefix(),
+            return new Cassandra3SchemaChangeListener(config.getLogicalName(),
                     config.getSourceInfoStructMaker(),
                     new SchemaHolder());
         }
