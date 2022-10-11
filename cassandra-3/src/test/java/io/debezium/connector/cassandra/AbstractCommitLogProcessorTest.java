@@ -14,11 +14,12 @@ import static io.debezium.connector.cassandra.TestUtils.runCql;
 import static java.lang.String.format;
 import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 
 import java.io.File;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.commitlog.CommitLogReader;
@@ -75,9 +76,13 @@ public abstract class AbstractCommitLogProcessorTest extends EmbeddedCassandra3C
         Thread.sleep(2000);
     }
 
-    public List<Event> getEvents() throws Exception {
-        List<Event> events = queue.poll();
-        assertFalse(events.isEmpty());
+    public List<Event> getEvents(final int expectedSize) throws Exception {
+        final List<Event> events = new ArrayList<>();
+        await().atMost(60, TimeUnit.SECONDS).until(() -> {
+            events.addAll(queue.poll());
+            return events.size() >= expectedSize;
+        });
+        assertEquals(expectedSize, events.size());
         return events;
     }
 

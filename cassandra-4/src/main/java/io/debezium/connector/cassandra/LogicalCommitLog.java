@@ -10,12 +10,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.List;
 
-import org.apache.cassandra.db.commitlog.CommitLogPosition;
-
 import io.debezium.DebeziumException;
 
 public class LogicalCommitLog {
-    CommitLogPosition commitLogPosition;
     File log;
     File index;
     long commitLogSegmentId;
@@ -26,7 +23,6 @@ public class LogicalCommitLog {
         this.index = index;
         this.log = parseCommitLogName(index);
         this.commitLogSegmentId = parseSegmentId(log);
-        this.commitLogPosition = new CommitLogPosition(commitLogSegmentId, 0);
     }
 
     public static File parseCommitLogName(File index) {
@@ -67,8 +63,7 @@ public class LogicalCommitLog {
     @Override
     public String toString() {
         return "LogicalCommitLog{" +
-                "commitLogPosition=" + commitLogPosition +
-                ", synced=" + offsetOfEndOfLastWrittenCDCMutation +
+                "synced=" + offsetOfEndOfLastWrittenCDCMutation +
                 ", completed=" + completed +
                 ", log=" + log +
                 ", index=" + index +

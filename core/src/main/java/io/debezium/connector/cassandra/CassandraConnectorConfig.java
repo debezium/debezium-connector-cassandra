@@ -460,10 +460,13 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
             .withImportance(Importance.MEDIUM)
             .withDescription("Specifies how Cassandra varint columns should be represented in change events.");
 
-    public static List<Field> validationFieldList = new ArrayList<>(
-            Arrays.asList(OFFSET_BACKING_STORE_DIR, COMMIT_LOG_RELOCATION_DIR, SCHEMA_POLL_INTERVAL_MS, SNAPSHOT_POLL_INTERVAL_MS));
+    static final Field CASSANDRA_NODE_ID = Field.create("cassandra.node.id")
+            .withDisplayName("Cassandra node Id")
+            .withType(Type.STRING)
+            .withDescription("Id of the Cassandra node - must be unique among all Cassandra connectors running on all nodes");
 
-    public static Field.Set VALIDATION_FIELDS = Field.setOf(validationFieldList);
+    private static List<Field> validationFieldList = new ArrayList<>(
+            Arrays.asList(OFFSET_BACKING_STORE_DIR, COMMIT_LOG_RELOCATION_DIR, SCHEMA_POLL_INTERVAL_MS, SNAPSHOT_POLL_INTERVAL_MS));
 
     public CassandraConnectorConfig(Configuration config) {
         super(config, DEFAULT_SNAPSHOT_FETCH_SIZE);
@@ -688,5 +691,17 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
     @Override
     public String getConnectorName() {
         return Module.name();
+    }
+
+    public Field.Set getValidationFieldSet() {
+        return Field.setOf(validationFieldList);
+    }
+
+    public void setValidationFieldList(List<Field> validationFieldList) {
+        this.validationFieldList = validationFieldList;
+    }
+
+    public String getNodeId() {
+        return this.getConfig().getString(CASSANDRA_NODE_ID);
     }
 }

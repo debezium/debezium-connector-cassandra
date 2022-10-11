@@ -28,8 +28,9 @@ public abstract class EmbeddedCassandra4ConnectorTestBase extends CassandraConne
             }
         }, config.getDecimalMode(), config.getVarIntMode());
 
-        return new CassandraConnectorContext(new CassandraConnectorConfig(configuration),
+        return new CassandraConnectorContext(config,
                 new Cassandra4SchemaLoader(),
-                new Cassandra4SchemaChangeListenerProvider());
+                new Cassandra4SchemaChangeListenerProvider(),
+                new FileOffsetWriter(config.offsetBackingStoreDir()));
     }
 }

@@ -31,7 +31,7 @@ public class RowInsertionModificationCommitLogProcessingTest extends AbstractCom
 
     @Override
     public void verifyEvents() throws Exception {
-        for (Event event : getEvents()) {
+        for (Event event : getEvents(10)) {
             if (event instanceof Record) {
                 Record record = (Record) event;
                 assertEquals(record.getEventType(), Event.EventType.CHANGE_EVENT);

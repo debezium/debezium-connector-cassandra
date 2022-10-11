@@ -34,7 +34,7 @@ public class PartitionKeyRowDeletionCommitLogProcessingTest extends AbstractComm
 
     @Override
     public void verifyEvents() throws Exception {
-        List<Event> events = getEvents();
+        List<Event> events = getEvents(2);
 
         Record insert = (Record) events.get(0);
         assertEquals(insert.getEventType(), CHANGE_EVENT);

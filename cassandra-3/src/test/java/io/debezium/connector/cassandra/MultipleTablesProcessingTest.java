@@ -70,7 +70,7 @@ public class MultipleTablesProcessingTest extends AbstractCommitLogProcessorTest
 
     @Override
     public void verifyEvents() throws Exception {
-        List<Event> events = getEvents();
+        final List<Event> events = getEvents(8);
 
         Record insert1 = (Record) events.get(0);
         assertEquals(insert1.getEventType(), CHANGE_EVENT);
