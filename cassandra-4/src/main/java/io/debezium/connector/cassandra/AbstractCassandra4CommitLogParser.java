@@ -74,7 +74,9 @@ public abstract class AbstractCassandra4CommitLogParser {
         metrics.setCommitLogPosition(0);
 
         CommitLogProcessingResult result = parse();
-        enqueueEOFEvent();
+        if (!CommitLogProcessingResult.Result.COMPLETED_PREMATURELY.equals(result.result)) {
+            enqueueEOFEvent();
+        }
         Cassandra4CommitLogProcessor.removeProcessing(this);
         LOGGER.debug("Processing {} callables.", Cassandra4CommitLogProcessor.submittedProcessings.size());
         return result;
@@ -102,8 +104,8 @@ public abstract class AbstractCassandra4CommitLogParser {
                         logicalCommitLog.log), e);
             }
             LOGGER.error("Error occurred while processing commit log " + logicalCommitLog.log, e);
-            enqueueEOFEvent();
             erroneousCommitLogs.add(logicalCommitLog.log.getName());
+            enqueueEOFEvent();
         }
     }
 

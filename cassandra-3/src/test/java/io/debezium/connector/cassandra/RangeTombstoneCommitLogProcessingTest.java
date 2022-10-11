@@ -52,7 +52,7 @@ public class RangeTombstoneCommitLogProcessingTest extends AbstractCommitLogProc
 
     @Override
     public void verifyEvents() throws Exception {
-        List<Event> events = getEvents();
+        List<Event> events = getEvents(3);
 
         assertEquals(3, events.size());
 

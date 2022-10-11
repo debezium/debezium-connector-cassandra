@@ -30,23 +30,23 @@ public class Cassandra4CommitLogRealTimeParser extends AbstractCassandra4CommitL
         try {
             parseIndexFile(commitLog);
             while (!commitLog.completed) {
-                LOGGER.info("Polling for completeness of idx file for: {}", commitLog);
+                LOGGER.debug("Polling for completeness of idx file for: {}", commitLog);
                 if (completePrematurely) {
-                    LOGGER.info("{} completed prematurely", commitLog);
+                    LOGGER.warn("{} completed prematurely", commitLog);
                     return new CommitLogProcessingResult(commitLog, COMPLETED_PREMATURELY);
                 }
 
                 CommitLogPosition commitLogPosition = null;
                 if (offset == null) {
-                    LOGGER.info("Start to read the partial file : {}", commitLog);
+                    LOGGER.debug("Start to read the partial file : {}", commitLog);
                     commitLogPosition = new CommitLogPosition(commitLog.commitLogSegmentId, 0);
                 }
                 else if (offset < commitLog.offsetOfEndOfLastWrittenCDCMutation) {
-                    LOGGER.info("Resume to read the partial file: {}", commitLog);
+                    LOGGER.debug("Resume to read the partial file: {}", commitLog);
                     commitLogPosition = new CommitLogPosition(commitLog.commitLogSegmentId, offset);
                 }
                 else {
-                    LOGGER.info("No movement in offset in idx file: {}", commitLog);
+                    LOGGER.debug("No movement in offset in idx file: {}", commitLog);
                 }
 
                 if (commitLogPosition != null) {
@@ -55,7 +55,7 @@ public class Cassandra4CommitLogRealTimeParser extends AbstractCassandra4CommitL
                     metrics.setCommitLogPosition(commitLogPosition.position);
                 }
 
-                LOGGER.info("Sleep for idx file to be complete");
+                LOGGER.debug("Sleep for idx file to be complete");
                 Thread.sleep(pollingInterval);
                 parseIndexFile(commitLog);
             }

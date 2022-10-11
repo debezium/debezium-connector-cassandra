@@ -28,8 +28,9 @@ public class EmbeddedCassandra3ConnectorTestBase extends CassandraConnectorTestB
             }
         }, config.getDecimalMode(), config.getVarIntMode());
 
-        return new CassandraConnectorContext(new CassandraConnectorConfig(configuration),
+        return new CassandraConnectorContext(config,
                 new Cassandra3SchemaLoader(),
-                new Cassandra3SchemaChangeListenerProvider());
+                new Cassandra3SchemaChangeListenerProvider(),
+                new FileOffsetWriter(config.offsetBackingStoreDir()));
     }
 }

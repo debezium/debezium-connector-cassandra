@@ -40,10 +40,15 @@ public class CassandraConnectorTask {
     }
 
     public static void main(String[] args) throws Exception {
-        CassandraConnectorTaskTemplate.main(args, config -> new CassandraConnectorTaskTemplate(config,
+        CassandraConnectorTaskTemplate.main(args, config -> init(config, new ComponentFactoryStandalone()));
+    }
+
+    static CassandraConnectorTaskTemplate init(CassandraConnectorConfig config, ComponentFactory factory) {
+        return new CassandraConnectorTaskTemplate(config,
                 (abstractType, bb) -> abstractType.getSerializer().deserialize(bb),
                 new Cassandra3SchemaLoader(),
                 new Cassandra3SchemaChangeListenerProvider(),
-                context -> new AbstractProcessor[]{ new Cassandra3CommitLogProcessor(context) }));
+                context -> new AbstractProcessor[]{ new Cassandra3CommitLogProcessor(context) },
+                factory);
     }
 }

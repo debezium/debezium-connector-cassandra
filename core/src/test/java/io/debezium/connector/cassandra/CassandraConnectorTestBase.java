@@ -23,9 +23,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 
-import org.junit.After;
 import org.junit.AfterClass;
-import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.testcontainers.containers.BindMode;
@@ -40,7 +38,6 @@ import com.github.dockerjava.api.model.PortBinding;
 import com.github.dockerjava.api.model.Ports;
 
 import io.debezium.config.Configuration;
-import io.debezium.kafka.KafkaCluster;
 import io.debezium.util.Testing;
 
 public abstract class CassandraConnectorTestBase {
@@ -56,9 +53,6 @@ public abstract class CassandraConnectorTestBase {
             .withStartupTimeout(Duration.ofMinutes(3))
             .withCreateContainerCmdModifier(cmd)
             .withFileSystemBind(cassandraDir, CASSANDRA_SERVER_DIR, BindMode.READ_WRITE);
-
-    private KafkaCluster kafkaCluster;
-    private File kafkaDataDir;
 
     @BeforeClass
     public static void setUpClass() throws Exception {
@@ -88,23 +82,6 @@ public abstract class CassandraConnectorTestBase {
                 CASSANDRA_SERVER_DIR + "/hints",
                 CASSANDRA_SERVER_DIR + "/saved_caches");
         clenaup.stop();
-    }
-
-    @Before
-    public void beforeEach() throws Exception {
-        kafkaDataDir = Testing.Files.createTestingDirectory("kafkaCluster");
-        Testing.Files.delete(kafkaDataDir);
-        kafkaCluster = new KafkaCluster().usingDirectory(kafkaDataDir)
-                .deleteDataUponShutdown(true)
-                .addBrokers(1)
-                .withPorts(2181, 9092)
-                .startup();
-    }
-
-    @After
-    public void afterEach() {
-        kafkaCluster.shutdown();
-        Testing.Files.delete(kafkaDataDir);
     }
 
     public static void destroyTestKeyspace() throws Exception {

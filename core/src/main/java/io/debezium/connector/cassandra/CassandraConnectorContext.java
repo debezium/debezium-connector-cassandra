@@ -11,8 +11,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.apache.kafka.clients.producer.KafkaProducer;
-
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorTaskException;
 import io.debezium.connector.common.CdcSourceTaskContext;
@@ -25,7 +23,6 @@ public class CassandraConnectorContext extends CdcSourceTaskContext {
     private final CassandraConnectorConfig config;
     private CassandraClient cassandraClient;
     private final List<ChangeEventQueue<Event>> queues = new ArrayList<>();
-    private KafkaProducer kafkaProducer;
     private SchemaHolder schemaHolder;
     private OffsetWriter offsetWriter;
     // Create a HashSet to record names of CommitLog Files which are not successfully read or streamed.
@@ -40,9 +37,11 @@ public class CassandraConnectorContext extends CdcSourceTaskContext {
 
     public CassandraConnectorContext(CassandraConnectorConfig config,
                                      SchemaLoader schemaLoader,
-                                     SchemaChangeListenerProvider schemaChangeListenerProvider) {
+                                     SchemaChangeListenerProvider schemaChangeListenerProvider,
+                                     OffsetWriter offsetWriter) {
         super(config.getContextName(), config.getLogicalName(), Collections::emptySet);
         this.config = config;
+        this.offsetWriter = offsetWriter;
 
         try {
             prepareQueues();
@@ -55,14 +54,8 @@ public class CassandraConnectorContext extends CdcSourceTaskContext {
             // Setting up Cassandra driver
             this.cassandraClient = new CassandraClient(config.cassandraDriverConfig(), schemaChangeListener);
 
-            // Creating Kafka Producer
-            this.kafkaProducer = new KafkaProducer(this.config.getKafkaConfigs());
-
             // Setting up schema holder ...
             this.schemaHolder = schemaChangeListener.getSchemaHolder();
-
-            // Setting up a file-based offset manager ...
-            this.offsetWriter = new FileOffsetWriter(this.config.offsetBackingStoreDir());
         }
         catch (Exception e) {
             // Clean up CassandraClient and FileOffsetWrite if connector context fails to be completely initialized.
@@ -103,10 +96,6 @@ public class CassandraConnectorContext extends CdcSourceTaskContext {
 
     public List<ChangeEventQueue<Event>> getQueues() {
         return queues;
-    }
-
-    public KafkaProducer getKafkaProducer() {
-        return kafkaProducer;
     }
 
     public OffsetWriter getOffsetWriter() {

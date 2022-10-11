@@ -5,8 +5,6 @@
  */
 package io.debezium.connector.cassandra;
 
-import static io.debezium.connector.cassandra.CassandraConnectorConfig.VALIDATION_FIELDS;
-
 import java.io.FileInputStream;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -54,6 +52,7 @@ public class CassandraConnectorTaskTemplate {
     private SchemaLoader schemaLoader;
     private SchemaChangeListenerProvider schemaChangeListenerProvider;
     private CassandraSpecificProcessors cassandraSpecificProcessors;
+    private final ComponentFactory factory;
 
     public static void main(String[] args,
                             Function<CassandraConnectorConfig, CassandraConnectorTaskTemplate> template)
@@ -72,12 +71,14 @@ public class CassandraConnectorTaskTemplate {
                                           DebeziumTypeDeserializer deserializer,
                                           SchemaLoader schemaLoader,
                                           SchemaChangeListenerProvider schemaChangeListener,
-                                          CassandraSpecificProcessors cassandraSpecificProcessors) {
+                                          CassandraSpecificProcessors cassandraSpecificProcessors,
+                                          ComponentFactory factory) {
         this.config = config;
         this.deserializer = deserializer;
         this.schemaLoader = schemaLoader;
         this.schemaChangeListenerProvider = schemaChangeListener;
         this.cassandraSpecificProcessors = cassandraSpecificProcessors;
+        this.factory = factory;
     }
 
     private void initJmxReporter(String domain) {
@@ -98,32 +99,35 @@ public class CassandraConnectorTaskTemplate {
         return buildInfo;
     }
 
-    void run() throws Exception {
+    public void start() throws Exception {
+        if (!config.validateAndRecord(config.getValidationFieldSet(), LOGGER::error)) {
+            throw new CassandraConnectorConfigException("Failed to start connector with invalid configuration " +
+                    "(see logs for actual errors)");
+        }
+
+        LOGGER.info("Initializing Cassandra type deserializer ...");
+        initDeserializer();
+
+        LOGGER.info("Initializing Cassandra connector task context ...");
+        taskContext = new CassandraConnectorContext(config, schemaLoader, schemaChangeListenerProvider, factory.offsetWriter(config));
+
+        LOGGER.info("Starting processor group ...");
+        AbstractProcessor[] processors = cassandraSpecificProcessors.getProcessors(taskContext);
+        processorGroup = initProcessorGroup(taskContext, factory.recordEmitter(taskContext), processors);
+        processorGroup.start();
+
+        LOGGER.info("Starting HTTP server ...");
+        initHttpServer();
+        httpServer.start();
+
+        LOGGER.info("Starting JMX reporter ...");
+        initJmxReporter(config.getLogicalName());
+        jmxReporter.start();
+    }
+
+    private void run() throws Exception {
         try {
-            if (!config.validateAndRecord(VALIDATION_FIELDS, LOGGER::error)) {
-                throw new CassandraConnectorConfigException("Failed to start connector with invalid configuration " +
-                        "(see logs for actual errors)");
-            }
-
-            LOGGER.info("Initializing Cassandra type deserializer ...");
-            initDeserializer();
-
-            LOGGER.info("Initializing Cassandra connector task context ...");
-            taskContext = new CassandraConnectorContext(config, schemaLoader, schemaChangeListenerProvider);
-
-            LOGGER.info("Starting processor group ...");
-            AbstractProcessor[] processors = cassandraSpecificProcessors.getProcessors(taskContext);
-            processorGroup = initProcessorGroup(taskContext, processors);
-            processorGroup.start();
-
-            LOGGER.info("Starting HTTP server ...");
-            initHttpServer();
-            httpServer.start();
-
-            LOGGER.info("Starting JMX reporter ...");
-            initJmxReporter(config.getLogicalName());
-            jmxReporter.start();
-
+            start();
             while (processorGroup.isRunning()) {
                 Thread.sleep(1000);
             }
@@ -141,7 +145,7 @@ public class CassandraConnectorTaskTemplate {
         CassandraTypeDeserializer.init(deserializer, config.getDecimalMode(), config.getVarIntMode());
     }
 
-    protected ProcessorGroup initProcessorGroup(CassandraConnectorContext taskContext,
+    protected ProcessorGroup initProcessorGroup(CassandraConnectorContext taskContext, Emitter recordEmitter,
                                                 AbstractProcessor... cassandraSpecificProcessors) {
         try {
             ProcessorGroup processorGroup = new ProcessorGroup();
@@ -153,7 +157,7 @@ public class CassandraConnectorTaskTemplate {
             processorGroup.addProcessor(new SnapshotProcessor(taskContext));
             List<ChangeEventQueue<Event>> queues = taskContext.getQueues();
             for (int i = 0; i < queues.size(); i++) {
-                processorGroup.addProcessor(new QueueProcessor(taskContext, i));
+                processorGroup.addProcessor(new QueueProcessor(taskContext, i, recordEmitter));
             }
             if (taskContext.getCassandraConnectorConfig().postProcessEnabled()) {
                 processorGroup.addProcessor(new CommitLogPostProcessor(taskContext.getCassandraConnectorConfig()));

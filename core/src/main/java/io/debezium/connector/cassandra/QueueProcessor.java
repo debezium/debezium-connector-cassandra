@@ -16,8 +16,6 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.annotations.VisibleForTesting;
-
 import io.debezium.connector.base.ChangeEventQueue;
 
 /**
@@ -29,7 +27,7 @@ public class QueueProcessor extends AbstractProcessor {
     private static final Logger LOGGER = LoggerFactory.getLogger(QueueProcessor.class);
 
     private final ChangeEventQueue<Event> queue;
-    private final Emitter kafkaRecordEmitter;
+    private final Emitter recordEmitter;
     private final String commitLogRelocationDir;
     private final Set<String> erroneousCommitLogs;
 
@@ -37,30 +35,12 @@ public class QueueProcessor extends AbstractProcessor {
     public static final String ARCHIVE_FOLDER = "archive";
     public static final String ERROR_FOLDER = "error";
 
-    public QueueProcessor(CassandraConnectorContext context, int index) {
+    public QueueProcessor(CassandraConnectorContext context, int index, Emitter recordEmitter) {
         super(NAME_PREFIX + "[" + index + "]", Duration.ZERO);
         this.queue = context.getQueues().get(index);
         this.erroneousCommitLogs = context.getErroneousCommitLogs();
         this.commitLogRelocationDir = context.getCassandraConnectorConfig().commitLogRelocationDir();
-        this.kafkaRecordEmitter = new KafkaRecordEmitter(
-                context.getCassandraConnectorConfig(),
-                context.getKafkaProducer(),
-                context.getOffsetWriter(),
-                context.getCassandraConnectorConfig().offsetFlushIntervalMs(),
-                context.getCassandraConnectorConfig().maxOffsetFlushSize(),
-                context.getCassandraConnectorConfig().getKeyConverter(),
-                context.getCassandraConnectorConfig().getValueConverter(),
-                context.getErroneousCommitLogs(),
-                context.getCassandraConnectorConfig().getCommitLogTransfer());
-    }
-
-    @VisibleForTesting
-    public QueueProcessor(CassandraConnectorContext context, int index, Emitter emitter) {
-        super(NAME_PREFIX + "[" + index + "]", Duration.ZERO);
-        this.queue = context.getQueues().get(index);
-        this.kafkaRecordEmitter = emitter;
-        this.erroneousCommitLogs = context.getErroneousCommitLogs();
-        this.commitLogRelocationDir = context.getCassandraConnectorConfig().commitLogRelocationDir();
+        this.recordEmitter = recordEmitter;
     }
 
     @Override
@@ -100,7 +80,7 @@ public class QueueProcessor extends AbstractProcessor {
 
     @Override
     public void destroy() throws Exception {
-        kafkaRecordEmitter.close();
+        recordEmitter.close();
     }
 
     private void processEvent(Event event) {
@@ -110,11 +90,11 @@ public class QueueProcessor extends AbstractProcessor {
         switch (event.getEventType()) {
             case CHANGE_EVENT:
                 ChangeRecord changeRecord = (ChangeRecord) event;
-                kafkaRecordEmitter.emit(changeRecord);
+                recordEmitter.emit(changeRecord);
                 break;
             case TOMBSTONE_EVENT:
                 TombstoneRecord tombstoneRecord = (TombstoneRecord) event;
-                kafkaRecordEmitter.emit(tombstoneRecord);
+                recordEmitter.emit(tombstoneRecord);
                 break;
             case EOF_EVENT:
                 EOFEvent eofEvent = (EOFEvent) event;
