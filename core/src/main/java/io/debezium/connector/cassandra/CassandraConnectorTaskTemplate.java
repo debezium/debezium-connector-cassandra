@@ -223,11 +223,18 @@ public class CassandraConnectorTaskTemplate {
         }
 
         void start() {
+            for (AbstractProcessor processor : processors) {
+                try {
+                    processor.initialize();
+                }
+                catch (Exception e) {
+                    throw new CassandraConnectorTaskException("Failed to initialize processors", e);
+                }
+            }
             executorService = Executors.newFixedThreadPool(processors.size());
             for (AbstractProcessor processor : processors) {
                 Runnable runnable = () -> {
                     try {
-                        processor.initialize();
                         processor.start();
                     }
                     catch (Exception e) {
