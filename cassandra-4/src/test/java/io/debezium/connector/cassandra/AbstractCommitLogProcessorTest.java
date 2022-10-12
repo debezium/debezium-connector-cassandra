@@ -17,6 +17,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 
 import java.io.File;
+import java.time.Duration;
 import java.util.List;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
@@ -37,7 +38,8 @@ public abstract class AbstractCommitLogProcessorTest extends EmbeddedCassandra4C
     public void setUp() throws Exception {
         initialiseData();
         context = generateTaskContext();
-        await().forever().until(() -> context.getSchemaHolder().getKeyValueSchema(new KeyspaceTable(TEST_KEYSPACE_NAME, TEST_TABLE_NAME)) != null);
+        await().atMost(Duration.ofSeconds(60)).until(() -> context.getSchemaHolder()
+                .getKeyValueSchema(new KeyspaceTable(TEST_KEYSPACE_NAME, TEST_TABLE_NAME)) != null);
         commitLogProcessor = new Cassandra4CommitLogProcessor(context);
         commitLogProcessor.initialize();
         queue = context.getQueues().get(0);
