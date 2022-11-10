@@ -6,6 +6,7 @@
 package io.debezium.connector.cassandra.transforms;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
@@ -37,6 +38,7 @@ import org.apache.cassandra.db.marshal.DurationType;
 import org.apache.cassandra.db.marshal.FloatType;
 import org.apache.cassandra.db.marshal.InetAddressType;
 import org.apache.cassandra.db.marshal.Int32Type;
+import org.apache.cassandra.db.marshal.IntegerType;
 import org.apache.cassandra.db.marshal.ListType;
 import org.apache.cassandra.db.marshal.LongType;
 import org.apache.cassandra.db.marshal.MapType;
@@ -59,6 +61,8 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.datastax.oss.driver.api.core.type.DataType;
+
+import io.debezium.connector.cassandra.CassandraConnectorConfig.VarIntHandlingMode;
 
 /**
  * This class ONLY tests the {@link CassandraTypeDeserializer#deserialize(AbstractType, ByteBuffer)}
@@ -199,6 +203,27 @@ public class CassandraTypeDeserializerTest {
         Object deserializedInt32 = CassandraTypeDeserializer.deserialize(Int32Type.instance, serializedInt32);
 
         Assert.assertEquals(expectedInteger, deserializedInt32);
+    }
+
+    @Test
+    public void testIntegerType() {
+        BigInteger expectedInteger = BigInteger.valueOf(8);
+
+        ByteBuffer serializedVarInt = IntegerType.instance.decompose(expectedInteger);
+
+        // varint.handling.mode = LONG (default)
+        Object deserializedVarIntAsLong = CassandraTypeDeserializer.deserialize(IntegerType.instance, serializedVarInt);
+        Assert.assertEquals(expectedInteger.longValue(), deserializedVarIntAsLong);
+
+        // varint.handling.mode = PRECISE
+        CassandraTypeDeserializer.setVarIntHandlingMode(VarIntHandlingMode.PRECISE);
+        Object deserializedVarIntAsBigDecimal = CassandraTypeDeserializer.deserialize(IntegerType.instance, serializedVarInt);
+        Assert.assertEquals(new BigDecimal(expectedInteger), deserializedVarIntAsBigDecimal);
+
+        // varint.handling.mode = STRING
+        CassandraTypeDeserializer.setVarIntHandlingMode(VarIntHandlingMode.STRING);
+        Object deserializedVarIntAsString = CassandraTypeDeserializer.deserialize(IntegerType.instance, serializedVarInt);
+        Assert.assertEquals(expectedInteger.toString(), deserializedVarIntAsString);
     }
 
     @Test

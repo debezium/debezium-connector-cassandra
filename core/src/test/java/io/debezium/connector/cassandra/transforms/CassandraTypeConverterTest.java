@@ -24,6 +24,7 @@ import org.apache.cassandra.db.marshal.DurationType;
 import org.apache.cassandra.db.marshal.FloatType;
 import org.apache.cassandra.db.marshal.InetAddressType;
 import org.apache.cassandra.db.marshal.Int32Type;
+import org.apache.cassandra.db.marshal.IntegerType;
 import org.apache.cassandra.db.marshal.ListType;
 import org.apache.cassandra.db.marshal.LongType;
 import org.apache.cassandra.db.marshal.MapType;
@@ -276,6 +277,16 @@ public class CassandraTypeConverterTest {
         AbstractType<?> convertedType = CassandraTypeConverter.convert(tinyInt);
 
         ByteType expectedType = ByteType.instance;
+
+        Assert.assertEquals(expectedType, convertedType);
+    }
+
+    @Test
+    public void testVarInt() {
+        DataType varInt = DataTypes.VARINT;
+        AbstractType<?> convertedType = CassandraTypeConverter.convert(varInt);
+
+        IntegerType expectedType = IntegerType.instance;
 
         Assert.assertEquals(expectedType, convertedType);
     }
