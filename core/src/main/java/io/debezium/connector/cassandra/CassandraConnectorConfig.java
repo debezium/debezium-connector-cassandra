@@ -66,6 +66,34 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
     }
 
     /**
+     * The set of predefined VarIntHandlingMode options.
+     */
+    public enum VarIntHandlingMode {
+
+        /**
+         * Represent varint values by using Java's long, which might not offer the precision but which is easy to use in consumers.
+         */
+        LONG,
+
+        /**
+         * Use java.math.BigDecimal to represent varint values, which are encoded in the change events by using a binary
+         * representation and Kafka Connect’s org.apache.kafka.connect.data.Decimal type.
+         */
+        PRECISE,
+
+        /**
+         * Encodes varint values as formatted strings.
+         */
+        STRING;
+
+        public static Optional<VarIntHandlingMode> fromText(String text) {
+            return Arrays.stream(values())
+                    .filter(v -> text != null && v.name().toLowerCase().equals(text.toLowerCase()))
+                    .findFirst();
+        }
+    }
+
+    /**
      * The prefix prepended to all Kafka producer configurations, including schema registry
      */
     public static final String KAFKA_PRODUCER_CONFIG_PREFIX = "kafka.producer.";
@@ -277,6 +305,16 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
 
     protected static final int DEFAULT_SNAPSHOT_FETCH_SIZE = 0;
 
+    /**
+     * Must be one of 'LONG', 'PRECISE', or 'STRING'. The default varint handling mode is 'LONG'.
+     * See {@link VarIntHandlingMode for details}.
+     */
+    public static final String DEFAULT_VARINT_HANDLING_MODE = "LONG";
+    public static final Field VARINT_HANDLING_MODE = Field.create("varint.handling.mode")
+            .withType(Type.STRING)
+            .withDefault(DEFAULT_VARINT_HANDLING_MODE)
+            .withDescription("Specifies how Cassandra varint columns should be represented in change events.");
+
     public static List<Field> validationFieldList = new ArrayList<>(
             Arrays.asList(OFFSET_BACKING_STORE_DIR, COMMIT_LOG_RELOCATION_DIR, SCHEMA_POLL_INTERVAL_MS, SNAPSHOT_POLL_INTERVAL_MS));
 
@@ -438,6 +476,12 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
      */
     public boolean tombstonesOnDelete() {
         return this.getConfig().getBoolean(TOMBSTONES_ON_DELETE, DEFAULT_TOMBSTONES_ON_DELETE);
+    }
+
+    public VarIntHandlingMode varIntHandlingMode() {
+        String mode = this.getConfig().getString(VARINT_HANDLING_MODE);
+        Optional<VarIntHandlingMode> varIntHandlingModeOpt = VarIntHandlingMode.fromText(mode);
+        return varIntHandlingModeOpt.orElseThrow(() -> new CassandraConnectorConfigException(mode + " is not a valid VarIntHandlingMode"));
     }
 
     public Converter getKeyConverter() throws CassandraConnectorConfigException {

@@ -34,6 +34,7 @@ import org.apache.cassandra.db.marshal.DurationType;
 import org.apache.cassandra.db.marshal.FloatType;
 import org.apache.cassandra.db.marshal.InetAddressType;
 import org.apache.cassandra.db.marshal.Int32Type;
+import org.apache.cassandra.db.marshal.IntegerType;
 import org.apache.cassandra.db.marshal.ListType;
 import org.apache.cassandra.db.marshal.LongType;
 import org.apache.cassandra.db.marshal.MapType;
@@ -55,6 +56,7 @@ import com.datastax.oss.driver.api.core.type.DataType;
 
 import io.debezium.annotation.Immutable;
 import io.debezium.annotation.ThreadSafe;
+import io.debezium.connector.cassandra.CassandraConnectorConfig.VarIntHandlingMode;
 import io.debezium.connector.cassandra.transforms.type.deserializer.BasicTypeDeserializer;
 import io.debezium.connector.cassandra.transforms.type.deserializer.CollectionTypeDeserializer;
 import io.debezium.connector.cassandra.transforms.type.deserializer.DurationTypeDeserializer;
@@ -68,6 +70,7 @@ import io.debezium.connector.cassandra.transforms.type.deserializer.TupleTypeDes
 import io.debezium.connector.cassandra.transforms.type.deserializer.TypeDeserializer;
 import io.debezium.connector.cassandra.transforms.type.deserializer.UUIDTypeDeserializer;
 import io.debezium.connector.cassandra.transforms.type.deserializer.UserDefinedTypeDeserializer;
+import io.debezium.connector.cassandra.transforms.type.deserializer.VarIntTypeDeserializer;
 
 @ThreadSafe
 @Immutable
@@ -124,6 +127,7 @@ public final class CassandraTypeDeserializer {
         tmp.put(DurationType.class, new DurationTypeDeserializer(deserializer));
         tmp.put(UUIDType.class, new UUIDTypeDeserializer(deserializer));
         tmp.put(TimeUUIDType.class, new TimeUUIDTypeDeserializer(deserializer));
+        tmp.put(IntegerType.class, new VarIntTypeDeserializer(deserializer));
         // Collection Types
         tmp.put(ListType.class, new ListTypeDeserializer(deserializer));
         tmp.put(SetType.class, new SetTypeDeserializer(deserializer));
@@ -199,5 +203,15 @@ public final class CassandraTypeDeserializer {
      */
     public static TypeDeserializer getTypeDeserializer(AbstractType<?> abstractType) {
         return CassandraTypeDeserializer.getInstance().TYPE_MAP.get(abstractType.getClass());
+    }
+
+    /**
+     * Set deserialization mode for varint columns
+     *
+     * @param varIntHandlingMode the {@link VarIntHandlingMode} of varint values
+     */
+    public static void setVarIntHandlingMode(VarIntHandlingMode varIntHandlingMode) {
+        VarIntTypeDeserializer varIntDeserializer = (VarIntTypeDeserializer) CassandraTypeDeserializer.getInstance().TYPE_MAP.get(IntegerType.class);
+        varIntDeserializer.setMode(varIntHandlingMode);
     }
 }

@@ -33,9 +33,11 @@ import com.codahale.metrics.servlets.PingServlet;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.base.ChangeEventQueue;
+import io.debezium.connector.cassandra.CassandraConnectorConfig.VarIntHandlingMode;
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorConfigException;
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorTaskException;
 import io.debezium.connector.cassandra.network.BuildInfoServlet;
+import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;
 
 public class CassandraConnectorTaskTemplate {
 
@@ -100,6 +102,9 @@ public class CassandraConnectorTaskTemplate {
                         "(see logs for actual errors)");
             }
 
+            LOGGER.info("Initializing deserialization handling modes ...");
+            initDeserializationModes();
+
             LOGGER.info("Initializing Cassandra connector task context ...");
             taskContext = new CassandraConnectorContext(config, schemaLoader, schemaChangeListenerProvider);
 
@@ -127,6 +132,11 @@ public class CassandraConnectorTaskTemplate {
 
     public CassandraConnectorContext getTaskContext() {
         return taskContext;
+    }
+
+    private void initDeserializationModes() {
+        VarIntHandlingMode varIntMode = config.varIntHandlingMode();
+        CassandraTypeDeserializer.setVarIntHandlingMode(varIntMode);
     }
 
     protected ProcessorGroup initProcessorGroup(CassandraConnectorContext taskContext,
