@@ -73,10 +73,10 @@ public class RowData implements KafkaRecord {
         Struct struct = new Struct(schema);
         for (Field field : schema.fields()) {
             Schema cellSchema = KeyValueSchema.getFieldSchema(field.name(), schema);
-            if (field.name().equals(".range_start") && start != null) {
+            if (field.name().equals("_range_start") && start != null) {
                 struct.put(field.name(), start);
             }
-            else if (field.name().equals(".range_end") && end != null) {
+            else if (field.name().equals("_range_end") && end != null) {
                 struct.put(field.name(), end);
             }
             else {
@@ -128,8 +128,8 @@ public class RowData implements KafkaRecord {
             }
         }
 
-        schemaBuilder.field(".range_start", Schema.OPTIONAL_STRING_SCHEMA);
-        schemaBuilder.field(".range_end", Schema.OPTIONAL_STRING_SCHEMA);
+        schemaBuilder.field("_range_start", Schema.OPTIONAL_STRING_SCHEMA);
+        schemaBuilder.field("_range_end", Schema.OPTIONAL_STRING_SCHEMA);
 
         return schemaBuilder.build();
     }
