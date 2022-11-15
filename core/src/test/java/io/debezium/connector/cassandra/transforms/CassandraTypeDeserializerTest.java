@@ -62,7 +62,7 @@ import org.junit.Test;
 
 import com.datastax.oss.driver.api.core.type.DataType;
 
-import io.debezium.connector.cassandra.CassandraConnectorConfig.VarIntHandlingMode;
+import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer.VarIntMode;
 
 /**
  * This class ONLY tests the {@link CassandraTypeDeserializer#deserialize(AbstractType, ByteBuffer)}
@@ -216,12 +216,12 @@ public class CassandraTypeDeserializerTest {
         Assert.assertEquals(expectedInteger.longValue(), deserializedVarIntAsLong);
 
         // varint.handling.mode = PRECISE
-        CassandraTypeDeserializer.setVarIntHandlingMode(VarIntHandlingMode.PRECISE);
+        CassandraTypeDeserializer.setVarIntMode(VarIntMode.PRECISE);
         Object deserializedVarIntAsBigDecimal = CassandraTypeDeserializer.deserialize(IntegerType.instance, serializedVarInt);
         Assert.assertEquals(new BigDecimal(expectedInteger), deserializedVarIntAsBigDecimal);
 
         // varint.handling.mode = STRING
-        CassandraTypeDeserializer.setVarIntHandlingMode(VarIntHandlingMode.STRING);
+        CassandraTypeDeserializer.setVarIntMode(VarIntMode.STRING);
         Object deserializedVarIntAsString = CassandraTypeDeserializer.deserialize(IntegerType.instance, serializedVarInt);
         Assert.assertEquals(expectedInteger.toString(), deserializedVarIntAsString);
     }

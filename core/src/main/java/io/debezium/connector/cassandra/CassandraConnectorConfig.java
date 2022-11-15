@@ -27,10 +27,12 @@ import com.datastax.oss.driver.api.core.DefaultConsistencyLevel;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorConfigException;
+import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer.VarIntMode;
 
 /**
  * All configs used by a Cassandra connector agent.
@@ -68,28 +70,79 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
     /**
      * The set of predefined VarIntHandlingMode options.
      */
-    public enum VarIntHandlingMode {
+    public enum VarIntHandlingMode implements EnumeratedValue {
 
         /**
          * Represent varint values by using Java's long, which might not offer the precision but which is easy to use in consumers.
          */
-        LONG,
+        LONG("long"),
 
         /**
          * Use java.math.BigDecimal to represent varint values, which are encoded in the change events by using a binary
          * representation and Kafka Connect’s org.apache.kafka.connect.data.Decimal type.
          */
-        PRECISE,
+        PRECISE("precise"),
 
         /**
          * Encodes varint values as formatted strings.
          */
-        STRING;
+        STRING("string");
 
-        public static Optional<VarIntHandlingMode> fromText(String text) {
-            return Arrays.stream(values())
-                    .filter(v -> text != null && v.name().toLowerCase().equals(text.toLowerCase()))
-                    .findFirst();
+        private final String value;
+
+        VarIntHandlingMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        public VarIntMode asVarIntMode() {
+            switch (this) {
+                case PRECISE:
+                    return VarIntMode.PRECISE;
+                case STRING:
+                    return VarIntMode.STRING;
+                case LONG:
+                default:
+                    return VarIntMode.LONG;
+            }
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static VarIntHandlingMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (VarIntHandlingMode option : VarIntHandlingMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static VarIntHandlingMode parse(String value, String defaultValue) {
+            VarIntHandlingMode mode = parse(value);
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+            return mode;
         }
     }
 
@@ -309,10 +362,11 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
      * Must be one of 'LONG', 'PRECISE', or 'STRING'. The default varint handling mode is 'LONG'.
      * See {@link VarIntHandlingMode for details}.
      */
-    public static final String DEFAULT_VARINT_HANDLING_MODE = "LONG";
     public static final Field VARINT_HANDLING_MODE = Field.create("varint.handling.mode")
-            .withType(Type.STRING)
-            .withDefault(DEFAULT_VARINT_HANDLING_MODE)
+            .withDisplayName("VarInt Handling")
+            .withEnum(VarIntHandlingMode.class, VarIntHandlingMode.LONG)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
             .withDescription("Specifies how Cassandra varint columns should be represented in change events.");
 
     public static List<Field> validationFieldList = new ArrayList<>(
@@ -478,10 +532,10 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
         return this.getConfig().getBoolean(TOMBSTONES_ON_DELETE, DEFAULT_TOMBSTONES_ON_DELETE);
     }
 
-    public VarIntHandlingMode varIntHandlingMode() {
-        String mode = this.getConfig().getString(VARINT_HANDLING_MODE);
-        Optional<VarIntHandlingMode> varIntHandlingModeOpt = VarIntHandlingMode.fromText(mode);
-        return varIntHandlingModeOpt.orElseThrow(() -> new CassandraConnectorConfigException(mode + " is not a valid VarIntHandlingMode"));
+    public VarIntMode getVarIntMode() {
+        return VarIntHandlingMode
+                .parse(this.getConfig().getString(VARINT_HANDLING_MODE))
+                .asVarIntMode();
     }
 
     public Converter getKeyConverter() throws CassandraConnectorConfigException {
