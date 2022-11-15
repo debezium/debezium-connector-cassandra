@@ -17,12 +17,13 @@ public class QueueProcessorTest extends AbstractQueueProcessorTest {
     @Override
     public CassandraConnectorContext generateTaskContext(Configuration configuration) {
 
+        CassandraConnectorConfig config = new CassandraConnectorConfig(configuration);
         CassandraTypeDeserializer.init(new DebeziumTypeDeserializer() {
             @Override
             public Object deserialize(AbstractType abstractType, ByteBuffer bb) {
                 return abstractType.getSerializer().deserialize(bb);
             }
-        });
+        }, config.getVarIntMode());
 
         return new CassandraConnectorContext(new CassandraConnectorConfig(configuration));
     }

@@ -20,12 +20,13 @@ public class EmbeddedCassandra3ConnectorTestBase extends CassandraConnectorTestB
     @Override
     protected CassandraConnectorContext generateTaskContext(Configuration configuration) throws Exception {
 
+        CassandraConnectorConfig config = new CassandraConnectorConfig(configuration);
         CassandraTypeDeserializer.init(new DebeziumTypeDeserializer() {
             @Override
             public Object deserialize(AbstractType abstractType, ByteBuffer bb) {
                 return abstractType.getSerializer().deserialize(bb);
             }
-        });
+        }, config.getVarIntMode());
 
         return new CassandraConnectorContext(new CassandraConnectorConfig(configuration),
                 new Cassandra3SchemaLoader(),

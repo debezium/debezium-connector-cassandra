@@ -37,7 +37,7 @@ import io.debezium.connector.cassandra.exceptions.CassandraConnectorConfigExcept
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorTaskException;
 import io.debezium.connector.cassandra.network.BuildInfoServlet;
 import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;
-import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer.VarIntMode;
+import io.debezium.connector.cassandra.transforms.DebeziumTypeDeserializer;
 
 public class CassandraConnectorTaskTemplate {
 
@@ -46,6 +46,7 @@ public class CassandraConnectorTaskTemplate {
     public static final MetricRegistry METRIC_REGISTRY_INSTANCE = new MetricRegistry();
 
     private final CassandraConnectorConfig config;
+    private final DebeziumTypeDeserializer deserializer;
     private CassandraConnectorContext taskContext;
     private ProcessorGroup processorGroup;
     private Server httpServer;
@@ -68,10 +69,12 @@ public class CassandraConnectorTaskTemplate {
     }
 
     public CassandraConnectorTaskTemplate(CassandraConnectorConfig config,
+                                          DebeziumTypeDeserializer deserializer,
                                           SchemaLoader schemaLoader,
                                           SchemaChangeListenerProvider schemaChangeListener,
                                           CassandraSpecificProcessors cassandraSpecificProcessors) {
         this.config = config;
+        this.deserializer = deserializer;
         this.schemaLoader = schemaLoader;
         this.schemaChangeListenerProvider = schemaChangeListener;
         this.cassandraSpecificProcessors = cassandraSpecificProcessors;
@@ -102,8 +105,8 @@ public class CassandraConnectorTaskTemplate {
                         "(see logs for actual errors)");
             }
 
-            LOGGER.info("Initializing deserialization handling modes ...");
-            initDeserializationModes();
+            LOGGER.info("Initializing Cassandra type deserializer ...");
+            initDeserializer();
 
             LOGGER.info("Initializing Cassandra connector task context ...");
             taskContext = new CassandraConnectorContext(config, schemaLoader, schemaChangeListenerProvider);
@@ -134,9 +137,8 @@ public class CassandraConnectorTaskTemplate {
         return taskContext;
     }
 
-    private void initDeserializationModes() {
-        VarIntMode varIntMode = config.getVarIntMode();
-        CassandraTypeDeserializer.setVarIntMode(varIntMode);
+    private void initDeserializer() {
+        CassandraTypeDeserializer.init(deserializer, config.getVarIntMode());
     }
 
     protected ProcessorGroup initProcessorGroup(CassandraConnectorContext taskContext,

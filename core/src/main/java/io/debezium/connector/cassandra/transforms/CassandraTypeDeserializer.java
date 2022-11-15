@@ -99,12 +99,12 @@ public final class CassandraTypeDeserializer {
         return CassandraTypeDeserializer.instance;
     }
 
-    public static void init(DebeziumTypeDeserializer typeDeserializer) {
+    public static void init(DebeziumTypeDeserializer typeDeserializer, VarIntMode varIntMode) {
         CassandraTypeDeserializer instance = getInstance();
-        instance.initInternal(typeDeserializer);
+        instance.initInternal(typeDeserializer, varIntMode);
     }
 
-    private void initInternal(DebeziumTypeDeserializer deserializer) {
+    private void initInternal(DebeziumTypeDeserializer deserializer, VarIntMode varIntMode) {
         if (TYPE_MAP != null) {
             return;
         }
@@ -142,6 +142,8 @@ public final class CassandraTypeDeserializer {
         tmp.put(UserType.class, new UserDefinedTypeDeserializer());
 
         TYPE_MAP = Collections.unmodifiableMap(tmp);
+
+        setVarIntMode(varIntMode);
     }
 
     /**

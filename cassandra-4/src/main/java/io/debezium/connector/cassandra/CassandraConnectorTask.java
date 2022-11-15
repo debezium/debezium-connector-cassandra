@@ -8,8 +8,6 @@ package io.debezium.connector.cassandra;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.schema.Schema;
 
-import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;
-
 /**
  * A task that reads Cassandra commit log in CDC directory and generate corresponding data
  * change events which will be emitted to Kafka. If the table has not been bootstrapped,
@@ -39,8 +37,8 @@ public class CassandraConnectorTask {
     }
 
     public static void main(String[] args) throws Exception {
-        CassandraTypeDeserializer.init((abstractType, bb) -> abstractType.getSerializer().deserialize(bb));
         CassandraConnectorTaskTemplate.main(args, config -> new CassandraConnectorTaskTemplate(config,
+                (abstractType, bb) -> abstractType.getSerializer().deserialize(bb),
                 new Cassandra4SchemaLoader(),
                 new Cassandra4SchemaChangeListenerProvider(),
                 context -> new AbstractProcessor[]{ new Cassandra4CommitLogProcessor(context) }));

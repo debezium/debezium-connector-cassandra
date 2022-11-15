@@ -76,7 +76,7 @@ public class CassandraTypeDeserializerTest {
 
     @BeforeClass
     public static void beforeAll() {
-        CassandraTypeDeserializer.init((abstractType, bb) -> abstractType.getSerializer().deserialize(bb));
+        CassandraTypeDeserializer.init((abstractType, bb) -> abstractType.getSerializer().deserialize(bb), VarIntMode.LONG);
     }
 
     @Test
