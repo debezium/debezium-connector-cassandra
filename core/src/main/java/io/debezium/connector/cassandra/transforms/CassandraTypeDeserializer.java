@@ -56,7 +56,6 @@ import com.datastax.oss.driver.api.core.type.DataType;
 
 import io.debezium.annotation.Immutable;
 import io.debezium.annotation.ThreadSafe;
-import io.debezium.connector.cassandra.CassandraConnectorConfig.VarIntHandlingMode;
 import io.debezium.connector.cassandra.transforms.type.deserializer.BasicTypeDeserializer;
 import io.debezium.connector.cassandra.transforms.type.deserializer.CollectionTypeDeserializer;
 import io.debezium.connector.cassandra.transforms.type.deserializer.DurationTypeDeserializer;
@@ -79,6 +78,12 @@ public final class CassandraTypeDeserializer {
     private Map<Class<? extends AbstractType>, TypeDeserializer> TYPE_MAP;
 
     private static CassandraTypeDeserializer instance;
+
+    public enum VarIntMode {
+        PRECISE,
+        LONG,
+        STRING;
+    }
 
     private CassandraTypeDeserializer() {
     }
@@ -208,10 +213,10 @@ public final class CassandraTypeDeserializer {
     /**
      * Set deserialization mode for varint columns
      *
-     * @param varIntHandlingMode the {@link VarIntHandlingMode} of varint values
+     * @param varIntMode the {@link VarIntMode} of varint values
      */
-    public static void setVarIntHandlingMode(VarIntHandlingMode varIntHandlingMode) {
+    public static void setVarIntMode(VarIntMode varIntMode) {
         VarIntTypeDeserializer varIntDeserializer = (VarIntTypeDeserializer) CassandraTypeDeserializer.getInstance().TYPE_MAP.get(IntegerType.class);
-        varIntDeserializer.setMode(varIntHandlingMode);
+        varIntDeserializer.setMode(varIntMode);
     }
 }

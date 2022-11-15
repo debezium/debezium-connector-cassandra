@@ -16,17 +16,17 @@ import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
-import io.debezium.connector.cassandra.CassandraConnectorConfig.VarIntHandlingMode;
+import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer.VarIntMode;
 import io.debezium.connector.cassandra.transforms.DebeziumTypeDeserializer;
 
 public class VarIntTypeDeserializer extends LogicalTypeDeserializer {
 
     private final DebeziumTypeDeserializer deserializer;
-    private VarIntHandlingMode mode;
+    private VarIntMode mode;
 
     public VarIntTypeDeserializer(DebeziumTypeDeserializer deserializer) {
         this.deserializer = deserializer;
-        this.mode = VarIntHandlingMode.LONG;
+        this.mode = VarIntMode.LONG;
     }
 
     @Override
@@ -62,7 +62,7 @@ public class VarIntTypeDeserializer extends LogicalTypeDeserializer {
         throw new IllegalArgumentException("Unknown varIntHandlingMode");
     }
 
-    public void setMode(VarIntHandlingMode mode) {
+    public void setMode(VarIntMode mode) {
         this.mode = mode;
     }
 }
