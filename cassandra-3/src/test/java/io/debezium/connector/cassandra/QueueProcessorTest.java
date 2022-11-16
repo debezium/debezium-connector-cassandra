@@ -23,7 +23,7 @@ public class QueueProcessorTest extends AbstractQueueProcessorTest {
             public Object deserialize(AbstractType abstractType, ByteBuffer bb) {
                 return abstractType.getSerializer().deserialize(bb);
             }
-        }, config.getVarIntMode());
+        }, config.getDecimalMode(), config.getVarIntMode());
 
         return new CassandraConnectorContext(new CassandraConnectorConfig(configuration));
     }

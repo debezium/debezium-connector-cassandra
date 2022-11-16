@@ -58,6 +58,7 @@ import io.debezium.annotation.Immutable;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.connector.cassandra.transforms.type.deserializer.BasicTypeDeserializer;
 import io.debezium.connector.cassandra.transforms.type.deserializer.CollectionTypeDeserializer;
+import io.debezium.connector.cassandra.transforms.type.deserializer.DecimalTypeDeserializer;
 import io.debezium.connector.cassandra.transforms.type.deserializer.DurationTypeDeserializer;
 import io.debezium.connector.cassandra.transforms.type.deserializer.InetAddressDeserializer;
 import io.debezium.connector.cassandra.transforms.type.deserializer.ListTypeDeserializer;
@@ -79,6 +80,12 @@ public final class CassandraTypeDeserializer {
 
     private static CassandraTypeDeserializer instance;
 
+    public enum DecimalMode {
+        PRECISE,
+        DOUBLE,
+        STRING;
+    }
+
     public enum VarIntMode {
         PRECISE,
         LONG,
@@ -99,12 +106,12 @@ public final class CassandraTypeDeserializer {
         return CassandraTypeDeserializer.instance;
     }
 
-    public static void init(DebeziumTypeDeserializer typeDeserializer, VarIntMode varIntMode) {
+    public static void init(DebeziumTypeDeserializer typeDeserializer, DecimalMode decimalMode, VarIntMode varIntMode) {
         CassandraTypeDeserializer instance = getInstance();
-        instance.initInternal(typeDeserializer, varIntMode);
+        instance.initInternal(typeDeserializer, decimalMode, varIntMode);
     }
 
-    private void initInternal(DebeziumTypeDeserializer deserializer, VarIntMode varIntMode) {
+    private void initInternal(DebeziumTypeDeserializer deserializer, DecimalMode decimalMode, VarIntMode varIntMode) {
         if (TYPE_MAP != null) {
             return;
         }
@@ -119,7 +126,6 @@ public final class CassandraTypeDeserializer {
         tmp.put(BytesType.class, new BasicTypeDeserializer(deserializer, BYTES_TYPE));
         tmp.put(FloatType.class, new BasicTypeDeserializer(deserializer, FLOAT_TYPE));
         tmp.put(DoubleType.class, new BasicTypeDeserializer(deserializer, DOUBLE_TYPE));
-        tmp.put(DecimalType.class, new BasicTypeDeserializer(deserializer, DOUBLE_TYPE));
         tmp.put(Int32Type.class, new BasicTypeDeserializer(deserializer, INT_TYPE));
         tmp.put(ShortType.class, new BasicTypeDeserializer(deserializer, SHORT_TYPE));
         tmp.put(LongType.class, new BasicTypeDeserializer(deserializer, LONG_TYPE));
@@ -132,6 +138,7 @@ public final class CassandraTypeDeserializer {
         tmp.put(DurationType.class, new DurationTypeDeserializer(deserializer));
         tmp.put(UUIDType.class, new UUIDTypeDeserializer(deserializer));
         tmp.put(TimeUUIDType.class, new TimeUUIDTypeDeserializer(deserializer));
+        tmp.put(DecimalType.class, new DecimalTypeDeserializer(deserializer));
         tmp.put(IntegerType.class, new VarIntTypeDeserializer(deserializer));
         // Collection Types
         tmp.put(ListType.class, new ListTypeDeserializer(deserializer));
@@ -143,6 +150,7 @@ public final class CassandraTypeDeserializer {
 
         TYPE_MAP = Collections.unmodifiableMap(tmp);
 
+        setDecimalMode(decimalMode);
         setVarIntMode(varIntMode);
     }
 
@@ -210,6 +218,16 @@ public final class CassandraTypeDeserializer {
      */
     public static TypeDeserializer getTypeDeserializer(AbstractType<?> abstractType) {
         return CassandraTypeDeserializer.getInstance().TYPE_MAP.get(abstractType.getClass());
+    }
+
+    /**
+     * Set deserialization mode for decimal columns
+     *
+     * @param decimalMode the {@link DecimalMode} of decimal values
+     */
+    public static void setDecimalMode(DecimalMode decimalMode) {
+        DecimalTypeDeserializer decimalDeserializer = (DecimalTypeDeserializer) CassandraTypeDeserializer.getInstance().TYPE_MAP.get(DecimalType.class);
+        decimalDeserializer.setMode(decimalMode);
     }
 
     /**

@@ -26,7 +26,7 @@ public abstract class EmbeddedCassandra4ConnectorTestBase extends CassandraConne
             public Object deserialize(AbstractType abstractType, ByteBuffer bb) {
                 return abstractType.getSerializer().deserialize(bb);
             }
-        }, config.getVarIntMode());
+        }, config.getDecimalMode(), config.getVarIntMode());
 
         return new CassandraConnectorContext(new CassandraConnectorConfig(configuration),
                 new Cassandra4SchemaLoader(),

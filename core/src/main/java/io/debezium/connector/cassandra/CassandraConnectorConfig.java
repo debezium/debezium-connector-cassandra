@@ -32,6 +32,7 @@ import io.debezium.config.Field;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorConfigException;
+import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer.DecimalMode;
 import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer.VarIntMode;
 
 /**
@@ -64,6 +65,85 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
             return Arrays.stream(values())
                     .filter(v -> text != null && v.name().toLowerCase().equals(text.toLowerCase()))
                     .findFirst();
+        }
+    }
+
+    /**
+     * The set of predefined DecimalHandlingMode options.
+     */
+    public enum DecimalHandlingMode implements EnumeratedValue {
+
+        /**
+         * Represent decimal values by using Java's double, which might not offer the precision but which is easy to use in consumers.
+         */
+        DOUBLE("double"),
+
+        /**
+         * Use java.math.BigDecimal to represent decimal values, which are encoded in the change events by using a binary
+         * representation and Kafka Connect’s org.apache.kafka.connect.data.Decimal type.
+         */
+        PRECISE("precise"),
+
+        /**
+         * Encodes decimal values as formatted strings.
+         */
+        STRING("string");
+
+        private final String value;
+
+        DecimalHandlingMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        public DecimalMode asDecimalMode() {
+            switch (this) {
+                case PRECISE:
+                    return DecimalMode.PRECISE;
+                case STRING:
+                    return DecimalMode.STRING;
+                case DOUBLE:
+                default:
+                    return DecimalMode.DOUBLE;
+            }
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static DecimalHandlingMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (DecimalHandlingMode option : DecimalHandlingMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static DecimalHandlingMode parse(String value, String defaultValue) {
+            DecimalHandlingMode mode = parse(value);
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+            return mode;
         }
     }
 
@@ -359,6 +439,17 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
     protected static final int DEFAULT_SNAPSHOT_FETCH_SIZE = 0;
 
     /**
+     * Must be one of 'DOUBLE', 'PRECISE', or 'STRING'. The default decimal handling mode is 'DOUBLE'.
+     * See {@link DecimalHandlingMode for details}.
+     */
+    public static final Field DECIMAL_HANDLING_MODE = Field.create("decimal.handling.mode")
+            .withDisplayName("Decimal Handling")
+            .withEnum(DecimalHandlingMode.class, DecimalHandlingMode.DOUBLE)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("Specifies how Cassandra decimal columns should be represented in change events.");
+
+    /**
      * Must be one of 'LONG', 'PRECISE', or 'STRING'. The default varint handling mode is 'LONG'.
      * See {@link VarIntHandlingMode for details}.
      */
@@ -530,6 +621,12 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
      */
     public boolean tombstonesOnDelete() {
         return this.getConfig().getBoolean(TOMBSTONES_ON_DELETE, DEFAULT_TOMBSTONES_ON_DELETE);
+    }
+
+    public DecimalMode getDecimalMode() {
+        return DecimalHandlingMode
+                .parse(this.getConfig().getString(DECIMAL_HANDLING_MODE))
+                .asDecimalMode();
     }
 
     public VarIntMode getVarIntMode() {
