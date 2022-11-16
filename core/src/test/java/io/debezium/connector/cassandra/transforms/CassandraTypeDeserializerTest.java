@@ -62,6 +62,7 @@ import org.junit.Test;
 
 import com.datastax.oss.driver.api.core.type.DataType;
 
+import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer.DecimalMode;
 import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer.VarIntMode;
 
 /**
@@ -76,7 +77,7 @@ public class CassandraTypeDeserializerTest {
 
     @BeforeClass
     public static void beforeAll() {
-        CassandraTypeDeserializer.init((abstractType, bb) -> abstractType.getSerializer().deserialize(bb), VarIntMode.LONG);
+        CassandraTypeDeserializer.init((abstractType, bb) -> abstractType.getSerializer().deserialize(bb), DecimalMode.DOUBLE, VarIntMode.LONG);
     }
 
     @Test
@@ -141,9 +142,23 @@ public class CassandraTypeDeserializerTest {
 
         ByteBuffer serializedDecimal = DecimalType.instance.decompose(expectedDecimal);
 
-        Object deserializedDecimal = CassandraTypeDeserializer.deserialize(DecimalType.instance, serializedDecimal);
+        // decimal.handling.mode = DOUBLE (default)
+        Object deserializedDecimalAsDouble = CassandraTypeDeserializer.deserialize(DecimalType.instance, serializedDecimal);
+        Assert.assertEquals(expectedDecimal.doubleValue(), deserializedDecimalAsDouble);
 
-        Assert.assertEquals(expectedDecimal, deserializedDecimal);
+        // decimal.handling.mode = PRECISE
+        CassandraTypeDeserializer.setDecimalMode(DecimalMode.PRECISE);
+        Object deserializedDecimalAsStruct = CassandraTypeDeserializer.deserialize(DecimalType.instance, serializedDecimal);
+        Schema decimalSchema = CassandraTypeDeserializer.getSchemaBuilder(DecimalType.instance).build();
+        Struct expectedDecimalStruct = new Struct(decimalSchema)
+                .put("value", expectedDecimal.unscaledValue().toByteArray())
+                .put("scale", expectedDecimal.scale());
+        Assert.assertEquals(expectedDecimalStruct, deserializedDecimalAsStruct);
+
+        // decimal.handling.mode = STRING
+        CassandraTypeDeserializer.setDecimalMode(DecimalMode.STRING);
+        Object deserializedDecimalAsString = CassandraTypeDeserializer.deserialize(DecimalType.instance, serializedDecimal);
+        Assert.assertEquals(expectedDecimal.toPlainString(), deserializedDecimalAsString);
     }
 
     @Test

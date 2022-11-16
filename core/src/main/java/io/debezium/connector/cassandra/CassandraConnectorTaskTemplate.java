@@ -138,7 +138,7 @@ public class CassandraConnectorTaskTemplate {
     }
 
     private void initDeserializer() {
-        CassandraTypeDeserializer.init(deserializer, config.getVarIntMode());
+        CassandraTypeDeserializer.init(deserializer, config.getDecimalMode(), config.getVarIntMode());
     }
 
     protected ProcessorGroup initProcessorGroup(CassandraConnectorContext taskContext,
