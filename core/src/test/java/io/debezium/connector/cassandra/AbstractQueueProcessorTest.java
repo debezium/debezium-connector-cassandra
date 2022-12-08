@@ -19,6 +19,8 @@ import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
 import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.junit.After;
 import org.junit.Before;
@@ -101,8 +103,17 @@ public abstract class AbstractQueueProcessorTest {
     public void testRangeTombstoneChangeRecordProcessing() throws Exception {
         ChangeEventQueue<Event> queue = context.getQueues().get(0);
 
-        rowData.addStart("1");
-        rowData.addEnd("2");
+        Map<String, String> values1 = new HashMap<>();
+        values1.put("cl1", "val1");
+        values1.put("cl2", "val2");
+        values1.put("cl3", "val3");
+
+        Map<String, String> values2 = new HashMap<>();
+        values2.put("cl1", "val1");
+        values2.put("cl2", "val2");
+
+        rowData.addStartRange(RangeData.start("EXCL_START_BOUND", values1));
+        rowData.addEndRange(RangeData.end("INCL_END_BOUND", values2));
 
         Record record = new ChangeRecord(sourceInfo, rowData, keyValueSchema.keySchema(),
                 keyValueSchema.valueSchema(), RANGE_TOMBSTONE, false);

@@ -31,23 +31,23 @@ import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;
 public class RowData implements KafkaRecord {
     private final Map<String, CellData> cellMap = new LinkedHashMap<>();
 
-    private Object start = null;
-    private Object end = null;
+    private RangeData startRange = null;
+    private RangeData endRange = null;
 
-    public void addStart(Object start) {
-        this.start = start;
+    public void addStartRange(RangeData startRange) {
+        this.startRange = startRange;
     }
 
-    public void addEnd(Object end) {
-        this.end = end;
+    public void addEndRange(RangeData endRange) {
+        this.endRange = endRange;
     }
 
-    public Object getStart() {
-        return start;
+    public RangeData getStartRange() {
+        return startRange;
     }
 
-    public Object getEnd() {
-        return end;
+    public RangeData getEndRange() {
+        return endRange;
     }
 
     public void addCell(CellData cellData) {
@@ -73,11 +73,11 @@ public class RowData implements KafkaRecord {
         Struct struct = new Struct(schema);
         for (Field field : schema.fields()) {
             Schema cellSchema = KeyValueSchema.getFieldSchema(field.name(), schema);
-            if (field.name().equals("_range_start") && start != null) {
-                struct.put(field.name(), start);
+            if (field.name().equals("_range_start") && startRange != null) {
+                struct.put(field.name(), startRange.record(cellSchema));
             }
-            else if (field.name().equals("_range_end") && end != null) {
-                struct.put(field.name(), end);
+            else if (field.name().equals("_range_end") && endRange != null) {
+                struct.put(field.name(), endRange.record(cellSchema));
             }
             else {
                 CellData cellData = cellMap.get(field.name());
@@ -128,8 +128,8 @@ public class RowData implements KafkaRecord {
             }
         }
 
-        schemaBuilder.field("_range_start", Schema.OPTIONAL_STRING_SCHEMA);
-        schemaBuilder.field("_range_end", Schema.OPTIONAL_STRING_SCHEMA);
+        schemaBuilder.field("_range_start", RangeData.rangeSchema("_range_start"));
+        schemaBuilder.field("_range_end", RangeData.rangeSchema("_range_end"));
 
         return schemaBuilder.build();
     }

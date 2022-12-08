@@ -16,6 +16,7 @@ import static io.debezium.connector.cassandra.CellData.ColumnType.REGULAR;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -26,6 +27,7 @@ import java.util.stream.Collectors;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.cql3.ColumnSpecification;
+import org.apache.cassandra.db.ClusteringBound;
 import org.apache.cassandra.db.LivenessInfo;
 import org.apache.cassandra.db.Mutation;
 import org.apache.cassandra.db.commitlog.CommitLogDescriptor;
@@ -468,8 +470,13 @@ public class Cassandra4CommitLogReadHandlerImpl implements CommitLogReadHandler 
 
         RowData after = rangeTombstoneContext.getOrCreate(pu.metadata());
 
-        Optional.ofNullable(rangeTombstoneMarker.openBound(false)).ifPresent(cb -> after.addStart(cb.toString(pu.metadata())));
-        Optional.ofNullable(rangeTombstoneMarker.closeBound(false)).ifPresent(cb -> after.addEnd(cb.toString(pu.metadata())));
+        Optional.ofNullable(rangeTombstoneMarker.openBound(false)).ifPresent(cb -> {
+            after.addStartRange(populateRangeData(cb, "_range_start", pu.metadata()));
+        });
+
+        Optional.ofNullable(rangeTombstoneMarker.closeBound(false)).ifPresent(cb -> {
+            after.addEndRange(populateRangeData(cb, "_range_end", pu.metadata()));
+        });
 
         if (RangeTombstoneContext.isComplete(after)) {
             try {
@@ -484,6 +491,18 @@ public class Cassandra4CommitLogReadHandlerImpl implements CommitLogReadHandler 
                 rangeTombstoneContext.remove(pu.metadata());
             }
         }
+    }
+
+    private RangeData populateRangeData(ClusteringBound<?> cb, String name, org.apache.cassandra.schema.TableMetadata metaData) {
+        Map<String, String> values = new HashMap<>();
+
+        for (int i = 0; i < cb.size(); i++) {
+            String clusteringColumnName = metaData.clusteringColumns().get(i).name.toCQLString();
+            String clusteringColumnValue = metaData.comparator.subtype(i).getString(cb.bufferAt(i));
+            values.put(clusteringColumnName, clusteringColumnValue);
+        }
+
+        return new RangeData(name, cb.kind().toString(), values);
     }
 
     private void populatePartitionColumns(RowData after, PartitionUpdate pu) {

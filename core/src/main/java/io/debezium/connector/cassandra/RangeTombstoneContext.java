@@ -19,7 +19,7 @@ public class RangeTombstoneContext<T> {
     public Map<T, RowData> map = new ConcurrentHashMap<>();
 
     public static boolean isComplete(RowData rowData) {
-        return rowData.getEnd() != null && rowData.getStart() != null;
+        return rowData.getStartRange() != null && rowData.getEndRange() != null;
     }
 
     public RowData getOrCreate(T metadata) {

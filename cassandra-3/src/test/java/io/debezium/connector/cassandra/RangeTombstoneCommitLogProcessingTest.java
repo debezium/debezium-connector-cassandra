@@ -15,8 +15,11 @@ import static io.debezium.connector.cassandra.TestUtils.TEST_KEYSPACE_NAME;
 import static io.debezium.connector.cassandra.TestUtils.TEST_TABLE_NAME;
 import static io.debezium.connector.cassandra.TestUtils.runCql;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 import java.util.List;
+
+import org.junit.Assert;
 
 public class RangeTombstoneCommitLogProcessingTest extends AbstractCommitLogProcessorTest {
 
@@ -67,7 +70,25 @@ public class RangeTombstoneCommitLogProcessingTest extends AbstractCommitLogProc
         Record range1 = (Record) events.get(2);
         assertEquals(range1.getEventType(), CHANGE_EVENT);
         assertEquals(RANGE_TOMBSTONE, range1.getOp());
-        assertEquals("INCL_START_BOUND(1)", range1.getRowData().getStart());
-        assertEquals("INCL_END_BOUND(1, 2)", range1.getRowData().getEnd());
+
+        RangeData startRange = range1.getRowData().getStartRange();
+        RangeData endRange = range1.getRowData().getEndRange();
+
+        Assert.assertNotNull(startRange);
+
+        assertEquals("INCL_START_BOUND", startRange.method);
+        assertEquals("INCL_END_BOUND", endRange.method);
+
+        String bStartValue = startRange.values.get("b");
+        assertNotNull(bStartValue);
+        assertEquals("1", bStartValue);
+
+        String bEndValue = endRange.values.get("b");
+        assertNotNull(bEndValue);
+        assertEquals("1", bEndValue);
+
+        String cEndValue = endRange.values.get("c");
+        assertNotNull(cEndValue);
+        assertEquals("2", cEndValue);
     }
 }
