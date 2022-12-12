@@ -55,7 +55,6 @@ import org.apache.cassandra.db.marshal.UUIDType;
 import org.apache.cassandra.db.marshal.UserType;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.data.Values;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -378,13 +377,12 @@ public class CassandraTypeDeserializerTest {
     @Test
     public void testTimeUUIDType() {
         UUID timeUUID = UUID.randomUUID();
-        String expectedFixedUUID = Values.convertToString(CassandraTypeKafkaSchemaBuilders.UUID_TYPE, UuidUtil.asBytes(timeUUID));
 
         ByteBuffer serializedTimeUUID = TimeUUIDType.instance.decompose(timeUUID);
 
         Object deserializedTimeUUID = CassandraTypeDeserializer.deserialize(TimeUUIDType.instance, serializedTimeUUID);
 
-        Assert.assertEquals(expectedFixedUUID, deserializedTimeUUID);
+        Assert.assertEquals(timeUUID.toString(), deserializedTimeUUID);
     }
 
     @Test
