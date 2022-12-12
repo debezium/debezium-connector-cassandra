@@ -103,7 +103,8 @@ public abstract class AbstractCommitLogProcessorTest extends EmbeddedCassandra4C
                 new RecordMaker(context.getCassandraConnectorConfig().tombstonesOnDelete(),
                         new Filters(context.getCassandraConnectorConfig().fieldExcludeList()),
                         context.getCassandraConnectorConfig()),
-                new CommitLogProcessorMetrics());
+                new CommitLogProcessorMetrics(),
+                CassandraSchemaFactory.get());
 
         CommitLogReader reader = new CommitLogReader();
 

@@ -19,6 +19,7 @@ import com.datastax.oss.driver.api.core.metadata.schema.TableMetadata;
 import com.datastax.oss.driver.api.core.session.Session;
 
 import io.debezium.connector.SourceInfoStructMaker;
+import io.debezium.connector.cassandra.CassandraSchemaFactory.RowData;
 
 public class AbstractSchemaChangeListener extends SchemaChangeListenerBase {
 

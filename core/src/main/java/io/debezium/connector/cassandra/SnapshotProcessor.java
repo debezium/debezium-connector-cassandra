@@ -37,6 +37,8 @@ import com.datastax.oss.protocol.internal.ProtocolConstants;
 
 import io.debezium.DebeziumException;
 import io.debezium.connector.base.ChangeEventQueue;
+import io.debezium.connector.cassandra.CassandraSchemaFactory.CellData;
+import io.debezium.connector.cassandra.CassandraSchemaFactory.RowData;
 import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;
 import io.debezium.time.Conversions;
 import io.debezium.util.Collect;
@@ -60,6 +62,7 @@ public class SnapshotProcessor extends AbstractProcessor {
     private static final Set<Integer> collectionTypes = Collect.unmodifiableSet(ProtocolConstants.DataType.LIST,
             ProtocolConstants.DataType.SET,
             ProtocolConstants.DataType.MAP);
+    private static final CassandraSchemaFactory schemaFactory = CassandraSchemaFactory.get();
 
     private final CassandraClient cassandraClient;
     private final List<ChangeEventQueue<Event>> queues;
@@ -267,7 +270,7 @@ public class SnapshotProcessor extends AbstractProcessor {
                                           Set<String> partitionKeyNames,
                                           Set<String> clusteringKeyNames,
                                           Object executionTime) {
-        RowData rowData = new RowData();
+        RowData rowData = schemaFactory.rowData();
 
         for (ColumnMetadata columnMetadata : columns) {
             String name = columnMetadata.getName().asInternal();
@@ -284,7 +287,7 @@ public class SnapshotProcessor extends AbstractProcessor {
                 }
             }
 
-            CellData cellData = new CellData(name, value, deletionTs, type);
+            CellData cellData = schemaFactory.cellData(name, value, deletionTs, type);
             rowData.addCell(cellData);
         }
 

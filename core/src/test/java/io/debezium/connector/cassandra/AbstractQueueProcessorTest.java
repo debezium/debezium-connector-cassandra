@@ -7,13 +7,13 @@ package io.debezium.connector.cassandra;
 
 import static com.datastax.oss.driver.api.core.type.DataTypes.INT;
 import static com.datastax.oss.driver.api.core.type.DataTypes.TEXT;
-import static io.debezium.connector.cassandra.CellData.ColumnType.CLUSTERING;
-import static io.debezium.connector.cassandra.CellData.ColumnType.PARTITION;
-import static io.debezium.connector.cassandra.CellData.ColumnType.REGULAR;
+import static io.debezium.connector.cassandra.CassandraSchemaFactory.CellData.ColumnType.CLUSTERING;
+import static io.debezium.connector.cassandra.CassandraSchemaFactory.CellData.ColumnType.PARTITION;
+import static io.debezium.connector.cassandra.CassandraSchemaFactory.CellData.ColumnType.REGULAR;
+import static io.debezium.connector.cassandra.CassandraSchemaFactory.RowData.rowSchema;
 import static io.debezium.connector.cassandra.KeyValueSchema.getPrimaryKeySchemas;
 import static io.debezium.connector.cassandra.Record.Operation.INSERT;
 import static io.debezium.connector.cassandra.Record.Operation.RANGE_TOMBSTONE;
-import static io.debezium.connector.cassandra.RowData.rowSchema;
 import static io.debezium.connector.cassandra.TestUtils.TEST_KEYSPACE_NAME;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
@@ -28,6 +28,7 @@ import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.base.ChangeEventQueue;
+import io.debezium.connector.cassandra.CassandraSchemaFactory.RowData;
 import io.debezium.time.Conversions;
 
 public abstract class AbstractQueueProcessorTest {
@@ -37,6 +38,7 @@ public abstract class AbstractQueueProcessorTest {
     private KeyValueSchema keyValueSchema;
     private RowData rowData;
     private SourceInfo sourceInfo;
+    private CassandraSchemaFactory schemaFactory;
 
     public abstract CassandraConnectorContext generateTaskContext(Configuration configuration);
 
@@ -66,11 +68,13 @@ public abstract class AbstractQueueProcessorTest {
                 .withPrimaryKeySchemas(getPrimaryKeySchemas(asList(INT, INT)))
                 .build();
 
-        rowData = new RowData();
-        rowData.addCell(new CellData("p1", 1, null, PARTITION));
-        rowData.addCell(new CellData("c1", 2, null, CLUSTERING));
-        rowData.addCell(new CellData("col1", "col1value", null, REGULAR));
-        rowData.addCell(new CellData("col2", 3, null, REGULAR));
+        schemaFactory = CassandraSchemaFactory.get();
+
+        rowData = schemaFactory.rowData();
+        rowData.addCell(schemaFactory.cellData("p1", 1, null, PARTITION));
+        rowData.addCell(schemaFactory.cellData("c1", 2, null, CLUSTERING));
+        rowData.addCell(schemaFactory.cellData("col1", "col1value", null, REGULAR));
+        rowData.addCell(schemaFactory.cellData("col2", 3, null, REGULAR));
 
         sourceInfo = new SourceInfo(context.getCassandraConnectorConfig(), "cluster1",
                 new OffsetPosition("CommitLog-6-123.log", 0),
@@ -112,8 +116,8 @@ public abstract class AbstractQueueProcessorTest {
         values2.put("cl1", "val1");
         values2.put("cl2", "val2");
 
-        rowData.addStartRange(RangeData.start("EXCL_START_BOUND", values1));
-        rowData.addEndRange(RangeData.end("INCL_END_BOUND", values2));
+        rowData.addStartRange(CassandraSchemaFactory.RangeData.start("EXCL_START_BOUND", values1));
+        rowData.addEndRange(CassandraSchemaFactory.RangeData.end("INCL_END_BOUND", values2));
 
         Record record = new ChangeRecord(sourceInfo, rowData, keyValueSchema.keySchema(),
                 keyValueSchema.valueSchema(), RANGE_TOMBSTONE, false);

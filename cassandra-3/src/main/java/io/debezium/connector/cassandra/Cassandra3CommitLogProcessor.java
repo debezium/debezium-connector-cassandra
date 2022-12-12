@@ -62,7 +62,8 @@ public class Cassandra3CommitLogProcessor extends AbstractProcessor {
                 new RecordMaker(this.context.getCassandraConnectorConfig().tombstonesOnDelete(),
                         new Filters(context.getCassandraConnectorConfig().fieldExcludeList()),
                         this.context.getCassandraConnectorConfig()),
-                metrics);
+                metrics,
+                CassandraSchemaFactory.get());
         cdcDir = new File(DatabaseDescriptor.getCDCLogLocation());
         latestOnly = this.context.getCassandraConnectorConfig().latestCommitLogOnly();
         errorCommitLogReprocessEnabled = this.context.getCassandraConnectorConfig().errorCommitLogReprocessEnabled();

@@ -8,6 +8,8 @@ package io.debezium.connector.cassandra;
 import java.util.ArrayList;
 import java.util.List;
 
+import io.debezium.connector.cassandra.CassandraSchemaFactory.RowData;
+
 /**
  * This field filter selector is designed to determine the filter for excluding fields from a table.
  */

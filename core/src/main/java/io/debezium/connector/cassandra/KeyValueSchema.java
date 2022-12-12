@@ -16,6 +16,7 @@ import com.datastax.oss.driver.api.core.metadata.schema.TableMetadata;
 import com.datastax.oss.driver.api.core.type.DataType;
 
 import io.debezium.connector.SourceInfoStructMaker;
+import io.debezium.connector.cassandra.CassandraSchemaFactory.RowData;
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorSchemaException;
 import io.debezium.connector.cassandra.transforms.CassandraTypeConverter;
 import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;

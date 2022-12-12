@@ -7,6 +7,8 @@ package io.debezium.connector.cassandra;
 
 import org.apache.kafka.connect.data.Schema;
 
+import io.debezium.connector.cassandra.CassandraSchemaFactory.RowData;
+
 /**
  * A TombstoneRecord is a record which has the same key as a delete event but has null value.
  * With null value, Kafka knows that it can remove messages with the same key for log compaction.

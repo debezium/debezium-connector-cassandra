@@ -7,6 +7,8 @@ package io.debezium.connector.cassandra;
 
 import org.apache.kafka.connect.data.Schema;
 
+import io.debezium.connector.cassandra.CassandraSchemaFactory.RowData;
+
 /**
  * An internal representation of a create/update/delete event.
  */

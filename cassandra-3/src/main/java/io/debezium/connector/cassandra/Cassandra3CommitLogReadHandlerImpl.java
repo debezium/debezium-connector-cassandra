@@ -9,9 +9,9 @@ import static io.debezium.connector.cassandra.Cassandra3CommitLogReadHandlerImpl
 import static io.debezium.connector.cassandra.Cassandra3CommitLogReadHandlerImpl.RowType.INSERT;
 import static io.debezium.connector.cassandra.Cassandra3CommitLogReadHandlerImpl.RowType.RANGE_TOMBSTONE;
 import static io.debezium.connector.cassandra.Cassandra3CommitLogReadHandlerImpl.RowType.UPDATE;
-import static io.debezium.connector.cassandra.CellData.ColumnType.CLUSTERING;
-import static io.debezium.connector.cassandra.CellData.ColumnType.PARTITION;
-import static io.debezium.connector.cassandra.CellData.ColumnType.REGULAR;
+import static io.debezium.connector.cassandra.CassandraSchemaFactory.CellData.ColumnType.CLUSTERING;
+import static io.debezium.connector.cassandra.CassandraSchemaFactory.CellData.ColumnType.PARTITION;
+import static io.debezium.connector.cassandra.CassandraSchemaFactory.CellData.ColumnType.REGULAR;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -54,6 +54,9 @@ import com.datastax.oss.driver.api.core.metadata.schema.TableMetadata;
 
 import io.debezium.DebeziumException;
 import io.debezium.connector.base.ChangeEventQueue;
+import io.debezium.connector.cassandra.CassandraSchemaFactory.CellData;
+import io.debezium.connector.cassandra.CassandraSchemaFactory.RangeData;
+import io.debezium.connector.cassandra.CassandraSchemaFactory.RowData;
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorSchemaException;
 import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;
 import io.debezium.time.Conversions;
@@ -76,17 +79,20 @@ public class Cassandra3CommitLogReadHandlerImpl implements CommitLogReadHandler 
     private final SchemaHolder schemaHolder;
     private final CommitLogProcessorMetrics metrics;
     private final RangeTombstoneContext<CFMetaData> rangeTombstoneContext = new RangeTombstoneContext<>();
+    private final CassandraSchemaFactory schemaFactory;
 
     Cassandra3CommitLogReadHandlerImpl(SchemaHolder schemaHolder,
                                        List<ChangeEventQueue<Event>> queues,
                                        OffsetWriter offsetWriter,
                                        RecordMaker recordMaker,
-                                       CommitLogProcessorMetrics metrics) {
+                                       CommitLogProcessorMetrics metrics,
+                                       CassandraSchemaFactory schemaFactory) {
         this.queues = queues;
         this.offsetWriter = offsetWriter;
         this.recordMaker = recordMaker;
         this.schemaHolder = schemaHolder;
         this.metrics = metrics;
+        this.schemaFactory = schemaFactory;
     }
 
     /**
@@ -355,7 +361,7 @@ public class Cassandra3CommitLogReadHandlerImpl implements CommitLogReadHandler 
         Schema valueSchema = keyValueSchema.valueSchema();
         TableMetadata tableMetadata = keyValueSchema.tableMetadata();
 
-        RowData after = new RowData();
+        RowData after = schemaFactory.rowData();
 
         populatePartitionColumns(after, pu);
 
@@ -372,7 +378,7 @@ public class Cassandra3CommitLogReadHandlerImpl implements CommitLogReadHandler 
         for (Map.Entry<ColumnMetadata, ClusteringOrder> clustering : clusteringColumns.entrySet()) {
             ColumnMetadata clusteringKey = clustering.getKey();
             long deletionTs = pu.deletionInfo().getPartitionDeletion().markedForDeleteAt();
-            after.addCell(new CellData(clusteringKey.getName().toString(), null, deletionTs, CLUSTERING));
+            after.addCell(schemaFactory.cellData(clusteringKey.getName().toString(), null, deletionTs, CLUSTERING));
         }
 
         columns.removeAll(tableMetadata.getPartitionKey());
@@ -383,7 +389,7 @@ public class Cassandra3CommitLogReadHandlerImpl implements CommitLogReadHandler 
         for (ColumnMetadata cm : columns) {
             String name = cm.getName().toString();
             long deletionTs = pu.deletionInfo().getPartitionDeletion().markedForDeleteAt();
-            CellData cellData = new CellData(name, null, deletionTs, REGULAR);
+            CellData cellData = schemaFactory.cellData(name, null, deletionTs, REGULAR);
             after.addCell(cellData);
         }
 
@@ -416,7 +422,7 @@ public class Cassandra3CommitLogReadHandlerImpl implements CommitLogReadHandler 
         Schema keySchema = keyValueSchema.keySchema();
         Schema valueSchema = keyValueSchema.valueSchema();
 
-        RowData after = new RowData();
+        RowData after = schemaFactory.rowData();
         populatePartitionColumns(after, pu);
         populateClusteringColumns(after, row, pu);
         populateRegularColumns(after, row, rowType, keyValueSchema);
@@ -470,11 +476,11 @@ public class Cassandra3CommitLogReadHandlerImpl implements CommitLogReadHandler 
         RowData after = rangeTombstoneContext.getOrCreate(pu.metadata());
 
         Optional.ofNullable(rangeTombstoneMarker.openBound(false)).ifPresent(cb -> {
-            after.addStartRange(populateRangeData(cb, "_range_start", pu.metadata()));
+            after.addStartRange(populateRangeData(cb, RangeData.RANGE_START_NAME, pu.metadata()));
         });
 
         Optional.ofNullable(rangeTombstoneMarker.closeBound(false)).ifPresent(cb -> {
-            after.addEndRange(populateRangeData(cb, "_range_end", pu.metadata()));
+            after.addEndRange(populateRangeData(cb, RangeData.RANGE_END_NAME, pu.metadata()));
         });
 
         if (RangeTombstoneContext.isComplete(after)) {
@@ -501,7 +507,7 @@ public class Cassandra3CommitLogReadHandlerImpl implements CommitLogReadHandler 
             values.put(clusteringColumnName, clusteringColumnValue);
         }
 
-        return new RangeData(name, cb.kind().toString(), values);
+        return schemaFactory.rangeData(name, cb.kind().toString(), values);
     }
 
     private void populatePartitionColumns(RowData after, PartitionUpdate pu) {
@@ -513,7 +519,7 @@ public class Cassandra3CommitLogReadHandlerImpl implements CommitLogReadHandler 
             try {
                 String name = cd.name.toString();
                 Object value = partitionKeys.get(cd.position());
-                CellData cellData = new CellData(name, value, null, PARTITION);
+                CellData cellData = schemaFactory.cellData(name, value, null, PARTITION);
                 after.addCell(cellData);
             }
             catch (Exception e) {
@@ -528,7 +534,7 @@ public class Cassandra3CommitLogReadHandlerImpl implements CommitLogReadHandler 
             try {
                 String name = cd.name.toString();
                 Object value = CassandraTypeDeserializer.deserialize(cd.type, row.clustering().get(cd.position()));
-                CellData cellData = new CellData(name, value, null, CellData.ColumnType.CLUSTERING);
+                CellData cellData = schemaFactory.cellData(name, value, null, CellData.ColumnType.CLUSTERING);
                 after.addCell(cellData);
             }
             catch (Exception e) {
@@ -555,7 +561,7 @@ public class Cassandra3CommitLogReadHandlerImpl implements CommitLogReadHandler 
                         deletionTs = cell.isExpiring() ? TimeUnit.MICROSECONDS.convert(cell.localDeletionTime(), TimeUnit.SECONDS) : null;
                     }
                     String name = cd.name.toString();
-                    CellData cellData = new CellData(name, value, deletionTs, REGULAR);
+                    CellData cellData = schemaFactory.cellData(name, value, deletionTs, REGULAR);
                     after.addCell(cellData);
                 }
                 catch (Exception e) {
@@ -575,7 +581,7 @@ public class Cassandra3CommitLogReadHandlerImpl implements CommitLogReadHandler 
             for (ColumnMetadata cm : columns) {
                 String name = cm.getName().toString();
                 long deletionTs = row.deletion().time().markedForDeleteAt();
-                CellData cellData = new CellData(name, null, deletionTs, REGULAR);
+                CellData cellData = schemaFactory.cellData(name, null, deletionTs, REGULAR);
                 after.addCell(cellData);
             }
         }

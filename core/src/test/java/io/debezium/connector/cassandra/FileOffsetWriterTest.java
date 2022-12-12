@@ -29,6 +29,7 @@ public class FileOffsetWriterTest {
     private OffsetWriter offsetWriter;
     private Properties snapshotProps;
     private Properties commitLogProps;
+    private CassandraSchemaFactory schemaFactory = CassandraSchemaFactory.get();
 
     @Before
     public void setUp() throws IOException {
@@ -137,7 +138,7 @@ public class FileOffsetWriterTest {
 
         SourceInfo sourceInfo = new SourceInfo(config, "test-cluster", offsetPosition, keyspaceTable,
                 isSnapshot, Conversions.toInstantFromMicros(System.currentTimeMillis() * 1000));
-        return new ChangeRecord(sourceInfo, new RowData(), Schema.INT32_SCHEMA, Schema.INT32_SCHEMA, Record.Operation.INSERT, markOffset);
+        return new ChangeRecord(sourceInfo, schemaFactory.rowData(), Schema.INT32_SCHEMA, Schema.INT32_SCHEMA, Record.Operation.INSERT, markOffset);
     }
 
     private boolean isProcessed(ChangeRecord record) {

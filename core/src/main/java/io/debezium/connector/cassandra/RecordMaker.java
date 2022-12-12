@@ -9,6 +9,7 @@ import java.time.Instant;
 
 import org.apache.kafka.connect.data.Schema;
 
+import io.debezium.connector.cassandra.CassandraSchemaFactory.RowData;
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorTaskException;
 import io.debezium.function.BlockingConsumer;
 

@@ -11,6 +11,9 @@ import java.util.Objects;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 
+import io.debezium.connector.cassandra.CassandraSchemaFactory.CellData;
+import io.debezium.connector.cassandra.CassandraSchemaFactory.RowData;
+
 /**
  * An immutable data structure representing a change event, and can be converted
  * to a kafka connect Struct representing key/value of the change event.

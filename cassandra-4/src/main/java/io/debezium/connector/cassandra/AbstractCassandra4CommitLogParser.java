@@ -52,7 +52,8 @@ public abstract class AbstractCassandra4CommitLogParser {
                 new RecordMaker(context.getCassandraConnectorConfig().tombstonesOnDelete(),
                         new Filters(context.getCassandraConnectorConfig().fieldExcludeList()),
                         context.getCassandraConnectorConfig()),
-                metrics);
+                metrics,
+                CassandraSchemaFactory.get());
 
         this.commitLogTransfer = context.getCassandraConnectorConfig().getCommitLogTransfer();
         this.erroneousCommitLogs = context.getErroneousCommitLogs();

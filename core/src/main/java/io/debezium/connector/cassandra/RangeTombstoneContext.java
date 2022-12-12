@@ -8,6 +8,8 @@ package io.debezium.connector.cassandra;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import io.debezium.connector.cassandra.CassandraSchemaFactory.RowData;
+
 /**
  * Range tombstone which comes in PartitionUpdate is consisting of 2 RangeTombstoneBoundMarker's
  * which are logically related to each other as the first one is for "start" and the second one for "end" marker.
@@ -17,6 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class RangeTombstoneContext<T> {
     public Map<T, RowData> map = new ConcurrentHashMap<>();
+    private CassandraSchemaFactory factory = CassandraSchemaFactory.get();
 
     public static boolean isComplete(RowData rowData) {
         return rowData.getStartRange() != null && rowData.getEndRange() != null;
@@ -25,7 +28,7 @@ public class RangeTombstoneContext<T> {
     public RowData getOrCreate(T metadata) {
         RowData rowData = map.get(metadata);
         if (rowData == null) {
-            rowData = new RowData();
+            rowData = factory.rowData();
             map.put(metadata, rowData);
         }
         return rowData;

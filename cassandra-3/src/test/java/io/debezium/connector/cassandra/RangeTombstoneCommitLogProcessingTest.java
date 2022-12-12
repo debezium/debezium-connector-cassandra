@@ -19,7 +19,7 @@ import static org.junit.Assert.assertNotNull;
 
 import java.util.List;
 
-import org.junit.Assert;
+import io.debezium.connector.cassandra.CassandraSchemaFactory.RangeData;
 
 public class RangeTombstoneCommitLogProcessingTest extends AbstractCommitLogProcessorTest {
 
@@ -74,7 +74,7 @@ public class RangeTombstoneCommitLogProcessingTest extends AbstractCommitLogProc
         RangeData startRange = range1.getRowData().getStartRange();
         RangeData endRange = range1.getRowData().getEndRange();
 
-        Assert.assertNotNull(startRange);
+        assertNotNull(startRange);
 
         assertEquals("INCL_START_BOUND", startRange.method);
         assertEquals("INCL_END_BOUND", endRange.method);
