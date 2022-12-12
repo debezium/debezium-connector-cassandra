@@ -19,6 +19,8 @@ import static org.junit.Assert.assertNotNull;
 
 import java.util.List;
 
+import org.apache.commons.lang3.tuple.Pair;
+
 import io.debezium.connector.cassandra.CassandraSchemaFactory.RangeData;
 
 public class RangeTombstoneCommitLogProcessingTest extends AbstractCommitLogProcessorTest {
@@ -79,16 +81,16 @@ public class RangeTombstoneCommitLogProcessingTest extends AbstractCommitLogProc
         assertEquals("INCL_START_BOUND", startRange.method);
         assertEquals("INCL_END_BOUND", endRange.method);
 
-        String bStartValue = startRange.values.get("b");
+        Pair<String, String> bStartValue = startRange.values.get("b");
         assertNotNull(bStartValue);
-        assertEquals("1", bStartValue);
+        assertEquals(Pair.of("1", "org.apache.cassandra.db.marshal.Int32Type"), bStartValue);
 
-        String bEndValue = endRange.values.get("b");
+        Pair<String, String> bEndValue = endRange.values.get("b");
         assertNotNull(bEndValue);
-        assertEquals("1", bEndValue);
+        assertEquals(Pair.of("1", "org.apache.cassandra.db.marshal.Int32Type"), bEndValue);
 
-        String cEndValue = endRange.values.get("c");
+        Pair<String, String> cEndValue = endRange.values.get("c");
         assertNotNull(cEndValue);
-        assertEquals("2", cEndValue);
+        assertEquals(Pair.of("2", "org.apache.cassandra.db.marshal.Int32Type"), cEndValue);
     }
 }

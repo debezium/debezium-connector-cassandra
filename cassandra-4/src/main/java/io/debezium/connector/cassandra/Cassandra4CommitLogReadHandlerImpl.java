@@ -41,6 +41,7 @@ import org.apache.cassandra.db.rows.Row;
 import org.apache.cassandra.db.rows.Unfiltered;
 import org.apache.cassandra.db.rows.UnfilteredRowIterator;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.kafka.connect.data.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -500,12 +501,13 @@ public class Cassandra4CommitLogReadHandlerImpl implements CommitLogReadHandler 
     }
 
     private RangeData populateRangeData(ClusteringBound<?> cb, String name, org.apache.cassandra.schema.TableMetadata metaData) {
-        Map<String, String> values = new HashMap<>();
+        Map<String, Pair<String, String>> values = new HashMap<>();
 
         for (int i = 0; i < cb.size(); i++) {
             String clusteringColumnName = metaData.clusteringColumns().get(i).name.toCQLString();
             String clusteringColumnValue = metaData.comparator.subtype(i).getString(cb.bufferAt(i));
-            values.put(clusteringColumnName, clusteringColumnValue);
+            String clusteringColumnType = metaData.clusteringColumns().get(i).type.toString();
+            values.put(clusteringColumnName, Pair.of(clusteringColumnValue, clusteringColumnType));
         }
 
         return schemaFactory.rangeData(name, cb.kind().toString(), values);

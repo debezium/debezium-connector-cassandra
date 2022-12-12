@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -57,7 +58,7 @@ public class CassandraSchemaFactory extends SchemaFactory {
         return new CellData(name, value, deletionTs, columnType);
     }
 
-    public RangeData rangeData(String name, String method, Map<String, String> values) {
+    public RangeData rangeData(String name, String method, Map<String, Pair<String, String>> values) {
         return new RangeData(name, method, values);
     }
 
@@ -317,13 +318,17 @@ public class CassandraSchemaFactory extends SchemaFactory {
         public static final String RANGE_END_NAME = "_range_end";
         public static final String RANGE_METHOD_FIELD_NAME = "method";
         public static final String RANGE_VALUES_FIELD_NAME = "values";
-        public static final String RANGE_TOMBSTONE_VALUES_MAP_NAME = "range_tombstone_values_map";
+        public static final String RANGE_TOMBSTONE_CLUSTERING_VALUE_NAME = "clusteringValue";
+        public static final String RANGE_TOMBSTONE_CLUSTERING_VALUES_NAME = "clusteringValues";
+        public static final String RANGE_CLUSTERING_VALUE_ITEM_NAME_FIELD_NAME = "name";
+        public static final String RANGE_CLUSTERING_VALUE_ITEM_VALUE_FIELD_NAME = "value";
+        public static final String RANGE_CLUSTERING_VALUE_ITEM_TYPE_FIELD_NAME = "type";
 
         public final String name;
         public final String method;
-        public final Map<String, String> values = new HashMap<>();
+        public final Map<String, Pair<String, String>> values = new HashMap<>();
 
-        private RangeData(String name, String method, Map<String, String> values) {
+        private RangeData(String name, String method, Map<String, Pair<String, String>> values) {
             if (name == null) {
                 throw new IllegalArgumentException("Name of range can not be null!");
             }
@@ -340,12 +345,43 @@ public class CassandraSchemaFactory extends SchemaFactory {
             }
         }
 
-        public static RangeData start(String method, Map<String, String> values) {
+        public static RangeData start(String method, Map<String, Pair<String, String>> values) {
             return CassandraSchemaFactory.get().rangeData(RANGE_START_NAME, method, values);
         }
 
-        public static RangeData end(String method, Map<String, String> values) {
+        public static RangeData end(String method, Map<String, Pair<String, String>> values) {
             return CassandraSchemaFactory.get().rangeData(RANGE_END_NAME, method, values);
+        }
+
+        static List<Struct> mapValues(Map<String, Pair<String, String>> values) {
+            return values.entrySet().stream().map(entry -> new Struct(clusteringValue)
+                    .put(RANGE_CLUSTERING_VALUE_ITEM_NAME_FIELD_NAME, entry.getKey())
+                    .put(RANGE_CLUSTERING_VALUE_ITEM_VALUE_FIELD_NAME, entry.getValue().getLeft())
+                    .put(RANGE_CLUSTERING_VALUE_ITEM_TYPE_FIELD_NAME, entry.getValue().getRight()))
+                    .collect(Collectors.toList());
+        }
+
+        static Schema clusteringValue = SchemaBuilder.struct()
+                .version(1)
+                .name(RANGE_TOMBSTONE_CLUSTERING_VALUE_NAME)
+                .field(RANGE_CLUSTERING_VALUE_ITEM_NAME_FIELD_NAME, STRING_SCHEMA)
+                .field(RANGE_CLUSTERING_VALUE_ITEM_VALUE_FIELD_NAME, STRING_SCHEMA)
+                .field(RANGE_CLUSTERING_VALUE_ITEM_TYPE_FIELD_NAME, STRING_SCHEMA)
+                .build();
+
+        static Schema clusteringValues = SchemaBuilder.array(clusteringValue)
+                .name(RANGE_TOMBSTONE_CLUSTERING_VALUES_NAME)
+                .version(1)
+                .build();
+
+        static Schema rangeSchema(String name) {
+            return SchemaBuilder.struct()
+                    .name(name)
+                    .version(1)
+                    .field(RANGE_METHOD_FIELD_NAME, STRING_SCHEMA)
+                    .field(RANGE_VALUES_FIELD_NAME, clusteringValues)
+                    .optional()
+                    .build();
         }
 
         @Override
@@ -353,27 +389,12 @@ public class CassandraSchemaFactory extends SchemaFactory {
             try {
                 return new Struct(schema)
                         .put(RANGE_METHOD_FIELD_NAME, method)
-                        .put(RANGE_VALUES_FIELD_NAME, values);
+                        .put(RANGE_VALUES_FIELD_NAME, mapValues(values));
             }
             catch (DataException e) {
-                throw new DebeziumException(format("Failed to record Range. Name: %s, Schema: %s, Method: %s Value: %s",
+                throw new DebeziumException(format("Failed to record Range. Name: %s, Schema: %s, Method: %s, Values: %s",
                         name, schema.toString(), method, values), e);
             }
-        }
-
-        static Schema rangeSchema(String name) {
-            Schema map = SchemaBuilder.map(STRING_SCHEMA, STRING_SCHEMA)
-                    .name(RANGE_TOMBSTONE_VALUES_MAP_NAME)
-                    .version(1)
-                    .build();
-
-            return SchemaBuilder.struct()
-                    .name(name)
-                    .version(1)
-                    .field(RANGE_METHOD_FIELD_NAME, STRING_SCHEMA)
-                    .field(RANGE_VALUES_FIELD_NAME, map)
-                    .optional()
-                    .build();
         }
 
         @Override

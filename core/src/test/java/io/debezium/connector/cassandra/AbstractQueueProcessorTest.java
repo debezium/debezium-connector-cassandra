@@ -22,6 +22,7 @@ import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.commons.lang3.tuple.Pair;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -107,14 +108,14 @@ public abstract class AbstractQueueProcessorTest {
     public void testRangeTombstoneChangeRecordProcessing() throws Exception {
         ChangeEventQueue<Event> queue = context.getQueues().get(0);
 
-        Map<String, String> values1 = new HashMap<>();
-        values1.put("cl1", "val1");
-        values1.put("cl2", "val2");
-        values1.put("cl3", "val3");
+        Map<String, Pair<String, String>> values1 = new HashMap<>();
+        values1.put("cl1", Pair.of("val1", "string"));
+        values1.put("cl2", Pair.of("val2", "string"));
+        values1.put("cl3", Pair.of("val3", "string"));
 
-        Map<String, String> values2 = new HashMap<>();
-        values2.put("cl1", "val1");
-        values2.put("cl2", "val2");
+        Map<String, Pair<String, String>> values2 = new HashMap<>();
+        values2.put("cl1", Pair.of("val1", "string"));
+        values2.put("cl2", Pair.of("val2", "string"));
 
         rowData.addStartRange(CassandraSchemaFactory.RangeData.start("EXCL_START_BOUND", values1));
         rowData.addEndRange(CassandraSchemaFactory.RangeData.end("INCL_END_BOUND", values2));
