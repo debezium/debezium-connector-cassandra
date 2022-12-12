@@ -8,6 +8,8 @@ package io.debezium.connector.cassandra;
 
 import static io.debezium.connector.cassandra.CassandraConnectorConfig.DEFAULT_COMMIT_LOG_TRANSFER_CLASS;
 import static io.debezium.connector.cassandra.CommitLogProcessingResult.Result.DOES_NOT_EXIST;
+import static io.debezium.connector.cassandra.CommitLogProcessingResult.Result.ERROR;
+import static io.debezium.connector.cassandra.CommitLogProcessingResult.Result.OK;
 
 import java.util.List;
 import java.util.Set;
@@ -74,7 +76,7 @@ public abstract class AbstractCassandra4CommitLogParser {
         metrics.setCommitLogPosition(0);
 
         CommitLogProcessingResult result = parse();
-        if (!CommitLogProcessingResult.Result.COMPLETED_PREMATURELY.equals(result.result)) {
+        if (result.result == OK || result.result == ERROR) {
             enqueueEOFEvent();
         }
         Cassandra4CommitLogProcessor.removeProcessing(this);
