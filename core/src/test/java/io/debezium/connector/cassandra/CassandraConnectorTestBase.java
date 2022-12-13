@@ -52,7 +52,8 @@ public abstract class CassandraConnectorTestBase {
             .withExposedPorts(9042)
             .withStartupTimeout(Duration.ofMinutes(3))
             .withCreateContainerCmdModifier(cmd)
-            .withFileSystemBind(cassandraDir, CASSANDRA_SERVER_DIR, BindMode.READ_WRITE);
+            .withFileSystemBind(cassandraDir, CASSANDRA_SERVER_DIR, BindMode.READ_WRITE)
+            .withCommand("-Dcassandra.ring_delay_ms=5000 -Dcassandra.superuser_setup_delay_ms=1000");
 
     @BeforeClass
     public static void setUpClass() throws Exception {
@@ -66,22 +67,22 @@ public abstract class CassandraConnectorTestBase {
         destroyTestKeyspace(TEST_KEYSPACE_NAME_2);
         cassandra.stop();
 
-        GenericContainer clenaup = new GenericContainer(new ImageFromDockerfile()
+        GenericContainer container = new GenericContainer(new ImageFromDockerfile()
                 .withDockerfileFromBuilder(builder -> builder
                         .from("eclipse-temurin:8-jre-focal")
                         .volume("/var/lib/cassandra")
                         .cmd("sleep", "10") // Give testcontainers some time to find out container is running.
                         .build()))
                                 .withFileSystemBind(cassandraDir, CASSANDRA_SERVER_DIR, BindMode.READ_WRITE);
-        clenaup.start();
-        clenaup.execInContainer(
+        container.start();
+        container.execInContainer(
                 "rm", "-rf",
                 CASSANDRA_SERVER_DIR + "/data",
                 CASSANDRA_SERVER_DIR + "/cdc_raw_directory",
                 CASSANDRA_SERVER_DIR + "/commitlog",
                 CASSANDRA_SERVER_DIR + "/hints",
                 CASSANDRA_SERVER_DIR + "/saved_caches");
-        clenaup.stop();
+        container.stop();
     }
 
     public static void destroyTestKeyspace() throws Exception {
