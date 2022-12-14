@@ -40,11 +40,44 @@ import io.debezium.schema.SchemaFactory;
 
 public class CassandraSchemaFactory extends SchemaFactory {
 
+    /*
+     * Row data schema
+     */
+    public static final String ROW_SCHEMA_NAME = Record.AFTER;
+    public static final int ROW_SCHEMA_VERSION = 1;
+
+    /*
+     * Cell data schema
+     */
+    public static final String CELL_SCHEMA_NAME = "cell_value";
+    public static final int CELL_SCHEMA_VERSION = 1;
+
+    /*
+     * Range data schema
+     */
+    public static final String RANGE_START_SCHEMA_NAME = "_range_start";
+    public static final int RANGE_START_SCHEMA_VERSION = 1;
+
+    public static final String RANGE_END_SCHEMA_NAME = "_range_end";
+    public static final int RANGE_END_SCHEMA_VERSION = 1;
+
+    /*
+     * Schema for array of clustering values for range tombstones
+     */
+    public static final String RANGE_TOMBSTONE_CLUSTERING_VALUES_SCHEMA_NAME = "clustering_values";
+    public static final int RANGE_TOMBSTONE_CLUSTERING_VALUES_SCHEMA_VERSION = 1;
+
+    /*
+     * Schema for clustering value of an array for range tombstones
+     */
+    public static final String RANGE_TOMBSTONE_CLUSTERING_VALUE_SCHEMA_NAME = "clustering_value";
+    public static final int RANGE_TOMBSTONE_CLUSTERING_VALUE_SCHEMA_VERSION = 1;
+
+    private static final CassandraSchemaFactory cassandraSchemaFactoryObject = new CassandraSchemaFactory();
+
     public CassandraSchemaFactory() {
         super();
     }
-
-    private static final CassandraSchemaFactory cassandraSchemaFactoryObject = new CassandraSchemaFactory();
 
     public static CassandraSchemaFactory get() {
         return cassandraSchemaFactoryObject;
@@ -158,7 +191,7 @@ public class CassandraSchemaFactory extends SchemaFactory {
         }
 
         static Schema rowSchema(List<String> columnNames, List<DataType> columnsTypes) {
-            SchemaBuilder schemaBuilder = SchemaBuilder.struct().name(Record.AFTER).version(1);
+            SchemaBuilder schemaBuilder = SchemaBuilder.struct().name(ROW_SCHEMA_NAME).version(ROW_SCHEMA_VERSION);
 
             for (int i = 0; i < columnNames.size(); i++) {
                 Schema valueSchema = CassandraTypeDeserializer.getSchemaBuilder(
@@ -170,8 +203,8 @@ public class CassandraSchemaFactory extends SchemaFactory {
                 }
             }
 
-            schemaBuilder.field(RANGE_START_NAME, RangeData.rangeSchema(RANGE_START_NAME));
-            schemaBuilder.field(RANGE_END_NAME, RangeData.rangeSchema(RANGE_END_NAME));
+            schemaBuilder.field(RANGE_START_NAME, RangeData.rangeStartSchema());
+            schemaBuilder.field(RANGE_END_NAME, RangeData.rangeEndSchema());
 
             return schemaBuilder.build();
         }
@@ -271,8 +304,8 @@ public class CassandraSchemaFactory extends SchemaFactory {
             }
 
             SchemaBuilder schemaBuilder = SchemaBuilder.struct()
-                    .name(columnName)
-                    .version(1)
+                    .name(CELL_SCHEMA_NAME)
+                    .version(CELL_SCHEMA_VERSION)
                     .field(CELL_VALUE_KEY, columnSchema)
                     .field(CELL_DELETION_TS_KEY, OPTIONAL_INT64_SCHEMA)
                     .field(CELL_SET_KEY, BOOLEAN_SCHEMA);
@@ -318,8 +351,6 @@ public class CassandraSchemaFactory extends SchemaFactory {
         public static final String RANGE_END_NAME = "_range_end";
         public static final String RANGE_METHOD_FIELD_NAME = "method";
         public static final String RANGE_VALUES_FIELD_NAME = "values";
-        public static final String RANGE_TOMBSTONE_CLUSTERING_VALUE_NAME = "clusteringValue";
-        public static final String RANGE_TOMBSTONE_CLUSTERING_VALUES_NAME = "clusteringValues";
         public static final String RANGE_CLUSTERING_VALUE_ITEM_NAME_FIELD_NAME = "name";
         public static final String RANGE_CLUSTERING_VALUE_ITEM_VALUE_FIELD_NAME = "value";
         public static final String RANGE_CLUSTERING_VALUE_ITEM_TYPE_FIELD_NAME = "type";
@@ -362,22 +393,30 @@ public class CassandraSchemaFactory extends SchemaFactory {
         }
 
         static Schema clusteringValue = SchemaBuilder.struct()
-                .version(1)
-                .name(RANGE_TOMBSTONE_CLUSTERING_VALUE_NAME)
+                .version(RANGE_TOMBSTONE_CLUSTERING_VALUE_SCHEMA_VERSION)
+                .name(RANGE_TOMBSTONE_CLUSTERING_VALUE_SCHEMA_NAME)
                 .field(RANGE_CLUSTERING_VALUE_ITEM_NAME_FIELD_NAME, STRING_SCHEMA)
                 .field(RANGE_CLUSTERING_VALUE_ITEM_VALUE_FIELD_NAME, STRING_SCHEMA)
                 .field(RANGE_CLUSTERING_VALUE_ITEM_TYPE_FIELD_NAME, STRING_SCHEMA)
                 .build();
 
         static Schema clusteringValues = SchemaBuilder.array(clusteringValue)
-                .name(RANGE_TOMBSTONE_CLUSTERING_VALUES_NAME)
-                .version(1)
+                .name(RANGE_TOMBSTONE_CLUSTERING_VALUES_SCHEMA_NAME)
+                .version(RANGE_TOMBSTONE_CLUSTERING_VALUES_SCHEMA_VERSION)
                 .build();
 
-        static Schema rangeSchema(String name) {
+        static Schema rangeStartSchema() {
+            return rangeSchema(RANGE_START_SCHEMA_NAME, RANGE_START_SCHEMA_VERSION);
+        }
+
+        static Schema rangeEndSchema() {
+            return rangeSchema(RANGE_END_SCHEMA_NAME, RANGE_END_SCHEMA_VERSION);
+        }
+
+        private static Schema rangeSchema(String name, int version) {
             return SchemaBuilder.struct()
                     .name(name)
-                    .version(1)
+                    .version(version)
                     .field(RANGE_METHOD_FIELD_NAME, STRING_SCHEMA)
                     .field(RANGE_VALUES_FIELD_NAME, clusteringValues)
                     .optional()
