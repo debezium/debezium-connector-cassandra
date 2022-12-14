@@ -251,7 +251,7 @@
                         </dependencies>
                         <executions>
                             <execution>
-                                <id>default</id>
+                                <id>plugin</id>
                                 <phase>package</phase>
                                 <goals>
                                     <goal>single</goal>
@@ -262,6 +262,21 @@
                                     <descriptorRefs>
                                         <descriptorRef>connector-distribution</descriptorRef>
                                     </descriptorRefs>
+                                    <tarLongFileMode>posix</tarLongFileMode>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>standalone</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>single</goal>
+                                </goals>
+                                <configuration>
+                                    <finalName>${project.artifactId}-${project.version}</finalName>
+                                    <attach>true</attach>  <!-- we want attach & deploy these to Maven -->
+                                    <descriptors>
+                                        <descriptor>${project.basedir}/../src/assembly/assembly-standalone.xml</descriptor>
+                                    </descriptors>
                                     <tarLongFileMode>posix</tarLongFileMode>
                                 </configuration>
                             </execution>
