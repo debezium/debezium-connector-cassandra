@@ -273,14 +273,12 @@ public class Cassandra4CommitLogReadHandlerImpl implements CommitLogReadHandler 
 
     @Override
     public void handleUnrecoverableError(CommitLogReadException exception) {
-        exception.printStackTrace();
         LOGGER.error("Unrecoverable error when reading commit log", exception);
         metrics.onUnrecoverableError();
     }
 
     @Override
     public boolean shouldSkipSegmentOnError(CommitLogReadException exception) {
-        exception.printStackTrace();
         if (exception.permissible) {
             LOGGER.error("Encountered a permissible exception during log replay", exception);
         }

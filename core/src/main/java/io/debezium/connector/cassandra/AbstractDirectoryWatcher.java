@@ -43,7 +43,7 @@ public abstract class AbstractDirectoryWatcher {
     }
 
     public void poll() throws InterruptedException, IOException {
-        LOGGER.info("Polling commitLog files from {} ...", directory);
+        LOGGER.debug("Polling commitLog files from {} ...", directory);
         WatchKey key = watchService.poll(pollInterval.toMillis(), TimeUnit.MILLISECONDS);
 
         if (key != null) {
@@ -59,7 +59,7 @@ public abstract class AbstractDirectoryWatcher {
             key.reset();
         }
         else {
-            LOGGER.info("No commitLogFile is detected in {}.", directory);
+            LOGGER.debug("No commitLogFile is detected in {}.", directory);
         }
     }
 
