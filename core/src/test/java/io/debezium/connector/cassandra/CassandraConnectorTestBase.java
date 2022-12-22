@@ -111,7 +111,7 @@ public abstract class CassandraConnectorTestBase {
                 .pollInSameThread()
                 .timeout(1, MINUTES)
                 .until(() -> {
-                    try (final CqlSession ignored = CqlSession.builder().build()) {
+                    try (CqlSession ignored = CqlSession.builder().build()) {
                         return true;
                     }
                     catch (Exception ex) {
