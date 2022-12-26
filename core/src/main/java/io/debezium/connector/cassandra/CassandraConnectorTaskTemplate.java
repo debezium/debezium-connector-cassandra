@@ -35,7 +35,6 @@ import io.debezium.connector.cassandra.exceptions.CassandraConnectorConfigExcept
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorTaskException;
 import io.debezium.connector.cassandra.network.BuildInfoServlet;
 import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;
-import io.debezium.connector.cassandra.transforms.DebeziumTypeDeserializer;
 
 public class CassandraConnectorTaskTemplate {
 
@@ -44,14 +43,14 @@ public class CassandraConnectorTaskTemplate {
     public static final MetricRegistry METRIC_REGISTRY_INSTANCE = new MetricRegistry();
 
     private final CassandraConnectorConfig config;
-    private final DebeziumTypeDeserializer deserializer;
+    private final CassandraTypeProvider deserializerProvider;
     private CassandraConnectorContext taskContext;
     private ProcessorGroup processorGroup;
     private Server httpServer;
     private JmxReporter jmxReporter;
-    private SchemaLoader schemaLoader;
-    private SchemaChangeListenerProvider schemaChangeListenerProvider;
-    private CassandraSpecificProcessors cassandraSpecificProcessors;
+    private final SchemaLoader schemaLoader;
+    private final SchemaChangeListenerProvider schemaChangeListenerProvider;
+    private final CassandraSpecificProcessors cassandraSpecificProcessors;
     private final ComponentFactory factory;
 
     public static void main(String[] args,
@@ -68,13 +67,13 @@ public class CassandraConnectorTaskTemplate {
     }
 
     public CassandraConnectorTaskTemplate(CassandraConnectorConfig config,
-                                          DebeziumTypeDeserializer deserializer,
+                                          CassandraTypeProvider deserializerProvider,
                                           SchemaLoader schemaLoader,
                                           SchemaChangeListenerProvider schemaChangeListener,
                                           CassandraSpecificProcessors cassandraSpecificProcessors,
                                           ComponentFactory factory) {
         this.config = config;
-        this.deserializer = deserializer;
+        this.deserializerProvider = deserializerProvider;
         this.schemaLoader = schemaLoader;
         this.schemaChangeListenerProvider = schemaChangeListener;
         this.cassandraSpecificProcessors = cassandraSpecificProcessors;
@@ -142,7 +141,8 @@ public class CassandraConnectorTaskTemplate {
     }
 
     private void initDeserializer() {
-        CassandraTypeDeserializer.init(deserializer, config.getDecimalMode(), config.getVarIntMode());
+        CassandraTypeDeserializer.init(deserializerProvider.deserializers(), config.getDecimalMode(),
+                config.getVarIntMode(), deserializerProvider.baseTypeForReversedType());
     }
 
     protected ProcessorGroup initProcessorGroup(CassandraConnectorContext taskContext, Emitter recordEmitter,
@@ -154,7 +154,7 @@ public class CassandraConnectorTaskTemplate {
                 processorGroup.addProcessor(processor);
             }
 
-            processorGroup.addProcessor(new SnapshotProcessor(taskContext));
+            processorGroup.addProcessor(new SnapshotProcessor(taskContext, deserializerProvider.getClusterName()));
             List<ChangeEventQueue<Event>> queues = taskContext.getQueues();
             for (int i = 0; i < queues.size(); i++) {
                 processorGroup.addProcessor(new QueueProcessor(taskContext, i, recordEmitter));

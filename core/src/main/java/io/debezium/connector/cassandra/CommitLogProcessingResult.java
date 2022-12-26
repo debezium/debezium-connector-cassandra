@@ -10,7 +10,7 @@ public class CommitLogProcessingResult {
         OK,
         ERROR,
         DOES_NOT_EXIST,
-        COMPLETED_PREMATURELY;
+        COMPLETED_PREMATURELY
     }
 
     public final LogicalCommitLog commitLog;

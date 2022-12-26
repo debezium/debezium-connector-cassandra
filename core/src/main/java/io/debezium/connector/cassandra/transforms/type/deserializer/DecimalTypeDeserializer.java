@@ -11,9 +11,10 @@ import static io.debezium.connector.cassandra.transforms.CassandraTypeKafkaSchem
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 
-import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
+
+import com.datastax.oss.protocol.internal.ProtocolConstants;
 
 import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer.DecimalMode;
 import io.debezium.connector.cassandra.transforms.DebeziumTypeDeserializer;
@@ -22,24 +23,23 @@ import io.debezium.data.VariableScaleDecimal;
 
 public class DecimalTypeDeserializer extends LogicalTypeDeserializer {
 
-    private final DebeziumTypeDeserializer deserializer;
     private final Schema schema;
     private DecimalMode mode;
 
-    public DecimalTypeDeserializer(DebeziumTypeDeserializer deserializer) {
-        this.deserializer = deserializer;
+    public DecimalTypeDeserializer(DebeziumTypeDeserializer deserializer, Object abstractType) {
+        super(deserializer, ProtocolConstants.DataType.DECIMAL, abstractType);
         this.schema = VariableScaleDecimal.builder().build();
         this.mode = DecimalMode.DOUBLE;
     }
 
     @Override
-    public Object deserialize(AbstractType<?> abstractType, ByteBuffer bb) {
-        Object value = deserializer.deserialize(abstractType, bb);
+    public Object deserialize(Object abstractType, ByteBuffer bb) {
+        Object value = super.deserialize(abstractType, bb);
         return formatDeserializedValue(abstractType, value);
     }
 
     @Override
-    public SchemaBuilder getSchemaBuilder(AbstractType<?> abstractType) {
+    public SchemaBuilder getSchemaBuilder(Object abstractType) {
         switch (mode) {
             case DOUBLE:
                 return DOUBLE_TYPE;
@@ -52,7 +52,7 @@ public class DecimalTypeDeserializer extends LogicalTypeDeserializer {
     }
 
     @Override
-    public Object formatDeserializedValue(AbstractType<?> abstractType, Object value) {
+    public Object formatDeserializedValue(Object abstractType, Object value) {
         BigDecimal decimal = (BigDecimal) value;
         switch (mode) {
             case DOUBLE:

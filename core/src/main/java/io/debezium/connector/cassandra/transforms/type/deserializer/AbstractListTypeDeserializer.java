@@ -9,48 +9,44 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.cassandra.db.marshal.AbstractType;
-import org.apache.cassandra.db.marshal.ListType;
-import org.apache.cassandra.db.rows.ComplexColumnData;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Values;
 
+import com.datastax.oss.driver.api.core.type.DataType;
+import com.datastax.oss.driver.internal.core.type.DefaultListType;
+
 import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;
 import io.debezium.connector.cassandra.transforms.DebeziumTypeDeserializer;
 
-public class ListTypeDeserializer extends CollectionTypeDeserializer<ListType<?>> {
+public abstract class AbstractListTypeDeserializer extends CollectionTypeDeserializer {
 
-    private final DebeziumTypeDeserializer deserializer;
-
-    public ListTypeDeserializer(DebeziumTypeDeserializer deserializer) {
-        this.deserializer = deserializer;
+    public AbstractListTypeDeserializer(DebeziumTypeDeserializer deserializer, Integer dataType, Class<?> abstractTypeClass) {
+        super(deserializer, dataType, abstractTypeClass);
     }
 
     @Override
-    public Object deserialize(AbstractType<?> abstractType, ByteBuffer bb) {
-        List<?> deserializedList = (List<?>) deserializer.deserialize(abstractType, bb);
+    public Object deserialize(Object abstractType, ByteBuffer bb) {
+        List<?> deserializedList = (List<?>) super.deserialize(abstractType, bb);
         deserializedList = processElementsInDeserializedList(abstractType, deserializedList);
         return Values.convertToList(getSchemaBuilder(abstractType).build(), deserializedList);
     }
 
     @Override
-    public SchemaBuilder getSchemaBuilder(AbstractType<?> abstractType) {
-        ListType<?> listType = (ListType<?>) abstractType;
-        AbstractType<?> elementsType = listType.getElementsType();
+    public SchemaBuilder getSchemaBuilder(Object abstractType) {
+        Object elementsType = getElementsType(abstractType);
         Schema innerSchema = CassandraTypeDeserializer.getSchemaBuilder(elementsType).build();
         return SchemaBuilder.array(innerSchema).optional();
     }
 
     @Override
-    public Object deserialize(ListType<?> listType, ComplexColumnData ccd) {
-        List<ByteBuffer> bbList = listType.serializedValues(ccd.iterator());
-        AbstractType<?> elementsType = listType.getElementsType();
+    public Object deserialize(Object abstractType, List<ByteBuffer> bbList) {
+        Object elementsType = getElementsType(abstractType);
         List<Object> deserializedList = new ArrayList<>(bbList.size());
         for (ByteBuffer bb : bbList) {
             deserializedList.add(CassandraTypeDeserializer.deserialize(elementsType, bb));
         }
-        return Values.convertToList(getSchemaBuilder(listType).build(), deserializedList);
+        return Values.convertToList(getSchemaBuilder(abstractType).build(), deserializedList);
     }
 
     /**
@@ -61,8 +57,8 @@ public class ListTypeDeserializer extends CollectionTypeDeserializer<ListType<?>
      * @param deserializedList List deserialized from Cassandra
      * @return A deserialized list from Cassandra with each element that fits in it's Kafka Schema.
      */
-    private List<?> processElementsInDeserializedList(AbstractType<?> abstractType, List<?> deserializedList) {
-        AbstractType<?> elementsType = ((ListType<?>) abstractType).getElementsType();
+    private List<?> processElementsInDeserializedList(Object abstractType, List<?> deserializedList) {
+        Object elementsType = getElementsType(abstractType);
         TypeDeserializer elementsTypeDeserializer = CassandraTypeDeserializer.getTypeDeserializer(elementsType);
         List<Object> resultedList;
         if (elementsTypeDeserializer instanceof LogicalTypeDeserializer) {
@@ -72,7 +68,7 @@ public class ListTypeDeserializer extends CollectionTypeDeserializer<ListType<?>
                 resultedList.add(formattedElement);
             }
         }
-        else if (elementsTypeDeserializer instanceof UserDefinedTypeDeserializer || elementsTypeDeserializer instanceof TupleTypeDeserializer) {
+        else if (elementsTypeDeserializer instanceof AbstractUserDefinedTypeDeserializer || elementsTypeDeserializer instanceof AbstractTupleTypeDeserializer) {
             resultedList = new ArrayList<>();
             for (Object element : deserializedList) {
                 Object deserializedElement = elementsTypeDeserializer.deserialize(elementsType, (ByteBuffer) element);
@@ -84,4 +80,17 @@ public class ListTypeDeserializer extends CollectionTypeDeserializer<ListType<?>
         }
         return resultedList;
     }
+
+    @Override
+    public Object getAbstractType(DataType dataType) {
+        DefaultListType listType = (DefaultListType) dataType;
+        DataType innerDataType = listType.getElementType();
+        Object innerAbstractType = CassandraTypeDeserializer.getTypeDeserializer(innerDataType)
+                .getAbstractType(innerDataType);
+        return getAbstractTypeInstance(innerAbstractType, !listType.isFrozen());
+    }
+
+    protected abstract Object getElementsType(Object abstractType);
+
+    protected abstract Object getAbstractTypeInstance(Object innerAbstractType, boolean isMultiCell);
 }

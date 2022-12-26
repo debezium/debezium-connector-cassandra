@@ -27,19 +27,19 @@ public abstract class AbstractDirectoryWatcher {
     private final WatchService watchService;
     private final Duration pollInterval;
     private final Path directory;
-    private final Set<WatchEvent.Kind> kinds;
+    private final Set<WatchEvent.Kind<?>> kinds;
 
-    public AbstractDirectoryWatcher(Path directory, Duration pollInterval, Set<WatchEvent.Kind> kinds) throws IOException {
+    public AbstractDirectoryWatcher(Path directory, Duration pollInterval, Set<WatchEvent.Kind<?>> kinds) throws IOException {
         this(FileSystems.getDefault().newWatchService(), directory, pollInterval, kinds);
     }
 
-    AbstractDirectoryWatcher(WatchService watchService, Path directory, Duration pollInterval, Set<WatchEvent.Kind> kinds) throws IOException {
+    AbstractDirectoryWatcher(WatchService watchService, Path directory, Duration pollInterval, Set<WatchEvent.Kind<?>> kinds) throws IOException {
         this.watchService = watchService;
         this.pollInterval = pollInterval;
         this.directory = directory;
         this.kinds = kinds;
 
-        directory.register(watchService, kinds.toArray(new WatchEvent.Kind[kinds.size()]));
+        directory.register(watchService, kinds.toArray(new WatchEvent.Kind[0]));
     }
 
     public void poll() throws InterruptedException, IOException {

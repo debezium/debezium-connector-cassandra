@@ -26,8 +26,7 @@ public class CassandraConnectorContext extends CdcSourceTaskContext {
     private SchemaHolder schemaHolder;
     private OffsetWriter offsetWriter;
     // Create a HashSet to record names of CommitLog Files which are not successfully read or streamed.
-    private Set<String> erroneousCommitLogs = ConcurrentHashMap.newKeySet();
-    private AbstractSchemaChangeListener schemaChangeListener;
+    private final Set<String> erroneousCommitLogs = ConcurrentHashMap.newKeySet();
 
     public CassandraConnectorContext(CassandraConnectorConfig config) {
         super(config.getContextName(), config.getLogicalName(), Collections::emptySet);
@@ -49,7 +48,7 @@ public class CassandraConnectorContext extends CdcSourceTaskContext {
             // Loading up DDL schemas from disk
             schemaLoader.load(this.config.cassandraConfig());
 
-            this.schemaChangeListener = schemaChangeListenerProvider.provide(this.config);
+            AbstractSchemaChangeListener schemaChangeListener = schemaChangeListenerProvider.provide(this.config);
 
             // Setting up Cassandra driver
             this.cassandraClient = new CassandraClient(config.cassandraDriverConfig(), schemaChangeListener);

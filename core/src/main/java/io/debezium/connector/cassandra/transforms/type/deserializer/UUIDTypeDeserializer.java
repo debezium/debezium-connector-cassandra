@@ -9,32 +9,31 @@ import static io.debezium.connector.cassandra.transforms.CassandraTypeKafkaSchem
 
 import java.nio.ByteBuffer;
 
-import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.kafka.connect.data.SchemaBuilder;
+
+import com.datastax.oss.protocol.internal.ProtocolConstants;
 
 import io.debezium.connector.cassandra.transforms.DebeziumTypeDeserializer;
 
 public class UUIDTypeDeserializer extends LogicalTypeDeserializer {
 
-    private final DebeziumTypeDeserializer deserializer;
-
-    public UUIDTypeDeserializer(DebeziumTypeDeserializer deserializer) {
-        this.deserializer = deserializer;
+    public UUIDTypeDeserializer(DebeziumTypeDeserializer deserializer, Object abstractType) {
+        super(deserializer, ProtocolConstants.DataType.UUID, abstractType);
     }
 
     @Override
-    public Object deserialize(AbstractType<?> abstractType, ByteBuffer bb) {
-        Object value = deserializer.deserialize(abstractType, bb);
+    public Object deserialize(Object abstractType, ByteBuffer bb) {
+        Object value = super.deserialize(abstractType, bb);
         return formatDeserializedValue(abstractType, value);
     }
 
     @Override
-    public SchemaBuilder getSchemaBuilder(AbstractType<?> abstractType) {
+    public SchemaBuilder getSchemaBuilder(Object abstractType) {
         return UUID_TYPE;
     }
 
     @Override
-    public Object formatDeserializedValue(AbstractType<?> abstractType, Object value) {
+    public Object formatDeserializedValue(Object abstractType, Object value) {
         return value.toString();
     }
 }

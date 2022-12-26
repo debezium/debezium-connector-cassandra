@@ -5,9 +5,16 @@
  */
 package io.debezium.connector.cassandra.transforms.type.deserializer;
 
-import org.apache.cassandra.db.marshal.CollectionType;
-import org.apache.cassandra.db.rows.ComplexColumnData;
+import java.nio.ByteBuffer;
+import java.util.List;
 
-public abstract class CollectionTypeDeserializer<T extends CollectionType<?>> implements TypeDeserializer {
-    public abstract Object deserialize(T collectionType, ComplexColumnData ccd);
+import io.debezium.connector.cassandra.transforms.DebeziumTypeDeserializer;
+
+public abstract class CollectionTypeDeserializer extends AbstractTypeDeserializer {
+
+    public CollectionTypeDeserializer(DebeziumTypeDeserializer deserializer, Integer dataType, Class<?> abstractTypeClass) {
+        super(deserializer, dataType, abstractTypeClass);
+    }
+
+    public abstract Object deserialize(Object abstractType, List<ByteBuffer> bbList);
 }

@@ -14,31 +14,10 @@
     <packaging>jar</packaging>
 
     <dependencies>
-        <!-- this is here solely because of a need to depend on DatabaseDescriptor to have the import of
-        that class, it is same for 3/4 and it does not matter which version we depend on, here on 3.11.10 -->
         <dependency>
-            <groupId>org.apache.cassandra</groupId>
-            <artifactId>cassandra-all</artifactId>
-            <version>3.11.10</version>
-            <scope>provided</scope> <!-- notice provided scope -->
-            <exclusions>
-                <exclusion>
-                    <groupId>com.datastax.cassandra</groupId>
-                    <artifactId>cassandra-driver-core</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>ch.qos.logback</groupId>
-                    <artifactId>logback-classic</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>ch.qos.logback</groupId>
-                    <artifactId>logback-core</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.slf4j</groupId>
-                    <artifactId>log4j-over-slf4j</artifactId>
-                </exclusion>
-            </exclusions>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-math3</artifactId>
+            <version>3.2</version>
         </dependency>
     </dependencies>
 

@@ -34,7 +34,7 @@ public class SnapshotProcessorTest extends EmbeddedCassandra3ConnectorTestBase {
     @Test
     public void testSnapshotTable() throws Exception {
         CassandraConnectorContext context = generateTaskContext();
-        SnapshotProcessor snapshotProcessor = Mockito.spy(new SnapshotProcessor(context));
+        SnapshotProcessor snapshotProcessor = Mockito.spy(new SnapshotProcessor(context, new Cassandra3TypeProvider().getClusterName()));
         when(snapshotProcessor.isRunning()).thenReturn(true);
 
         int tableSize = 5;
@@ -77,7 +77,7 @@ public class SnapshotProcessorTest extends EmbeddedCassandra3ConnectorTestBase {
     @Test
     public void testSnapshotSkipsNonCdcEnabledTable() throws Exception {
         CassandraConnectorContext context = generateTaskContext();
-        SnapshotProcessor snapshotProcessor = Mockito.spy(new SnapshotProcessor(context));
+        SnapshotProcessor snapshotProcessor = Mockito.spy(new SnapshotProcessor(context, new Cassandra3TypeProvider().getClusterName()));
         when(snapshotProcessor.isRunning()).thenReturn(true);
 
         int tableSize = 5;
@@ -100,7 +100,7 @@ public class SnapshotProcessorTest extends EmbeddedCassandra3ConnectorTestBase {
     public void testSnapshotEmptyTable() throws Exception {
         CassandraConnectorContext context = generateTaskContext();
         AtomicBoolean globalTaskState = new AtomicBoolean(true);
-        SnapshotProcessor snapshotProcessor = Mockito.spy(new SnapshotProcessor(context));
+        SnapshotProcessor snapshotProcessor = Mockito.spy(new SnapshotProcessor(context, new Cassandra3TypeProvider().getClusterName()));
         when(snapshotProcessor.isRunning()).thenReturn(true);
 
         context.getCassandraClient().execute("CREATE TABLE IF NOT EXISTS " + keyspaceTable("cdc_table") + " (a int, b text, PRIMARY KEY(a)) WITH cdc = true;");
@@ -130,7 +130,7 @@ public class SnapshotProcessorTest extends EmbeddedCassandra3ConnectorTestBase {
         configs.put(CassandraConnectorConfig.SNAPSHOT_MODE.name(), "always");
         configs.put(CassandraConnectorConfig.SNAPSHOT_POLL_INTERVAL_MS.name(), "0");
         CassandraConnectorContext context = generateTaskContext(configs);
-        SnapshotProcessor snapshotProcessorSpy = Mockito.spy(new SnapshotProcessor(context));
+        SnapshotProcessor snapshotProcessorSpy = Mockito.spy(new SnapshotProcessor(context, new Cassandra3TypeProvider().getClusterName()));
         doNothing().when(snapshotProcessorSpy).snapshot();
 
         for (int i = 0; i < 5; i++) {
@@ -147,7 +147,7 @@ public class SnapshotProcessorTest extends EmbeddedCassandra3ConnectorTestBase {
         configs.put(CassandraConnectorConfig.SNAPSHOT_MODE.name(), "initial");
         configs.put(CassandraConnectorConfig.SNAPSHOT_POLL_INTERVAL_MS.name(), "0");
         CassandraConnectorContext context = generateTaskContext(configs);
-        SnapshotProcessor snapshotProcessorSpy = Mockito.spy(new SnapshotProcessor(context));
+        SnapshotProcessor snapshotProcessorSpy = Mockito.spy(new SnapshotProcessor(context, new Cassandra3TypeProvider().getClusterName()));
         doNothing().when(snapshotProcessorSpy).snapshot();
 
         for (int i = 0; i < 5; i++) {
@@ -164,7 +164,7 @@ public class SnapshotProcessorTest extends EmbeddedCassandra3ConnectorTestBase {
         configs.put(CassandraConnectorConfig.SNAPSHOT_MODE.name(), "never");
         configs.put(CassandraConnectorConfig.SNAPSHOT_POLL_INTERVAL_MS.name(), "0");
         CassandraConnectorContext context = generateTaskContext(configs);
-        SnapshotProcessor snapshotProcessorSpy = Mockito.spy(new SnapshotProcessor(context));
+        SnapshotProcessor snapshotProcessorSpy = Mockito.spy(new SnapshotProcessor(context, new Cassandra3TypeProvider().getClusterName()));
         doNothing().when(snapshotProcessorSpy).snapshot();
 
         for (int i = 0; i < 5; i++) {

@@ -120,8 +120,6 @@ public class Cassandra4SchemaChangeListener extends AbstractSchemaChangeListener
         }
         try {
             LOGGER.info("Table {}.{} detected to be added!", tableMetadata.getKeyspace(), tableMetadata.getName());
-            org.apache.cassandra.schema.TableMetadata.builder(tableMetadata.getKeyspace().toString(),
-                    tableMetadata.getName().toString());
 
             UUID uuid = tableMetadata.getId().get();
 
@@ -256,8 +254,7 @@ public class Cassandra4SchemaChangeListener extends AbstractSchemaChangeListener
 
             org.apache.cassandra.schema.KeyspaceMetadata current = Schema.instance.getKeyspaceMetadata(metadata.keyspace);
             if (current != null) {
-                current.tables.withSwapped(metadata);
-                Schema.instance.load(current);
+                Schema.instance.load(current.withSwapped(current.tables.withSwapped(metadata)));
             }
             LOGGER.info("Updated table [{}] in schema instance.", newTableMetadata.describe(true));
         }

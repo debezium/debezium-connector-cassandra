@@ -13,6 +13,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
@@ -59,24 +60,23 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.datastax.oss.driver.api.core.type.DataType;
+import com.datastax.oss.driver.api.core.CqlIdentifier;
+import com.datastax.oss.driver.api.core.type.DataTypes;
+import com.datastax.oss.driver.internal.core.type.DefaultUserDefinedType;
 
+import io.debezium.connector.cassandra.Cassandra3TypeProvider;
 import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer.DecimalMode;
 import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer.VarIntMode;
 
-/**
- * This class ONLY tests the {@link CassandraTypeDeserializer#deserialize(AbstractType, ByteBuffer)}
- * method because the {@link CassandraTypeDeserializer#deserialize(DataType, ByteBuffer)} calls
- * converts the DataType (which is already tested in {@link CassandraTypeConverterTest} class) and
- * then delegates to the AbstractType method.
- */
 public class CassandraTypeDeserializerTest {
 
     private static final Charset CHARSET = Charset.forName("UTF-8");
 
     @BeforeClass
     public static void beforeAll() {
-        CassandraTypeDeserializer.init((abstractType, bb) -> abstractType.getSerializer().deserialize(bb), DecimalMode.DOUBLE, VarIntMode.LONG);
+        Cassandra3TypeProvider provider = new Cassandra3TypeProvider();
+        CassandraTypeDeserializer.init(provider.deserializers(), DecimalMode.DOUBLE, VarIntMode.LONG,
+                provider.baseTypeForReversedType());
     }
 
     @Test
@@ -86,7 +86,9 @@ public class CassandraTypeDeserializerTest {
         ByteBuffer serializedAscii = AsciiType.instance.decompose(expectedAscii);
 
         Object deserializedAscii = CassandraTypeDeserializer.deserialize(AsciiType.instance, serializedAscii);
+        Assert.assertEquals("some text", deserializedAscii);
 
+        deserializedAscii = CassandraTypeDeserializer.deserialize(DataTypes.ASCII, serializedAscii);
         Assert.assertEquals("some text", deserializedAscii);
     }
 
@@ -97,7 +99,9 @@ public class CassandraTypeDeserializerTest {
         ByteBuffer serializedBoolean = BooleanType.instance.decompose(expectedBoolean);
 
         Object deserializedBoolean = CassandraTypeDeserializer.deserialize(BooleanType.instance, serializedBoolean);
+        Assert.assertEquals(expectedBoolean, deserializedBoolean);
 
+        deserializedBoolean = CassandraTypeDeserializer.deserialize(DataTypes.BOOLEAN, serializedBoolean);
         Assert.assertEquals(expectedBoolean, deserializedBoolean);
     }
 
@@ -109,7 +113,9 @@ public class CassandraTypeDeserializerTest {
         ByteBuffer serializedBytes = BytesType.instance.decompose(expectedBytes);
 
         Object deserializedBytes = CassandraTypeDeserializer.deserialize(BytesType.instance, serializedBytes);
+        Assert.assertEquals(expectedBytes, deserializedBytes);
 
+        deserializedBytes = CassandraTypeDeserializer.deserialize(DataTypes.BLOB, serializedBytes);
         Assert.assertEquals(expectedBytes, deserializedBytes);
     }
 
@@ -120,7 +126,9 @@ public class CassandraTypeDeserializerTest {
         ByteBuffer serializedByte = ByteType.instance.decompose(expectedByte);
 
         Object deserializedByte = CassandraTypeDeserializer.deserialize(ByteType.instance, serializedByte);
+        Assert.assertEquals(expectedByte, deserializedByte);
 
+        deserializedByte = CassandraTypeDeserializer.deserialize(DataTypes.TINYINT, serializedByte);
         Assert.assertEquals(expectedByte, deserializedByte);
     }
 
@@ -131,7 +139,9 @@ public class CassandraTypeDeserializerTest {
         ByteBuffer serializedCounter = CounterColumnType.instance.decompose(42L);
 
         Object deserializedCounter = CassandraTypeDeserializer.deserialize(CounterColumnType.instance, serializedCounter);
+        Assert.assertEquals(expectedCounterColumnType, deserializedCounter);
 
+        deserializedCounter = CassandraTypeDeserializer.deserialize(DataTypes.COUNTER, serializedCounter);
         Assert.assertEquals(expectedCounterColumnType, deserializedCounter);
     }
 
@@ -145,6 +155,9 @@ public class CassandraTypeDeserializerTest {
         Object deserializedDecimalAsDouble = CassandraTypeDeserializer.deserialize(DecimalType.instance, serializedDecimal);
         Assert.assertEquals(expectedDecimal.doubleValue(), deserializedDecimalAsDouble);
 
+        deserializedDecimalAsDouble = CassandraTypeDeserializer.deserialize(DataTypes.DECIMAL, serializedDecimal);
+        Assert.assertEquals(expectedDecimal.doubleValue(), deserializedDecimalAsDouble);
+
         // decimal.handling.mode = PRECISE
         CassandraTypeDeserializer.setDecimalMode(DecimalMode.PRECISE);
         Object deserializedDecimalAsStruct = CassandraTypeDeserializer.deserialize(DecimalType.instance, serializedDecimal);
@@ -154,9 +167,15 @@ public class CassandraTypeDeserializerTest {
                 .put("scale", expectedDecimal.scale());
         Assert.assertEquals(expectedDecimalStruct, deserializedDecimalAsStruct);
 
+        deserializedDecimalAsStruct = CassandraTypeDeserializer.deserialize(DataTypes.DECIMAL, serializedDecimal);
+        Assert.assertEquals(expectedDecimalStruct, deserializedDecimalAsStruct);
+
         // decimal.handling.mode = STRING
         CassandraTypeDeserializer.setDecimalMode(DecimalMode.STRING);
         Object deserializedDecimalAsString = CassandraTypeDeserializer.deserialize(DecimalType.instance, serializedDecimal);
+        Assert.assertEquals(expectedDecimal.toPlainString(), deserializedDecimalAsString);
+
+        deserializedDecimalAsString = CassandraTypeDeserializer.deserialize(DataTypes.DECIMAL, serializedDecimal);
         Assert.assertEquals(expectedDecimal.toPlainString(), deserializedDecimalAsString);
     }
 
@@ -167,7 +186,9 @@ public class CassandraTypeDeserializerTest {
         ByteBuffer serializedDouble = DoubleType.instance.decompose(expectedDouble);
 
         Object deserializedDouble = CassandraTypeDeserializer.deserialize(DoubleType.instance, serializedDouble);
+        Assert.assertEquals(expectedDouble, deserializedDouble);
 
+        deserializedDouble = CassandraTypeDeserializer.deserialize(DataTypes.DOUBLE, serializedDouble);
         Assert.assertEquals(expectedDouble, deserializedDouble);
     }
 
@@ -180,7 +201,9 @@ public class CassandraTypeDeserializerTest {
         ByteBuffer serializedDuration = DurationType.instance.decompose(sourceDuration);
 
         Object deserializedDuration = CassandraTypeDeserializer.deserialize(DurationType.instance, serializedDuration);
+        Assert.assertEquals(expectedNanoDuration, deserializedDuration);
 
+        deserializedDuration = CassandraTypeDeserializer.deserialize(DataTypes.DURATION, serializedDuration);
         Assert.assertEquals(expectedNanoDuration, deserializedDuration);
     }
 
@@ -191,7 +214,9 @@ public class CassandraTypeDeserializerTest {
         ByteBuffer serializedFloat = FloatType.instance.decompose(expectedFloat);
 
         Object deserializedFloat = CassandraTypeDeserializer.deserialize(FloatType.instance, serializedFloat);
+        Assert.assertEquals(expectedFloat, deserializedFloat);
 
+        deserializedFloat = CassandraTypeDeserializer.deserialize(DataTypes.FLOAT, serializedFloat);
         Assert.assertEquals(expectedFloat, deserializedFloat);
     }
 
@@ -204,7 +229,9 @@ public class CassandraTypeDeserializerTest {
         ByteBuffer serializedInetAddress = InetAddressType.instance.decompose(sourceInetAddress);
 
         Object deserializedInetAddress = CassandraTypeDeserializer.deserialize(InetAddressType.instance, serializedInetAddress);
+        Assert.assertEquals(expectedInetAddress, deserializedInetAddress);
 
+        deserializedInetAddress = CassandraTypeDeserializer.deserialize(DataTypes.INET, serializedInetAddress);
         Assert.assertEquals(expectedInetAddress, deserializedInetAddress);
     }
 
@@ -215,7 +242,9 @@ public class CassandraTypeDeserializerTest {
         ByteBuffer serializedInt32 = Int32Type.instance.decompose(expectedInteger);
 
         Object deserializedInt32 = CassandraTypeDeserializer.deserialize(Int32Type.instance, serializedInt32);
+        Assert.assertEquals(expectedInteger, deserializedInt32);
 
+        deserializedInt32 = CassandraTypeDeserializer.deserialize(DataTypes.INT, serializedInt32);
         Assert.assertEquals(expectedInteger, deserializedInt32);
     }
 
@@ -229,14 +258,23 @@ public class CassandraTypeDeserializerTest {
         Object deserializedVarIntAsLong = CassandraTypeDeserializer.deserialize(IntegerType.instance, serializedVarInt);
         Assert.assertEquals(expectedInteger.longValue(), deserializedVarIntAsLong);
 
+        deserializedVarIntAsLong = CassandraTypeDeserializer.deserialize(DataTypes.VARINT, serializedVarInt);
+        Assert.assertEquals(expectedInteger.longValue(), deserializedVarIntAsLong);
+
         // varint.handling.mode = PRECISE
         CassandraTypeDeserializer.setVarIntMode(VarIntMode.PRECISE);
         Object deserializedVarIntAsBigDecimal = CassandraTypeDeserializer.deserialize(IntegerType.instance, serializedVarInt);
         Assert.assertEquals(new BigDecimal(expectedInteger), deserializedVarIntAsBigDecimal);
 
+        deserializedVarIntAsBigDecimal = CassandraTypeDeserializer.deserialize(DataTypes.VARINT, serializedVarInt);
+        Assert.assertEquals(new BigDecimal(expectedInteger), deserializedVarIntAsBigDecimal);
+
         // varint.handling.mode = STRING
         CassandraTypeDeserializer.setVarIntMode(VarIntMode.STRING);
         Object deserializedVarIntAsString = CassandraTypeDeserializer.deserialize(IntegerType.instance, serializedVarInt);
+        Assert.assertEquals(expectedInteger.toString(), deserializedVarIntAsString);
+
+        deserializedVarIntAsString = CassandraTypeDeserializer.deserialize(DataTypes.VARINT, serializedVarInt);
         Assert.assertEquals(expectedInteger.toString(), deserializedVarIntAsString);
     }
 
@@ -253,10 +291,16 @@ public class CassandraTypeDeserializerTest {
         Object deserializedList = CassandraTypeDeserializer.deserialize(nonFrozenListType, serializedList);
         Assert.assertEquals(expectedList, deserializedList);
 
+        deserializedList = CassandraTypeDeserializer.deserialize(DataTypes.listOf(DataTypes.INT), serializedList);
+        Assert.assertEquals(expectedList, deserializedList);
+
         // frozen
         ListType<Integer> frozenListType = ListType.getInstance(Int32Type.instance, false);
         serializedList = frozenListType.decompose(expectedList);
         deserializedList = CassandraTypeDeserializer.deserialize(frozenListType, serializedList);
+        Assert.assertEquals(expectedList, deserializedList);
+
+        deserializedList = CassandraTypeDeserializer.deserialize(DataTypes.frozenListOf(DataTypes.INT), serializedList);
         Assert.assertEquals(expectedList, deserializedList);
     }
 
@@ -267,7 +311,9 @@ public class CassandraTypeDeserializerTest {
         ByteBuffer serializedLong = LongType.instance.decompose(expectedLong);
 
         Object deserializedLong = CassandraTypeDeserializer.deserialize(LongType.instance, serializedLong);
+        Assert.assertEquals(expectedLong, deserializedLong);
 
+        deserializedLong = CassandraTypeDeserializer.deserialize(DataTypes.BIGINT, serializedLong);
         Assert.assertEquals(expectedLong, deserializedLong);
     }
 
@@ -283,10 +329,16 @@ public class CassandraTypeDeserializerTest {
         Object deserializedMap = CassandraTypeDeserializer.deserialize(nonFrozenMapType, serializedMap);
         Assert.assertEquals(expectedMap, deserializedMap);
 
+        deserializedMap = CassandraTypeDeserializer.deserialize(DataTypes.mapOf(DataTypes.ASCII, DataTypes.DOUBLE), serializedMap);
+        Assert.assertEquals(expectedMap, deserializedMap);
+
         // frozen
         MapType<String, Double> frozenMapType = MapType.getInstance(AsciiType.instance, DoubleType.instance, false);
         serializedMap = frozenMapType.decompose(expectedMap);
         deserializedMap = CassandraTypeDeserializer.deserialize(frozenMapType, serializedMap);
+        Assert.assertEquals(expectedMap, deserializedMap);
+
+        deserializedMap = CassandraTypeDeserializer.deserialize(DataTypes.frozenMapOf(DataTypes.ASCII, DataTypes.DOUBLE), serializedMap);
         Assert.assertEquals(expectedMap, deserializedMap);
     }
 
@@ -296,14 +348,16 @@ public class CassandraTypeDeserializerTest {
         sourceMap.put(1, 1.5F);
         sourceMap.put(2, 3.1414F);
 
-        MapType<Integer, Float> mapType = MapType.getInstance(Int32Type.instance, FloatType.instance, true);
-        ByteBuffer serializedMap = mapType.decompose(sourceMap);
-        Object deserializedMap = CassandraTypeDeserializer.deserialize(mapType, serializedMap);
-
         Map<Integer, Float> expectedMap = new HashMap<>();
         expectedMap.put(1, 1.5F);
         expectedMap.put(2, 3.1414F);
 
+        MapType<Integer, Float> mapType = MapType.getInstance(Int32Type.instance, FloatType.instance, true);
+        ByteBuffer serializedMap = mapType.decompose(sourceMap);
+        Object deserializedMap = CassandraTypeDeserializer.deserialize(mapType, serializedMap);
+        Assert.assertEquals(expectedMap, deserializedMap);
+
+        deserializedMap = CassandraTypeDeserializer.deserialize(DataTypes.mapOf(DataTypes.INT, DataTypes.FLOAT), serializedMap);
         Assert.assertEquals(expectedMap, deserializedMap);
     }
 
@@ -321,10 +375,18 @@ public class CassandraTypeDeserializerTest {
         Assert.assertTrue(sourceSet.containsAll(deserializedSet));
         Assert.assertTrue(deserializedSet.containsAll(sourceSet));
 
+        deserializedSet = (Collection<?>) CassandraTypeDeserializer.deserialize(DataTypes.setOf(DataTypes.FLOAT), serializedSet);
+        Assert.assertTrue(sourceSet.containsAll(deserializedSet));
+        Assert.assertTrue(deserializedSet.containsAll(sourceSet));
+
         // frozen
         SetType<Float> frozenSetType = SetType.getInstance(FloatType.instance, false);
         serializedSet = frozenSetType.decompose(sourceSet);
         deserializedSet = (Collection<?>) CassandraTypeDeserializer.deserialize(frozenSetType, serializedSet);
+        Assert.assertTrue(sourceSet.containsAll(deserializedSet));
+        Assert.assertTrue(deserializedSet.containsAll(sourceSet));
+
+        deserializedSet = (Collection<?>) CassandraTypeDeserializer.deserialize(DataTypes.frozenSetOf(DataTypes.FLOAT), serializedSet);
         Assert.assertTrue(sourceSet.containsAll(deserializedSet));
         Assert.assertTrue(deserializedSet.containsAll(sourceSet));
     }
@@ -336,7 +398,9 @@ public class CassandraTypeDeserializerTest {
         ByteBuffer serializedShort = ShortType.instance.decompose(expectedShort);
 
         Object deserializedShort = CassandraTypeDeserializer.deserialize(ShortType.instance, serializedShort);
+        Assert.assertEquals(expectedShort, deserializedShort);
 
+        deserializedShort = CassandraTypeDeserializer.deserialize(DataTypes.SMALLINT, serializedShort);
         Assert.assertEquals(expectedShort, deserializedShort);
     }
 
@@ -347,7 +411,9 @@ public class CassandraTypeDeserializerTest {
         ByteBuffer serializedDate = SimpleDateType.instance.decompose(expectedDate);
 
         Object deserializedShort = CassandraTypeDeserializer.deserialize(SimpleDateType.instance, serializedDate);
+        Assert.assertEquals(expectedDate, deserializedShort);
 
+        deserializedShort = CassandraTypeDeserializer.deserialize(DataTypes.DATE, serializedDate);
         Assert.assertEquals(expectedDate, deserializedShort);
     }
 
@@ -358,7 +424,9 @@ public class CassandraTypeDeserializerTest {
         ByteBuffer serializedTime = TimeType.instance.decompose(expectedTime);
 
         Object deserializedTime = CassandraTypeDeserializer.deserialize(TimeType.instance, serializedTime);
+        Assert.assertEquals(expectedTime, deserializedTime);
 
+        deserializedTime = CassandraTypeDeserializer.deserialize(DataTypes.TIME, serializedTime);
         Assert.assertEquals(expectedTime, deserializedTime);
     }
 
@@ -370,7 +438,9 @@ public class CassandraTypeDeserializerTest {
         ByteBuffer serializedTimestamp = TimestampType.instance.decompose(timestamp);
 
         Object deserializedTimestamp = CassandraTypeDeserializer.deserialize(TimestampType.instance, serializedTimestamp);
+        Assert.assertEquals(expectedLongTimestamp, deserializedTimestamp);
 
+        deserializedTimestamp = CassandraTypeDeserializer.deserialize(DataTypes.TIMESTAMP, serializedTimestamp);
         Assert.assertEquals(expectedLongTimestamp, deserializedTimestamp);
     }
 
@@ -381,7 +451,9 @@ public class CassandraTypeDeserializerTest {
         ByteBuffer serializedTimeUUID = TimeUUIDType.instance.decompose(timeUUID);
 
         Object deserializedTimeUUID = CassandraTypeDeserializer.deserialize(TimeUUIDType.instance, serializedTimeUUID);
+        Assert.assertEquals(timeUUID.toString(), deserializedTimeUUID);
 
+        deserializedTimeUUID = CassandraTypeDeserializer.deserialize(DataTypes.TIMEUUID, serializedTimeUUID);
         Assert.assertEquals(timeUUID.toString(), deserializedTimeUUID);
     }
 
@@ -395,12 +467,15 @@ public class CassandraTypeDeserializerTest {
         String sourceTupleString = "foo:1";
         ByteBuffer serializedTuple = tupleType.fromString(sourceTupleString);
 
-        Object deserializedTuple = CassandraTypeDeserializer.deserialize(tupleType, serializedTuple);
         Schema tupleSchema = CassandraTypeDeserializer.getSchemaBuilder(tupleType).build();
         Struct expectedTuple = new Struct(tupleSchema)
                 .put("field1", "foo")
                 .put("field2", (short) 1);
 
+        Object deserializedTuple = CassandraTypeDeserializer.deserialize(tupleType, serializedTuple);
+        Assert.assertEquals(expectedTuple, deserializedTuple);
+
+        deserializedTuple = CassandraTypeDeserializer.deserialize(DataTypes.tupleOf(DataTypes.ASCII, DataTypes.SMALLINT), serializedTuple);
         Assert.assertEquals(expectedTuple, deserializedTuple);
     }
 
@@ -444,7 +519,13 @@ public class CassandraTypeDeserializerTest {
         ByteBuffer serializedUserTypeObject = userType.decompose(buffer);
 
         Object deserializedUserTypeObject = CassandraTypeDeserializer.deserialize(userType, serializedUserTypeObject);
+        Assert.assertEquals(expectedUserTypeData, deserializedUserTypeObject);
 
+        DefaultUserDefinedType userDefinedType = new DefaultUserDefinedType(CqlIdentifier.fromCql("\"barspace\""),
+                CqlIdentifier.fromCql("\"FooType\""), false,
+                Arrays.asList(CqlIdentifier.fromCql("\"asciiField\""), CqlIdentifier.fromCql("\"doubleField\""), CqlIdentifier.fromCql("\"durationField\"")),
+                Arrays.asList(DataTypes.ASCII, DataTypes.DOUBLE, DataTypes.DURATION));
+        deserializedUserTypeObject = CassandraTypeDeserializer.deserialize(userDefinedType, serializedUserTypeObject);
         Assert.assertEquals(expectedUserTypeData, deserializedUserTypeObject);
     }
 
@@ -455,7 +536,9 @@ public class CassandraTypeDeserializerTest {
         ByteBuffer serializedUTF8 = UTF8Type.instance.decompose(expectedUTF8);
 
         Object deserializedUTF8 = CassandraTypeDeserializer.deserialize(UTF8Type.instance, serializedUTF8);
+        Assert.assertEquals(expectedUTF8, deserializedUTF8);
 
+        deserializedUTF8 = CassandraTypeDeserializer.deserialize(DataTypes.TEXT, serializedUTF8);
         Assert.assertEquals(expectedUTF8, deserializedUTF8);
     }
 
@@ -468,7 +551,9 @@ public class CassandraTypeDeserializerTest {
         ByteBuffer serializedUUID = UUIDType.instance.decompose(uuid);
 
         Object deserializedUUID = CassandraTypeDeserializer.deserialize(UUIDType.instance, serializedUUID);
+        Assert.assertEquals(expectedFixedUUID, deserializedUUID);
 
+        deserializedUUID = CassandraTypeDeserializer.deserialize(DataTypes.UUID, serializedUUID);
         Assert.assertEquals(expectedFixedUUID, deserializedUUID);
     }
 
@@ -479,10 +564,9 @@ public class CassandraTypeDeserializerTest {
 
         ByteBuffer serializedTimestamp = TimestampType.instance.decompose(timestamp);
 
-        ReversedType<?> reversedTimeStampType = ReversedType.getInstance(TimestampType.instance);
+        AbstractType<?> reversedTimeStampType = ReversedType.getInstance(TimestampType.instance);
 
         Object deserializedTimestamp = CassandraTypeDeserializer.deserialize(reversedTimeStampType, serializedTimestamp);
-
         Assert.assertEquals(expectedLongTimestamp, deserializedTimestamp);
     }
 
@@ -509,6 +593,9 @@ public class CassandraTypeDeserializerTest {
         ByteBuffer serializedList = frozenListType.decompose(originalList);
         Object deserializedList = CassandraTypeDeserializer.deserialize(frozenListType, serializedList);
         Assert.assertEquals(expectedList, deserializedList);
+
+        deserializedList = CassandraTypeDeserializer.deserialize(DataTypes.listOf(DataTypes.UUID), serializedList);
+        Assert.assertEquals(expectedList, deserializedList);
     }
 
     @Test
@@ -526,7 +613,7 @@ public class CassandraTypeDeserializerTest {
                 userTypeName,
                 userTypeFieldIdentifiers,
                 userFieldTypes,
-                true);
+                false);
 
         Schema userTypeSchema = CassandraTypeDeserializer.getSchemaBuilder(userType).build();
         Set<String> sourceSet = new HashSet<>();
@@ -542,7 +629,6 @@ public class CassandraTypeDeserializerTest {
         expectedList.add(expectedUserTypeData1);
         expectedList.add(expectedUserTypeData2);
 
-        ByteBuffer serializedSet = frozenSetType.decompose(sourceSet);
         Map<String, Object> jsonObject1 = new HashMap<>(2);
         jsonObject1.put("\"asciiField\"", "foobar1");
         jsonObject1.put("\"setField\"", new ArrayList<>(sourceSet));
@@ -562,6 +648,13 @@ public class CassandraTypeDeserializerTest {
         ListType<ByteBuffer> frozenListType = ListType.getInstance(userType, false);
         ByteBuffer serializedList = frozenListType.decompose(originalList);
         Object deserializedList = CassandraTypeDeserializer.deserialize(frozenListType, serializedList);
+        Assert.assertEquals(expectedList, deserializedList);
+
+        DefaultUserDefinedType userDefinedType = new DefaultUserDefinedType(CqlIdentifier.fromCql("\"barspace\""),
+                CqlIdentifier.fromCql("\"FooType\""), true,
+                Arrays.asList(CqlIdentifier.fromCql("\"asciiField\""), CqlIdentifier.fromCql("\"setField\"")),
+                Arrays.asList(DataTypes.ASCII, DataTypes.frozenSetOf(DataTypes.ASCII)));
+        deserializedList = CassandraTypeDeserializer.deserialize(DataTypes.frozenListOf(userDefinedType), serializedList);
         Assert.assertEquals(expectedList, deserializedList);
     }
 

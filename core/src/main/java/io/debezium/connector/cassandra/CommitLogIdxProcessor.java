@@ -14,50 +14,48 @@ import java.nio.file.WatchEvent;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.commons.math3.util.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.connector.base.ChangeEventQueue;
-
 /**
- * The {@link Cassandra4CommitLogProcessor} is used to process CommitLog in CDC directory.
+ * The {@link CommitLogIdxProcessor} is used to process CommitLog in CDC directory.
  * Upon readCommitLog, it processes the entire CommitLog specified in the {@link CassandraConnectorConfig}
  * and converts each row change in the commit log into a {@link Record},
  * and then emit the log via a {@link KafkaRecordEmitter}.
  */
-public class Cassandra4CommitLogProcessor extends AbstractProcessor {
-    private static final Logger LOGGER = LoggerFactory.getLogger(Cassandra4CommitLogProcessor.class);
+public class CommitLogIdxProcessor extends AbstractProcessor {
+    private static final Logger LOGGER = LoggerFactory.getLogger(CommitLogIdxProcessor.class);
 
     private static final String NAME = "Commit Log Processor";
 
     private final CassandraConnectorContext context;
     private final File cdcDir;
     private AbstractDirectoryWatcher watcher;
-    private final List<ChangeEventQueue<Event>> queues;
-    private final CommitLogProcessorMetrics metrics = new CommitLogProcessorMetrics();
+    private final CommitLogProcessorMetrics metrics;
     private boolean initial = true;
     private final boolean errorCommitLogReprocessEnabled;
     private final CommitLogTransfer commitLogTransfer;
     private final ExecutorService executorService;
-    final static Set<Pair<AbstractCassandra4CommitLogParser, Future<CommitLogProcessingResult>>> submittedProcessings = ConcurrentHashMap.newKeySet();
+    final static Set<Pair<CommitLogIdxParser, Future<CommitLogProcessingResult>>> submittedProcessings = ConcurrentHashMap.newKeySet();
+    private final CommitLogSegmentReader commitLogReader;
 
-    public Cassandra4CommitLogProcessor(CassandraConnectorContext context) {
+    public CommitLogIdxProcessor(CassandraConnectorContext context, CommitLogProcessorMetrics metrics,
+                                 CommitLogSegmentReader commitLogReader, File cdcDir) {
         super(NAME, Duration.ZERO);
         this.context = context;
-        queues = this.context.getQueues();
         commitLogTransfer = this.context.getCassandraConnectorConfig().getCommitLogTransfer();
         errorCommitLogReprocessEnabled = this.context.getCassandraConnectorConfig().errorCommitLogReprocessEnabled();
-        cdcDir = new File(DatabaseDescriptor.getCDCLogLocation());
+        this.cdcDir = cdcDir;
         executorService = Executors.newSingleThreadExecutor();
+        this.metrics = metrics;
+        this.commitLogReader = commitLogReader;
     }
 
     @Override
@@ -74,7 +72,7 @@ public class Cassandra4CommitLogProcessor extends AbstractProcessor {
     public void stop() {
         try {
             executorService.shutdown();
-            for (final Pair<AbstractCassandra4CommitLogParser, Future<CommitLogProcessingResult>> submittedProcessing : submittedProcessings) {
+            for (final Pair<CommitLogIdxParser, Future<CommitLogProcessingResult>> submittedProcessing : submittedProcessings) {
                 try {
                     submittedProcessing.getFirst().complete();
                     submittedProcessing.getSecond().get();
@@ -90,23 +88,16 @@ public class Cassandra4CommitLogProcessor extends AbstractProcessor {
         super.stop();
     }
 
-    protected synchronized static void removeProcessing(AbstractCassandra4CommitLogParser parser) {
+    protected synchronized static void removeProcessing(CommitLogIdxParser parser) {
         submittedProcessings.stream()
                 .filter(p -> p.getFirst() == parser)
                 .findFirst()
                 .map(submittedProcessings::remove);
     }
 
-    void submit(Path index) {
-        final AbstractCassandra4CommitLogParser parser;
-
-        if (context.getCassandraConnectorConfig().isCommitLogRealTimeProcessingEnabled()) {
-            parser = new Cassandra4CommitLogRealTimeParser(new LogicalCommitLog(index.toFile()), queues, metrics, this.context);
-        }
-        else {
-            parser = new Cassandra4CommitLogBatchParser(new LogicalCommitLog(index.toFile()), queues, metrics, this.context);
-        }
-
+    public void submit(Path index) {
+        final CommitLogIdxParser parser = new CommitLogIdxParser(new LogicalCommitLog(index.toFile()), metrics,
+                this.context, commitLogReader);
         Future<CommitLogProcessingResult> future = executorService.submit(parser::process);
         submittedProcessings.add(new Pair<>(parser, future));
         LOGGER.debug("Processing {} callables.", submittedProcessings.size());

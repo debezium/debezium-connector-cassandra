@@ -21,9 +21,9 @@ public class BuildInfoServlet extends HttpServlet {
     private static final String CACHE_CONTROL = "Cache-Control";
     private static final String NO_CACHE = "must-revalidate,no-cache,no-store";
     private static final long serialVersionUID = -3785964478281437018L;
-    private Map<String, String> buildInfo;
+    private final Map<String, String> buildInfo;
 
-    private ObjectMapper mapper = new ObjectMapper();
+    private final ObjectMapper mapper = new ObjectMapper();
 
     public BuildInfoServlet(Map<String, String> buildInfo) {
         this.buildInfo = buildInfo;
@@ -40,7 +40,7 @@ public class BuildInfoServlet extends HttpServlet {
         try (PrintWriter writer = resp.getWriter()) {
             StringWriter stringWriter = new StringWriter();
             mapper.writeValue(stringWriter, buildInfo);
-            writer.println(stringWriter.toString());
+            writer.println(stringWriter);
         }
     }
 }

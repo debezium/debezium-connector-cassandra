@@ -18,7 +18,7 @@ public class TestingKafkaRecordEmitter extends KafkaRecordEmitter {
 
     public List<ProducerRecord<byte[], byte[]>> records = new ArrayList<>();
 
-    public TestingKafkaRecordEmitter(CassandraConnectorConfig connectorConfig, KafkaProducer kafkaProducer,
+    public TestingKafkaRecordEmitter(CassandraConnectorConfig connectorConfig, KafkaProducer<byte[], byte[]> kafkaProducer,
                                      OffsetWriter offsetWriter, Duration offsetFlushIntervalMs, long maxOffsetFlushSize,
                                      Converter keyConverter, Converter valueConverter, Set<String> erroneousCommitLogs,
                                      CommitLogTransfer commitLogTransfer) {

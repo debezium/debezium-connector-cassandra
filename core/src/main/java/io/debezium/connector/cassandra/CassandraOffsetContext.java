@@ -19,7 +19,7 @@ import io.debezium.spi.schema.DataCollectionId;
 
 public class CassandraOffsetContext implements OffsetContext {
 
-    private Map<String, Object> offset;
+    private final Map<String, Object> offset;
 
     private CassandraOffsetContext(Map<String, Object> offset) {
         this.offset = offset;

@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.db.commitlog.CommitLogReadHandler;
 import org.apache.cassandra.db.commitlog.CommitLogReader;
 import org.junit.After;
 import org.junit.Before;
@@ -30,9 +31,9 @@ import org.junit.Test;
 import io.debezium.connector.base.ChangeEventQueue;
 
 public abstract class AbstractCommitLogProcessorTest extends EmbeddedCassandra3ConnectorTestBase {
-    public ChangeEventQueue<Event> queue;
     public CassandraConnectorContext context;
-    public Cassandra3CommitLogProcessor commitLogProcessor;
+    private CommitLogProcessorMetrics metrics = new CommitLogProcessorMetrics();
+    private CommitLogReadHandler commitLogReadHandler;
 
     @Before
     public void setUp() throws Exception {
@@ -40,16 +41,14 @@ public abstract class AbstractCommitLogProcessorTest extends EmbeddedCassandra3C
         context = generateTaskContext();
         await().atMost(Duration.ofSeconds(60)).until(() -> context.getSchemaHolder()
                 .getKeyValueSchema(new KeyspaceTable(TEST_KEYSPACE_NAME, TEST_TABLE_NAME)) != null);
-        commitLogProcessor = new Cassandra3CommitLogProcessor(context);
-        commitLogProcessor.initialize();
-        queue = context.getQueues().get(0);
-        readLogs();
+        commitLogReadHandler = new Cassandra3CommitLogReadHandlerImpl(context, metrics);
+        metrics.registerMetrics();
     }
 
     @After
     public void tearDown() throws Exception {
         deleteTestOffsets(context);
-        commitLogProcessor.destroy();
+        metrics.unregisterMetrics();
         deleteTestKeyspaceTables();
         context.cleanUp();
     }
@@ -73,12 +72,14 @@ public abstract class AbstractCommitLogProcessorTest extends EmbeddedCassandra3C
 
     public void createTable(String query, String keyspace, String tableName) throws Exception {
         runCql(format(query, keyspace, tableName));
-        Thread.sleep(2000);
     }
 
     public List<Event> getEvents(final int expectedSize) throws Exception {
+        ChangeEventQueue<Event> queue = context.getQueues().get(0);
         final List<Event> events = new ArrayList<>();
         await().atMost(60, TimeUnit.SECONDS).until(() -> {
+            readLogs(queue);
+            events.clear();
             events.addAll(queue.poll());
             return events.size() >= expectedSize;
         });
@@ -86,23 +87,13 @@ public abstract class AbstractCommitLogProcessorTest extends EmbeddedCassandra3C
         return events;
     }
 
-    public void readLogs() throws Exception {
+    private void readLogs(ChangeEventQueue<Event> queue) throws Exception {
         // check to make sure there are no records in the queue to begin with
         assertEquals(queue.totalCapacity(), queue.remainingCapacity());
 
         // process the logs in commit log directory
         File cdcLoc = new File(DatabaseDescriptor.getCommitLogLocation());
         File[] commitLogs = CommitLogUtil.getCommitLogs(cdcLoc);
-
-        Cassandra3CommitLogReadHandlerImpl commitLogReadHandler = new Cassandra3CommitLogReadHandlerImpl(
-                context.getSchemaHolder(),
-                context.getQueues(),
-                context.getOffsetWriter(),
-                new RecordMaker(context.getCassandraConnectorConfig().tombstonesOnDelete(),
-                        new Filters(context.getCassandraConnectorConfig().fieldExcludeList()),
-                        context.getCassandraConnectorConfig()),
-                new CommitLogProcessorMetrics(),
-                CassandraSchemaFactory.get());
 
         CommitLogReader reader = new CommitLogReader();
 

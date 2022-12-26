@@ -7,12 +7,15 @@ package io.debezium.connector.cassandra.transforms.type.deserializer;
 
 import java.nio.ByteBuffer;
 
-import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.kafka.connect.data.SchemaBuilder;
+
+import com.datastax.oss.driver.api.core.type.DataType;
 
 public interface TypeDeserializer {
 
-    Object deserialize(AbstractType<?> abstractType, ByteBuffer bb);
+    Object deserialize(Object abstractType, ByteBuffer bb);
 
-    SchemaBuilder getSchemaBuilder(AbstractType<?> abstractType);
+    SchemaBuilder getSchemaBuilder(Object abstractType);
+
+    Object getAbstractType(DataType dataType);
 }

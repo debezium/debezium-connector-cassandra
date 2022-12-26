@@ -40,7 +40,7 @@ public class TestUtils {
     public static String TEST_TABLE_NAME = "table_" + UUID.randomUUID().toString().replace("-", "");
     public static String TEST_TABLE_NAME_2 = "table2_" + UUID.randomUUID().toString().replace("-", "");
 
-    protected static Properties generateDefaultConfigMap() throws IOException {
+    public static Properties generateDefaultConfigMap() throws IOException {
         Properties props = new Properties();
         props.put(CassandraConnectorConfig.TOPIC_PREFIX.name(), TEST_CONNECTOR_NAME);
         props.put(CassandraConnectorConfig.CASSANDRA_CONFIG.name(), Paths.get("src/test/resources/cassandra-unit-for-context.yaml").toAbsolutePath().toString());
@@ -56,7 +56,7 @@ public class TestUtils {
         return props;
     }
 
-    protected static HashMap<String, Object> propertiesForContext() throws IOException {
+    public static HashMap<String, Object> propertiesForContext() throws IOException {
         return new HashMap<>() {
             {
                 put(CassandraConnectorConfig.TOPIC_PREFIX.name(), TEST_CONNECTOR_NAME);
@@ -85,7 +85,6 @@ public class TestUtils {
                     .withNetworkTopologyStrategy(of("datacenter1", 1))
                     .build());
         }
-        Thread.sleep(5000);
     }
 
     public static List<String> getTables(String keyspace, CqlSession session) {
@@ -120,7 +119,6 @@ public class TestUtils {
                 session.execute(SimpleStatement.newInstance(String.format("DROP TABLE IF EXISTS %s.%s", keyspaceName, table)));
             }
         }
-        Thread.sleep(5000);
     }
 
     public static void runCql(String statement) {

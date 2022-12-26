@@ -7,8 +7,6 @@ package io.debezium.connector.cassandra.transforms;
 
 import java.nio.ByteBuffer;
 
-import org.apache.cassandra.db.marshal.AbstractType;
-
 public interface DebeziumTypeDeserializer {
-    Object deserialize(AbstractType abstractType, ByteBuffer bb);
+    Object deserialize(Object abstractType, ByteBuffer bb);
 }

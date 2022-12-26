@@ -15,7 +15,7 @@ import org.apache.kafka.connect.source.SourceConnector;
 
 import io.debezium.annotation.Immutable;
 
-abstract class AbstractSourceConnector extends SourceConnector {
+public abstract class AbstractSourceConnector extends SourceConnector {
 
     @Immutable
     private Map<String, String> properties;
