@@ -6,7 +6,6 @@
 package io.debezium.connector.cassandra;
 
 import static io.debezium.connector.cassandra.TestUtils.TEST_KEYSPACE_NAME;
-import static io.debezium.connector.cassandra.TestUtils.TEST_KEYSPACE_NAME_2;
 import static io.debezium.connector.cassandra.TestUtils.createTestKeyspace;
 import static io.debezium.connector.cassandra.TestUtils.deleteTestKeyspaceTables;
 import static java.util.concurrent.TimeUnit.MINUTES;
@@ -62,27 +61,8 @@ public abstract class CassandraConnectorTestBase {
     }
 
     @AfterClass
-    public static void tearDownClass() throws IOException, InterruptedException {
-        destroyTestKeyspace(TEST_KEYSPACE_NAME);
-        destroyTestKeyspace(TEST_KEYSPACE_NAME_2);
+    public static void tearDownClass() {
         cassandra.stop();
-
-        GenericContainer container = new GenericContainer(new ImageFromDockerfile()
-                .withDockerfileFromBuilder(builder -> builder
-                        .from("eclipse-temurin:8-jre-focal")
-                        .volume("/var/lib/cassandra")
-                        .cmd("sleep", "10") // Give testcontainers some time to find out container is running.
-                        .build()))
-                .withFileSystemBind(cassandraDir, CASSANDRA_SERVER_DIR, BindMode.READ_WRITE);
-        container.start();
-        container.execInContainer(
-                "rm", "-rf",
-                CASSANDRA_SERVER_DIR + "/data",
-                CASSANDRA_SERVER_DIR + "/cdc_raw_directory",
-                CASSANDRA_SERVER_DIR + "/commitlog",
-                CASSANDRA_SERVER_DIR + "/hints",
-                CASSANDRA_SERVER_DIR + "/saved_caches");
-        container.stop();
     }
 
     public static void destroyTestKeyspace() throws Exception {
@@ -107,7 +87,7 @@ public abstract class CassandraConnectorTestBase {
 
     protected static void waitForCql() {
         await()
-                .pollInterval(10, SECONDS)
+                .pollInterval(1, SECONDS)
                 .pollInSameThread()
                 .timeout(1, MINUTES)
                 .until(() -> {
@@ -121,16 +101,19 @@ public abstract class CassandraConnectorTestBase {
     }
 
     protected static String createCassandraDir() {
-        File cassandraDir = Testing.Files.createTestingDirectory("cassandra");
-        // The directory will be bind-mounted into container where Cassandra runs under cassandra user.
-        // Therefor we have to change permissions for all users so that Cassandra from container can write into this dir.
-        Set<PosixFilePermission> permissions = PosixFilePermissions.fromString("rwxrwxrwx");
         try {
-            Files.setPosixFilePermissions(cassandraDir.toPath(), permissions);
+            File cassandraDir = Testing.Files.createTestingDirectory("cassandra", true);
+            // The directory will be bind-mounted into container where Cassandra runs under
+            // cassandra user. Therefore we have to change permissions for all users so that
+            // Cassandra from container can write into this dir.
+            if (System.getProperty("os.name").toLowerCase().contains("linux")) {
+                Set<PosixFilePermission> permissions = PosixFilePermissions.fromString("rwxrwxrwx");
+                Files.setPosixFilePermissions(cassandraDir.toPath(), permissions);
+            }
+            return cassandraDir.toString();
         }
         catch (IOException e) {
             throw new IllegalStateException(e);
         }
-        return cassandraDir.toString();
     }
 }

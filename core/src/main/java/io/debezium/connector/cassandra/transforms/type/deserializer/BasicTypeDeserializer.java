@@ -5,30 +5,32 @@
  */
 package io.debezium.connector.cassandra.transforms.type.deserializer;
 
-import java.nio.ByteBuffer;
-
-import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.kafka.connect.data.SchemaBuilder;
+
+import com.datastax.oss.driver.api.core.type.DataType;
 
 import io.debezium.connector.cassandra.transforms.DebeziumTypeDeserializer;
 
-public class BasicTypeDeserializer implements TypeDeserializer {
+public class BasicTypeDeserializer extends AbstractTypeDeserializer {
 
+    private final Object abstractType;
     private final SchemaBuilder schemaBuilder;
-    private final DebeziumTypeDeserializer deserializer;
 
-    public BasicTypeDeserializer(DebeziumTypeDeserializer deserializer, SchemaBuilder schemaBuilder) {
+    public BasicTypeDeserializer(DebeziumTypeDeserializer deserializer, Integer dataType, Object abstractType,
+                                 SchemaBuilder schemaBuilder) {
+        super(deserializer, dataType, abstractType.getClass());
+        this.abstractType = abstractType;
         this.schemaBuilder = schemaBuilder;
-        this.deserializer = deserializer;
     }
 
     @Override
-    public Object deserialize(AbstractType<?> abstractType, ByteBuffer bb) {
-        return this.deserializer.deserialize(abstractType, bb);
-    }
-
-    @Override
-    public SchemaBuilder getSchemaBuilder(AbstractType<?> abstractType) {
+    public SchemaBuilder getSchemaBuilder(Object abstractType) {
         return schemaBuilder;
     }
+
+    @Override
+    public Object getAbstractType(DataType dataType) {
+        return abstractType;
+    }
+
 }

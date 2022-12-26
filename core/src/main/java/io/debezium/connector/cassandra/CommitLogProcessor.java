@@ -17,8 +17,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
-import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.db.commitlog.CommitLogReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,48 +25,43 @@ import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorTaskException;
 
 /**
- * The {@link Cassandra3CommitLogProcessor} is used to process CommitLog in CDC directory.
+ * The {@link CommitLogProcessor} is used to process CommitLog in CDC directory.
  * Upon readCommitLog, it processes the entire CommitLog specified in the {@link CassandraConnectorConfig}
  * and converts each row change in the commit log into a {@link Record},
  * and then emit the log via a {@link KafkaRecordEmitter}.
  */
-public class Cassandra3CommitLogProcessor extends AbstractProcessor {
-    private static final Logger LOGGER = LoggerFactory.getLogger(Cassandra3CommitLogProcessor.class);
+public class CommitLogProcessor extends AbstractProcessor {
+    private static final Logger LOGGER = LoggerFactory.getLogger(CommitLogProcessor.class);
 
     private static final String NAME = "Commit Log Processor";
 
     private final CassandraConnectorContext context;
-    private final CommitLogReader commitLogReader;
-    private final Cassandra3CommitLogReadHandlerImpl commitLogReadHandler;
+    private final CommitLogSegmentReader commitLogReader;
     private final File cdcDir;
     private AbstractDirectoryWatcher watcher;
     private final List<ChangeEventQueue<Event>> queues;
     private final boolean latestOnly;
-    private final CommitLogProcessorMetrics metrics = new CommitLogProcessorMetrics();
+    private final CommitLogProcessorMetrics metrics;
     private boolean initial = true;
     private final boolean errorCommitLogReprocessEnabled;
     private final CommitLogTransfer commitLogTransfer;
     private final Set<String> erroneousCommitLogs;
+    private final File commitLogDir;
 
-    public Cassandra3CommitLogProcessor(CassandraConnectorContext context) {
+    public CommitLogProcessor(CassandraConnectorContext context, CommitLogProcessorMetrics metrics,
+                              CommitLogSegmentReader commitLogReader, File cdcDir,
+                              File commitLogDir) {
         super(NAME, Duration.ZERO);
-        commitLogReader = new CommitLogReader();
+        this.commitLogReader = commitLogReader;
         this.queues = context.getQueues();
         this.context = context;
-        commitLogReadHandler = new Cassandra3CommitLogReadHandlerImpl(
-                this.context.getSchemaHolder(),
-                this.context.getQueues(),
-                this.context.getOffsetWriter(),
-                new RecordMaker(this.context.getCassandraConnectorConfig().tombstonesOnDelete(),
-                        new Filters(context.getCassandraConnectorConfig().fieldExcludeList()),
-                        this.context.getCassandraConnectorConfig()),
-                metrics,
-                CassandraSchemaFactory.get());
-        cdcDir = new File(DatabaseDescriptor.getCDCLogLocation());
+        this.metrics = metrics;
+        this.cdcDir = cdcDir;
         latestOnly = this.context.getCassandraConnectorConfig().latestCommitLogOnly();
         errorCommitLogReprocessEnabled = this.context.getCassandraConnectorConfig().errorCommitLogReprocessEnabled();
         commitLogTransfer = this.context.getCassandraConnectorConfig().getCommitLogTransfer();
         erroneousCommitLogs = this.context.getErroneousCommitLogs();
+        this.commitLogDir = commitLogDir;
     }
 
     @Override
@@ -134,7 +127,7 @@ public class Cassandra3CommitLogProcessor extends AbstractProcessor {
             try {
                 LOGGER.info("Processing commit log {}", file.getName());
                 metrics.setCommitLogFilename(file.getName());
-                commitLogReader.readCommitLogSegment(commitLogReadHandler, file, false);
+                commitLogReader.readCommitLogSegment(file, -1L, 0);
                 if (!latestOnly) {
                     queues.get(Math.abs(file.getName().hashCode() % queues.size())).enqueue(new EOFEvent(file));
                 }
@@ -162,7 +155,6 @@ public class Cassandra3CommitLogProcessor extends AbstractProcessor {
         LOGGER.warn("CommitLogProcessor will read the last modified commit log from the COMMIT LOG "
                 + "DIRECTORY based on modified timestamp, NOT FROM THE CDC_RAW DIRECTORY. This method "
                 + "should not be used in PRODUCTION!");
-        File commitLogDir = new File(DatabaseDescriptor.getCommitLogLocation());
         File[] files = CommitLogUtil.getCommitLogs(commitLogDir);
 
         File lastModified = null;
@@ -176,7 +168,7 @@ public class Cassandra3CommitLogProcessor extends AbstractProcessor {
             processCommitLog(lastModified);
         }
         else {
-            LOGGER.debug("No commit logs found in {}", DatabaseDescriptor.getCommitLogLocation());
+            LOGGER.debug("No commit logs found in {}", commitLogDir);
         }
     }
 }

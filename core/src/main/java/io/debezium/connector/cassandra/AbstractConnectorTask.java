@@ -28,7 +28,7 @@ import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.spi.Offsets;
 
-abstract class AbstractConnectorTask extends BaseSourceTask<CassandraPartition, CassandraOffsetContext> {
+public abstract class AbstractConnectorTask extends BaseSourceTask<CassandraPartition, CassandraOffsetContext> {
 
     private volatile ChangeEventQueue<DataChangeEvent> queue;
 

@@ -14,7 +14,7 @@ import com.codahale.metrics.Gauge;
 
 public class CommitLogProcessorMetrics {
     private String commitLogFilename = null;
-    private AtomicLong commitLogPosition = new AtomicLong(-1L);
+    private final AtomicLong commitLogPosition = new AtomicLong(-1L);
     private Counter numberOfProcessedMutations;
     private Counter numberOfUnrecoverableErrors;
 

@@ -12,8 +12,8 @@ import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.channels.OverlappingFileLockException;
-import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Properties;
@@ -48,8 +48,6 @@ public class FileOffsetWriter implements OffsetWriter {
     private final Properties snapshotProps = new Properties();
     private final Properties commitLogProps = new Properties();
 
-    private final File offsetDir;
-
     private final File snapshotOffsetFile;
     private final File commitLogOffsetFile;
 
@@ -61,9 +59,12 @@ public class FileOffsetWriter implements OffsetWriter {
             throw new CassandraConnectorConfigException("Offset file directory must be configured at the start");
         }
 
-        this.offsetDir = new File(offsetDir);
-        this.snapshotOffsetFile = Paths.get(this.offsetDir.getAbsolutePath(), SNAPSHOT_OFFSET_FILE).toFile();
-        this.commitLogOffsetFile = Paths.get(this.offsetDir.getAbsolutePath(), COMMITLOG_OFFSET_FILE).toFile();
+        File offsetDirectory = new File(offsetDir);
+        if (!offsetDirectory.exists()) {
+            Files.createDirectories(offsetDirectory.toPath());
+        }
+        this.snapshotOffsetFile = Paths.get(offsetDirectory.getAbsolutePath(), SNAPSHOT_OFFSET_FILE).toFile();
+        this.commitLogOffsetFile = Paths.get(offsetDirectory.getAbsolutePath(), COMMITLOG_OFFSET_FILE).toFile();
 
         snapshotOffsetFileLock = init(this.snapshotOffsetFile);
         commitLogOffsetFileLock = init(this.commitLogOffsetFile);
@@ -142,7 +143,7 @@ public class FileOffsetWriter implements OffsetWriter {
             props.store(fos, null);
         }
         catch (IOException e) {
-            throw new IOException("Failed to save offset for file " + offsetFile.getName());
+            throw new IOException("Failed to save offset for file " + offsetFile.getAbsolutePath(), e);
         }
     }
 
@@ -151,32 +152,37 @@ public class FileOffsetWriter implements OffsetWriter {
             props.load(fis);
         }
         catch (IOException e) {
-            throw new IOException("Failed to load offset for file " + offsetFile.getName());
+            throw new IOException("Failed to load offset for file " + offsetFile.getAbsolutePath(), e);
         }
     }
 
     private FileLock init(File offsetFile) throws IOException {
-        if (!offsetFile.exists()) {
-            try {
-                Files.createDirectories(offsetDir.toPath());
-                Files.createFile(offsetFile.toPath());
-            }
-            catch (FileAlreadyExistsException e) {
-                // do nothing
-            }
-        }
+        Path lockPath = initLockPath(offsetFile);
 
         try {
-            FileChannel channel = FileChannel.open(offsetFile.toPath(), StandardOpenOption.READ, StandardOpenOption.WRITE);
+            FileChannel channel = FileChannel.open(lockPath, StandardOpenOption.READ, StandardOpenOption.WRITE);
             FileLock lock = channel.tryLock();
             if (lock == null) {
                 throw new CassandraConnectorTaskException(
-                        "Failed to acquire file lock on " + offsetFile.getName() + ". There might be another Cassandra Connector Task running");
+                        "Failed to acquire file lock on " + lockPath + ". There might be another Cassandra Connector Task running");
             }
             return lock;
         }
         catch (OverlappingFileLockException e) {
-            throw new CassandraConnectorTaskException("Failed to acquire file lock on " + offsetFile.getName() + ". There might be another thread running", e);
+            throw new CassandraConnectorTaskException("Failed to acquire file lock on " + lockPath + ". There might be another thread running", e);
         }
+    }
+
+    private Path initLockPath(File offsetFile) throws IOException {
+        if (!offsetFile.exists()) {
+            Files.createFile(offsetFile.toPath());
+        }
+        if (System.getProperty("os.name").toLowerCase().contains("windows")) {
+            offsetFile = new File(offsetFile.getAbsolutePath() + ".lock");
+            if (!offsetFile.exists()) {
+                Files.createFile(offsetFile.toPath());
+            }
+        }
+        return offsetFile.toPath();
     }
 }

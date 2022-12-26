@@ -8,33 +8,32 @@ package io.debezium.connector.cassandra.transforms.type.deserializer;
 import java.nio.ByteBuffer;
 import java.util.Date;
 
-import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.kafka.connect.data.SchemaBuilder;
+
+import com.datastax.oss.protocol.internal.ProtocolConstants;
 
 import io.debezium.connector.cassandra.transforms.CassandraTypeKafkaSchemaBuilders;
 import io.debezium.connector.cassandra.transforms.DebeziumTypeDeserializer;
 
 public class TimestampTypeDeserializer extends LogicalTypeDeserializer {
 
-    private final DebeziumTypeDeserializer deserializer;
-
-    public TimestampTypeDeserializer(DebeziumTypeDeserializer deserializer) {
-        this.deserializer = deserializer;
+    public TimestampTypeDeserializer(DebeziumTypeDeserializer deserializer, Object abstractType) {
+        super(deserializer, ProtocolConstants.DataType.TIMESTAMP, abstractType);
     }
 
     @Override
-    public Object deserialize(AbstractType<?> abstractType, ByteBuffer bb) {
-        Object value = deserializer.deserialize(abstractType, bb);
+    public Object deserialize(Object abstractType, ByteBuffer bb) {
+        Object value = super.deserialize(abstractType, bb);
         return formatDeserializedValue(abstractType, value);
     }
 
     @Override
-    public SchemaBuilder getSchemaBuilder(AbstractType<?> abstractType) {
+    public SchemaBuilder getSchemaBuilder(Object abstractType) {
         return CassandraTypeKafkaSchemaBuilders.TIMESTAMP_MILLI_TYPE;
     }
 
     @Override
-    public Object formatDeserializedValue(AbstractType<?> abstractType, Object value) {
+    public Object formatDeserializedValue(Object abstractType, Object value) {
         Date date = (Date) value;
         return date.getTime();
     }

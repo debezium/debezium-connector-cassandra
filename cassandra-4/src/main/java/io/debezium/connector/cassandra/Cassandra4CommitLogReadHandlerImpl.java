@@ -5,10 +5,6 @@
  */
 package io.debezium.connector.cassandra;
 
-import static io.debezium.connector.cassandra.Cassandra4CommitLogReadHandlerImpl.RowType.DELETE;
-import static io.debezium.connector.cassandra.Cassandra4CommitLogReadHandlerImpl.RowType.INSERT;
-import static io.debezium.connector.cassandra.Cassandra4CommitLogReadHandlerImpl.RowType.RANGE_TOMBSTONE;
-import static io.debezium.connector.cassandra.Cassandra4CommitLogReadHandlerImpl.RowType.UPDATE;
 import static io.debezium.connector.cassandra.CassandraSchemaFactory.CellData.ColumnType.CLUSTERING;
 import static io.debezium.connector.cassandra.CassandraSchemaFactory.CellData.ColumnType.PARTITION;
 import static io.debezium.connector.cassandra.CassandraSchemaFactory.CellData.ColumnType.REGULAR;
@@ -34,6 +30,9 @@ import org.apache.cassandra.db.commitlog.CommitLogDescriptor;
 import org.apache.cassandra.db.commitlog.CommitLogReadHandler;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.CollectionType;
+import org.apache.cassandra.db.marshal.ListType;
+import org.apache.cassandra.db.marshal.MapType;
+import org.apache.cassandra.db.marshal.SetType;
 import org.apache.cassandra.db.partitions.PartitionUpdate;
 import org.apache.cassandra.db.rows.ComplexColumnData;
 import org.apache.cassandra.db.rows.RangeTombstoneBoundMarker;
@@ -49,7 +48,6 @@ import org.slf4j.LoggerFactory;
 import com.datastax.oss.driver.api.core.metadata.schema.ClusteringOrder;
 import com.datastax.oss.driver.api.core.metadata.schema.ColumnMetadata;
 import com.datastax.oss.driver.api.core.metadata.schema.TableMetadata;
-import com.google.common.collect.ImmutableList;
 
 import io.debezium.DebeziumException;
 import io.debezium.connector.base.ChangeEventQueue;
@@ -80,18 +78,15 @@ public class Cassandra4CommitLogReadHandlerImpl implements CommitLogReadHandler 
     private final RangeTombstoneContext<org.apache.cassandra.schema.TableMetadata> rangeTombstoneContext = new RangeTombstoneContext<>();
     private final CassandraSchemaFactory schemaFactory;
 
-    Cassandra4CommitLogReadHandlerImpl(SchemaHolder schemaHolder,
-                                       List<ChangeEventQueue<Event>> queues,
-                                       OffsetWriter offsetWriter,
-                                       RecordMaker recordMaker,
-                                       CommitLogProcessorMetrics metrics,
-                                       CassandraSchemaFactory schemaFactory) {
-        this.queues = queues;
-        this.offsetWriter = offsetWriter;
-        this.recordMaker = recordMaker;
-        this.schemaHolder = schemaHolder;
+    Cassandra4CommitLogReadHandlerImpl(CassandraConnectorContext context, CommitLogProcessorMetrics metrics) {
+        this.queues = context.getQueues();
+        this.recordMaker = new RecordMaker(context.getCassandraConnectorConfig().tombstonesOnDelete(),
+                new Filters(context.getCassandraConnectorConfig().fieldExcludeList()),
+                context.getCassandraConnectorConfig());
+        this.offsetWriter = context.getOffsetWriter();
+        this.schemaHolder = context.getSchemaHolder();
         this.metrics = metrics;
-        this.schemaFactory = schemaFactory;
+        this.schemaFactory = CassandraSchemaFactory.get();
     }
 
     /**
@@ -329,9 +324,8 @@ public class Cassandra4CommitLogReadHandlerImpl implements CommitLogReadHandler 
                 }
                 break;
 
-            default: {
+            default:
                 throw new CassandraConnectorSchemaException("Unsupported partition type " + partitionType + " should have been skipped");
-            }
         }
     }
 
@@ -426,7 +420,7 @@ public class Cassandra4CommitLogReadHandlerImpl implements CommitLogReadHandler 
         populateClusteringColumns(after, row, pu);
         populateRegularColumns(after, row, rowType, keyValueSchema);
 
-        long ts = rowType == DELETE ? row.deletion().time().markedForDeleteAt() : pu.maxTimestamp();
+        long ts = rowType == RowType.DELETE ? row.deletion().time().markedForDeleteAt() : pu.maxTimestamp();
 
         switch (rowType) {
             case INSERT:
@@ -453,9 +447,8 @@ public class Cassandra4CommitLogReadHandlerImpl implements CommitLogReadHandler 
                         queues.get(Math.abs(offsetPosition.fileName.hashCode() % queues.size()))::enqueue);
                 break;
 
-            default: {
+            default:
                 throw new CassandraConnectorSchemaException("Unsupported row type " + rowType + " should have been skipped");
-            }
         }
     }
 
@@ -465,7 +458,7 @@ public class Cassandra4CommitLogReadHandlerImpl implements CommitLogReadHandler 
                                                  OffsetPosition offsetPosition,
                                                  KeyspaceTable keyspaceTable) {
         if (rowType != RowType.RANGE_TOMBSTONE) {
-            throw new IllegalStateException("Row type has to be " + RANGE_TOMBSTONE.name());
+            throw new IllegalStateException("Row type has to be " + RowType.RANGE_TOMBSTONE.name());
         }
         KeyValueSchema keyValueSchema = schemaHolder.getKeyValueSchema(keyspaceTable);
         if (keyValueSchema == null) {
@@ -517,41 +510,37 @@ public class Cassandra4CommitLogReadHandlerImpl implements CommitLogReadHandler 
             return;
         }
         List<Object> partitionKeys = getPartitionKeys(pu);
-
-        ImmutableList<org.apache.cassandra.schema.ColumnMetadata> columns = pu.metadata().partitionKeyColumns();
-
-        for (int i = 0; i < columns.size(); i++) {
-            org.apache.cassandra.schema.ColumnMetadata columnMetadata = columns.get(i);
+        for (org.apache.cassandra.schema.ColumnMetadata cd : pu.metadata().partitionKeyColumns()) {
             try {
-                String name = columns.get(i).name.toString();
-                Object value = partitionKeys.get(columnMetadata.position());
+                String name = cd.name.toString();
+                Object value = partitionKeys.get(cd.position());
                 CellData cellData = schemaFactory.cellData(name, value, null, PARTITION);
                 after.addCell(cellData);
             }
             catch (Exception e) {
                 throw new DebeziumException(String.format("Failed to populate Column %s with Type %s of Table %s in KeySpace %s.",
-                        columnMetadata.name.toString(), columnMetadata.type.toString(), columnMetadata.cfName, pu.metadata().keyspace), e);
+                        cd.name.toString(), cd.type.toString(), cd.cfName, pu.metadata().keyspace), e);
             }
         }
     }
 
     private void populateClusteringColumns(RowData after, Row row, PartitionUpdate pu) {
-        for (org.apache.cassandra.schema.ColumnMetadata metadata : pu.metadata().clusteringColumns()) {
+        for (org.apache.cassandra.schema.ColumnMetadata cd : pu.metadata().clusteringColumns()) {
             try {
-                ByteBuffer bufferAtClustering = row.clustering().bufferAt(metadata.position());
-                Object value = CassandraTypeDeserializer.deserialize(metadata.type, bufferAtClustering);
-                CellData cellData = schemaFactory.cellData(metadata.name.toString(), value, null, CLUSTERING);
+                ByteBuffer bufferAtClustering = row.clustering().bufferAt(cd.position());
+                Object value = CassandraTypeDeserializer.deserialize(cd.type, bufferAtClustering);
+                CellData cellData = schemaFactory.cellData(cd.name.toString(), value, null, CLUSTERING);
                 after.addCell(cellData);
             }
             catch (Exception e) {
                 throw new DebeziumException(String.format("Failed to populate Column %s with Type %s of Table %s in KeySpace %s.",
-                        metadata.name, metadata.type, metadata.cfName, pu.metadata().keyspace), e);
+                        cd.name.toString(), cd.type.toString(), cd.cfName, pu.metadata().keyspace), e);
             }
         }
     }
 
     private void populateRegularColumns(RowData after, Row row, RowType rowType, KeyValueSchema schema) {
-        if (rowType == INSERT || rowType == UPDATE) {
+        if (rowType == RowType.INSERT || rowType == RowType.UPDATE) {
             for (org.apache.cassandra.schema.ColumnMetadata cd : row.columns()) {
                 try {
                     Object value;
@@ -559,7 +548,7 @@ public class Cassandra4CommitLogReadHandlerImpl implements CommitLogReadHandler 
                     AbstractType<?> abstractType = cd.type;
                     if (abstractType.isCollection() && abstractType.isMultiCell()) {
                         ComplexColumnData ccd = row.getComplexColumnData(cd);
-                        value = CassandraTypeDeserializer.deserialize((CollectionType<?>) abstractType, ccd);
+                        value = CassandraTypeDeserializer.deserialize((CollectionType<?>) abstractType, getComplexColumnDataByteBufferList(abstractType, ccd));
                     }
                     else {
                         org.apache.cassandra.db.rows.Cell<?> cell = row.getCell(cd);
@@ -577,7 +566,7 @@ public class Cassandra4CommitLogReadHandlerImpl implements CommitLogReadHandler 
             }
 
         }
-        else if (rowType == DELETE) {
+        else if (rowType == RowType.DELETE) {
             // For row-level deletions, row.columns() will result in an empty list and does not contain
             // the column definitions for the deleted columns. In order to differentiate deleted columns from
             // unmodified columns, we populate the deleted columns with null value and timestamps.
@@ -593,6 +582,19 @@ public class Cassandra4CommitLogReadHandlerImpl implements CommitLogReadHandler 
         }
     }
 
+    private List<ByteBuffer> getComplexColumnDataByteBufferList(AbstractType<?> abstractType, ComplexColumnData ccd) {
+        if (abstractType instanceof ListType) {
+            return ((ListType<?>) abstractType).serializedValues(ccd.iterator());
+        }
+        if (abstractType instanceof SetType) {
+            return ((SetType<?>) abstractType).serializedValues(ccd.iterator());
+        }
+        if (abstractType instanceof MapType) {
+            return ((MapType<?, ?>) abstractType).serializedValues(ccd.iterator());
+        }
+        throw new DebeziumException(String.format("Unknow collection type %s", abstractType));
+    }
+
     /**
      * Given a PartitionUpdate, deserialize the partition key byte buffer
      * into a list of partition key values.
@@ -601,20 +603,20 @@ public class Cassandra4CommitLogReadHandlerImpl implements CommitLogReadHandler 
     private List<Object> getPartitionKeys(PartitionUpdate pu) {
         List<Object> values = new ArrayList<>();
 
-        ImmutableList<org.apache.cassandra.schema.ColumnMetadata> columnDefinitions = pu.metadata().partitionKeyColumns();
+        List<org.apache.cassandra.schema.ColumnMetadata> columnDefinitions = pu.metadata().partitionKeyColumns();
 
         // simple partition key
         if (columnDefinitions.size() == 1) {
             ByteBuffer bb = pu.partitionKey().getKey();
-            org.apache.cassandra.schema.ColumnMetadata columnMetadata = columnDefinitions.get(0);
-            AbstractType<?> type = columnMetadata.type;
+            ColumnSpecification cs = columnDefinitions.get(0);
+            AbstractType<?> type = cs.type;
             try {
                 Object value = CassandraTypeDeserializer.deserialize(type, bb);
                 values.add(value);
             }
             catch (Exception e) {
                 throw new DebeziumException(String.format("Failed to deserialize Column %s with Type %s in Table %s and KeySpace %s.",
-                        columnMetadata.name.toString(), type.toString(), pu.metadata().name, pu.metadata().keyspace), e);
+                        cs.name.toString(), type.toString(), pu.metadata().name, pu.metadata().keyspace), e);
             }
 
             // composite partition key

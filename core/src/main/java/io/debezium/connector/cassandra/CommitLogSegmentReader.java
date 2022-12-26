@@ -5,6 +5,11 @@
  */
 package io.debezium.connector.cassandra;
 
-public interface SchemaHolderProvider {
-    SchemaHolder provide(CassandraClient cassandraClient, CassandraConnectorConfig config);
+import java.io.File;
+import java.io.IOException;
+
+public interface CommitLogSegmentReader {
+
+    void readCommitLogSegment(File file, long segmentId, int position) throws IOException;
+
 }

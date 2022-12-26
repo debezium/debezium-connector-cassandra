@@ -15,9 +15,6 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.db.marshal.CounterColumnType;
-import org.apache.cassandra.db.marshal.LongType;
 import org.apache.kafka.connect.data.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,6 +27,7 @@ import com.datastax.oss.driver.api.core.cql.Row;
 import com.datastax.oss.driver.api.core.cql.SimpleStatement;
 import com.datastax.oss.driver.api.core.metadata.schema.ColumnMetadata;
 import com.datastax.oss.driver.api.core.metadata.schema.TableMetadata;
+import com.datastax.oss.driver.api.core.type.DataTypes;
 import com.datastax.oss.driver.api.querybuilder.QueryBuilder;
 import com.datastax.oss.driver.api.querybuilder.select.Select;
 import com.datastax.oss.driver.api.querybuilder.select.SelectFrom;
@@ -74,8 +72,9 @@ public class SnapshotProcessor extends AbstractProcessor {
     private final Set<String> startedTableNames = new HashSet<>();
     private final SnapshotProcessorMetrics metrics = new SnapshotProcessorMetrics();
     private boolean initial = true;
+    private final String clusterName;
 
-    public SnapshotProcessor(CassandraConnectorContext context) {
+    public SnapshotProcessor(CassandraConnectorContext context, String clusterName) {
         super(NAME, context.getCassandraConnectorConfig().snapshotPollInterval());
         this.queues = context.getQueues();
         cassandraClient = context.getCassandraClient();
@@ -86,6 +85,7 @@ public class SnapshotProcessor extends AbstractProcessor {
                 context.getCassandraConnectorConfig());
         snapshotMode = context.getCassandraConnectorConfig().snapshotMode();
         consistencyLevel = context.getCassandraConnectorConfig().snapshotConsistencyLevel();
+        this.clusterName = clusterName;
     }
 
     @Override
@@ -116,7 +116,7 @@ public class SnapshotProcessor extends AbstractProcessor {
      * Fetch for all new tables that have not yet been snapshotted, and then iterate through the
      * tables to snapshot each one of them.
      */
-    synchronized void snapshot() throws IOException {
+    public synchronized void snapshot() throws IOException {
         Set<TableMetadata> tables = getTablesToSnapshot();
         if (!tables.isEmpty()) {
             String[] tableArr = tables.stream().map(SnapshotProcessor::tableName).toArray(String[]::new);
@@ -244,7 +244,7 @@ public class SnapshotProcessor extends AbstractProcessor {
                 RowData after = extractRowData(row, tableMetadata.getColumns().values(), partitionKeyNames, clusteringKeyNames, executionTime);
                 // only mark offset if there are no more rows left
                 boolean markOffset = !rowIter.hasNext();
-                recordMaker.insert(DatabaseDescriptor.getClusterName(), OffsetPosition.defaultOffsetPosition(),
+                recordMaker.insert(clusterName, OffsetPosition.defaultOffsetPosition(),
                         keyspaceTable, true, Conversions.toInstantFromMicros(TimeUnit.MICROSECONDS.convert((long) executionTime, TimeUnit.MILLISECONDS)),
                         after, keySchema, valueSchema, markOffset, queues.get(Math.abs(tableName.hashCode() % queues.size()))::enqueue);
                 rowNum++;
@@ -307,7 +307,7 @@ public class SnapshotProcessor extends AbstractProcessor {
     }
 
     private static Object readExecutionTime(Row row) {
-        return CassandraTypeDeserializer.deserialize(LongType.instance, row.getBytesUnsafe(EXECUTION_TIME_ALIAS));
+        return CassandraTypeDeserializer.deserialize(DataTypes.BIGINT, row.getBytesUnsafe(EXECUTION_TIME_ALIAS));
     }
 
     private static Object readCol(Row row, String col, ColumnMetadata cm) {
@@ -316,7 +316,7 @@ public class SnapshotProcessor extends AbstractProcessor {
 
     private static Object readColTtl(Row row, String col) {
         if (row.getColumnDefinitions().contains(CqlIdentifier.fromInternal(ttlAlias(col)))) {
-            return CassandraTypeDeserializer.deserialize(CounterColumnType.instance, row.getBytesUnsafe(ttlAlias(col)));
+            return CassandraTypeDeserializer.deserialize(DataTypes.COUNTER, row.getBytesUnsafe(ttlAlias(col)));
         }
         return null;
     }

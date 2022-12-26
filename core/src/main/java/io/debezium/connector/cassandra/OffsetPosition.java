@@ -9,10 +9,12 @@ import java.io.File;
 import java.util.Arrays;
 import java.util.Objects;
 
+import org.jetbrains.annotations.NotNull;
+
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorDataException;
 
 /**
- * The OffsetPosition uniquely identifies a specific {@link org.apache.cassandra.db.Mutation} in a specific commit log.
+ * The OffsetPosition uniquely identifies a specific Mutation in a specific commit log.
  */
 public class OffsetPosition implements Comparable<OffsetPosition> {
     public static final String DEFAULT_FILENAME = "";
@@ -43,7 +45,7 @@ public class OffsetPosition implements Comparable<OffsetPosition> {
     }
 
     @Override
-    public int compareTo(OffsetPosition other) {
+    public int compareTo(@NotNull OffsetPosition other) {
         if (this == other) {
             return 0;
         }

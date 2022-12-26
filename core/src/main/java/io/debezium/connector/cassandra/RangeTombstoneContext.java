@@ -19,7 +19,7 @@ import io.debezium.connector.cassandra.CassandraSchemaFactory.RowData;
  */
 public class RangeTombstoneContext<T> {
     public Map<T, RowData> map = new ConcurrentHashMap<>();
-    private CassandraSchemaFactory factory = CassandraSchemaFactory.get();
+    private final CassandraSchemaFactory factory = CassandraSchemaFactory.get();
 
     public static boolean isComplete(RowData rowData) {
         return rowData.getStartRange() != null && rowData.getEndRange() != null;

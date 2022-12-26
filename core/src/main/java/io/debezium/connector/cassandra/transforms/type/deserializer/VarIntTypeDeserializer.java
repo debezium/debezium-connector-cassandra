@@ -12,31 +12,31 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 
-import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.SchemaBuilder;
+
+import com.datastax.oss.protocol.internal.ProtocolConstants;
 
 import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer.VarIntMode;
 import io.debezium.connector.cassandra.transforms.DebeziumTypeDeserializer;
 
 public class VarIntTypeDeserializer extends LogicalTypeDeserializer {
 
-    private final DebeziumTypeDeserializer deserializer;
     private VarIntMode mode;
 
-    public VarIntTypeDeserializer(DebeziumTypeDeserializer deserializer) {
-        this.deserializer = deserializer;
+    public VarIntTypeDeserializer(DebeziumTypeDeserializer deserializer, Object abstractType) {
+        super(deserializer, ProtocolConstants.DataType.VARINT, abstractType);
         this.mode = VarIntMode.LONG;
     }
 
     @Override
-    public Object deserialize(AbstractType<?> abstractType, ByteBuffer bb) {
-        Object value = deserializer.deserialize(abstractType, bb);
+    public Object deserialize(Object abstractType, ByteBuffer bb) {
+        Object value = super.deserialize(abstractType, bb);
         return formatDeserializedValue(abstractType, value);
     }
 
     @Override
-    public SchemaBuilder getSchemaBuilder(AbstractType<?> abstractType) {
+    public SchemaBuilder getSchemaBuilder(Object abstractType) {
         switch (mode) {
             case LONG:
                 return LONG_TYPE;
@@ -49,7 +49,7 @@ public class VarIntTypeDeserializer extends LogicalTypeDeserializer {
     }
 
     @Override
-    public Object formatDeserializedValue(AbstractType<?> abstractType, Object value) {
+    public Object formatDeserializedValue(Object abstractType, Object value) {
         BigInteger bigint = (BigInteger) value;
         switch (mode) {
             case LONG:

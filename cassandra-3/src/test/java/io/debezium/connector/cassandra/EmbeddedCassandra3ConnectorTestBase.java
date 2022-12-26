@@ -5,15 +5,10 @@
  */
 package io.debezium.connector.cassandra;
 
-import java.nio.ByteBuffer;
-
-import org.apache.cassandra.db.marshal.AbstractType;
-
 import io.debezium.config.Configuration;
 import io.debezium.connector.cassandra.CassandraConnectorTask.Cassandra3SchemaChangeListenerProvider;
 import io.debezium.connector.cassandra.CassandraConnectorTask.Cassandra3SchemaLoader;
 import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;
-import io.debezium.connector.cassandra.transforms.DebeziumTypeDeserializer;
 
 public class EmbeddedCassandra3ConnectorTestBase extends CassandraConnectorTestBase {
 
@@ -21,12 +16,9 @@ public class EmbeddedCassandra3ConnectorTestBase extends CassandraConnectorTestB
     protected CassandraConnectorContext generateTaskContext(Configuration configuration) throws Exception {
 
         CassandraConnectorConfig config = new CassandraConnectorConfig(configuration);
-        CassandraTypeDeserializer.init(new DebeziumTypeDeserializer() {
-            @Override
-            public Object deserialize(AbstractType abstractType, ByteBuffer bb) {
-                return abstractType.getSerializer().deserialize(bb);
-            }
-        }, config.getDecimalMode(), config.getVarIntMode());
+        Cassandra3TypeProvider provider = new Cassandra3TypeProvider();
+        CassandraTypeDeserializer.init(provider.deserializers(), config.getDecimalMode(), config.getVarIntMode(),
+                provider.baseTypeForReversedType());
 
         return new CassandraConnectorContext(config,
                 new Cassandra3SchemaLoader(),

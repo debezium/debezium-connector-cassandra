@@ -18,7 +18,6 @@ import com.datastax.oss.driver.api.core.type.DataType;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.connector.cassandra.CassandraSchemaFactory.RowData;
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorSchemaException;
-import io.debezium.connector.cassandra.transforms.CassandraTypeConverter;
 import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;
 
 /**
@@ -37,12 +36,12 @@ public class KeyValueSchema {
     }
 
     public static class KeyValueSchemaBuilder {
-        private static String NAMESPACE = "io.debezium.connector.cassandra";
+        private static final String NAMESPACE = "io.debezium.connector.cassandra";
         private String keyspace;
         private String table;
         private TableMetadata tableMetadata;
         private String kafkaTopicPrefix;
-        private SourceInfoStructMaker sourceInfoStructMaker;
+        private SourceInfoStructMaker<?> sourceInfoStructMaker;
         private List<String> primaryKeyNames;
         private List<Schema> primaryKeySchemas;
         private Schema rowSchema;
@@ -62,7 +61,7 @@ public class KeyValueSchema {
             return this;
         }
 
-        public KeyValueSchemaBuilder withSourceInfoStructMarker(SourceInfoStructMaker sourceInfoStructMarker) {
+        public KeyValueSchemaBuilder withSourceInfoStructMarker(SourceInfoStructMaker<?> sourceInfoStructMarker) {
             this.sourceInfoStructMaker = sourceInfoStructMarker;
             return this;
         }
@@ -171,13 +170,12 @@ public class KeyValueSchema {
     public static List<Schema> getPrimaryKeySchemas(TableMetadata tm) {
         return tm.getPrimaryKey().stream()
                 .map(ColumnMetadata::getType)
-                .map(CassandraTypeConverter::convert)
                 .map(type -> CassandraTypeDeserializer.getSchemaBuilder(type).build())
                 .collect(Collectors.toList());
     }
 
     public static List<Schema> getPrimaryKeySchemas(List<DataType> dataTypes) {
-        return dataTypes.stream().map(CassandraTypeConverter::convert)
+        return dataTypes.stream()
                 .map(type -> CassandraTypeDeserializer.getSchemaBuilder(type).build())
                 .collect(Collectors.toList());
     }

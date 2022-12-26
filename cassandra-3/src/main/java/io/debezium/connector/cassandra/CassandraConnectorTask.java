@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.cassandra;
 
+import java.io.File;
+
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
 
@@ -44,11 +46,15 @@ public class CassandraConnectorTask {
     }
 
     static CassandraConnectorTaskTemplate init(CassandraConnectorConfig config, ComponentFactory factory) {
+        CommitLogProcessorMetrics metrics = new CommitLogProcessorMetrics();
         return new CassandraConnectorTaskTemplate(config,
-                (abstractType, bb) -> abstractType.getSerializer().deserialize(bb),
+                new Cassandra3TypeProvider(),
                 new Cassandra3SchemaLoader(),
                 new Cassandra3SchemaChangeListenerProvider(),
-                context -> new AbstractProcessor[]{ new Cassandra3CommitLogProcessor(context) },
+                context -> new AbstractProcessor[]{ new CommitLogProcessor(context, metrics,
+                        new Cassandra3CommitLogSegmentReader(context, metrics),
+                        new File(DatabaseDescriptor.getCDCLogLocation()),
+                        new File(DatabaseDescriptor.getCommitLogLocation())) },
                 factory);
     }
 }

@@ -34,12 +34,12 @@ public class SchemaHolder {
                 .collect(Collectors.toSet());
     }
 
-    protected void removeTableSchema(KeyspaceTable kst) {
+    public void removeTableSchema(KeyspaceTable kst) {
         tableToKVSchemaMap.remove(kst);
         LOGGER.info("Removed the schema for {}.{} from table schema cache.", kst.keyspace, kst.table);
     }
 
-    protected void addOrUpdateTableSchema(KeyspaceTable kst, KeyValueSchema kvs) {
+    public void addOrUpdateTableSchema(KeyspaceTable kst, KeyValueSchema kvs) {
         boolean isUpdate = tableToKVSchemaMap.containsKey(kst);
         tableToKVSchemaMap.put(kst, kvs);
         if (isUpdate) {

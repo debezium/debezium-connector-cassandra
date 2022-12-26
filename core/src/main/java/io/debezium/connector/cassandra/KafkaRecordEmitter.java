@@ -42,7 +42,8 @@ public class KafkaRecordEmitter implements Emitter {
     private long timeOfLastFlush;
     private long emitCount = 0;
 
-    public KafkaRecordEmitter(CassandraConnectorConfig connectorConfig, KafkaProducer kafkaProducer,
+    @SuppressWarnings("unchecked")
+    public KafkaRecordEmitter(CassandraConnectorConfig connectorConfig, KafkaProducer<byte[], byte[]> kafkaProducer,
                               OffsetWriter offsetWriter, Duration offsetFlushIntervalMs, long maxOffsetFlushSize,
                               Converter keyConverter, Converter valueConverter, Set<String> erroneousCommitLogs,
                               CommitLogTransfer commitLogTransfer) {
