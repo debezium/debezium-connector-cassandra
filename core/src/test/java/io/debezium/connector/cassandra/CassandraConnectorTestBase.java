@@ -73,7 +73,7 @@ public abstract class CassandraConnectorTestBase {
                         .volume("/var/lib/cassandra")
                         .cmd("sleep", "10") // Give testcontainers some time to find out container is running.
                         .build()))
-                                .withFileSystemBind(cassandraDir, CASSANDRA_SERVER_DIR, BindMode.READ_WRITE);
+                .withFileSystemBind(cassandraDir, CASSANDRA_SERVER_DIR, BindMode.READ_WRITE);
         container.start();
         container.execInContainer(
                 "rm", "-rf",
@@ -111,7 +111,7 @@ public abstract class CassandraConnectorTestBase {
                 .pollInSameThread()
                 .timeout(1, MINUTES)
                 .until(() -> {
-                    try (final CqlSession ignored = CqlSession.builder().build()) {
+                    try (CqlSession ignored = CqlSession.builder().build()) {
                         return true;
                     }
                     catch (Exception ex) {
