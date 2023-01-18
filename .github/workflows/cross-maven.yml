@@ -67,5 +67,8 @@ jobs:
           java-version: 17
       - name: Maven build core
         run: ./cassandra/mvnw clean install -f core/pom.xml -pl debezium-bom,debezium-core,debezium-embedded,debezium-storage -am -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+      - name: Install dse dependency artifacts
+        working-directory: ./cassandra/dse
+        run: sh ./install-artifacts.sh
       - name: Maven build cassandra
         run: ./cassandra/mvnw clean install -f cassandra/pom.xml -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
