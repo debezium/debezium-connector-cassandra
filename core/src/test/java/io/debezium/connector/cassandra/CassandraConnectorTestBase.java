@@ -100,9 +100,9 @@ public abstract class CassandraConnectorTestBase {
                 });
     }
 
-    protected static String createCassandraDir() {
+    protected static String createCassandraDir(String path) {
         try {
-            File cassandraDir = Testing.Files.createTestingDirectory("cassandra", true);
+            File cassandraDir = Testing.Files.createTestingDirectory(path, true);
             // The directory will be bind-mounted into container where Cassandra runs under
             // cassandra user. Therefore we have to change permissions for all users so that
             // Cassandra from container can write into this dir.
@@ -115,5 +115,16 @@ public abstract class CassandraConnectorTestBase {
         catch (IOException e) {
             throw new IllegalStateException(e);
         }
+    }
+
+    private static String createCassandraDir() {
+        String cassandraDir = createCassandraDir("cassandra");
+        createCassandraDir("cassandra/hints");
+        createCassandraDir("cassandra/data");
+        createCassandraDir("cassandra/metadata");
+        createCassandraDir("cassandra/commitlog");
+        createCassandraDir("cassandra/cdc_raw");
+        createCassandraDir("cassandra/saved_caches");
+        return cassandraDir;
     }
 }
