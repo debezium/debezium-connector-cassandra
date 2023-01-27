@@ -342,7 +342,7 @@
                     <artifactId>maven-assembly-plugin</artifactId>
                     <executions>
                         <execution>
-                            <id>default</id>
+                            <id>assemble-all</id>
                             <phase>package</phase>
                             <goals>
                                 <goal>single</goal>
