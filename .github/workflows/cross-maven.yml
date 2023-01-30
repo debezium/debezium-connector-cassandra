@@ -56,14 +56,15 @@ jobs:
           ref: ${{ github.base_ref }}
           path: core
       - name: Cache Maven packages
-        uses: actions/cache@v1
+        uses: actions/cache@v3
         with:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
       - name: Set up JDK 17
-        uses: actions/setup-java@v1
+        uses: actions/setup-java@v3
         with:
+          distribution: 'temurin'
           java-version: 17
       - name: Maven build core
         run: ./cassandra/mvnw clean install -f core/pom.xml -pl debezium-bom,debezium-core,debezium-embedded,debezium-storage -am -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
