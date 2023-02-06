@@ -13,10 +13,11 @@ import io.debezium.connector.AbstractSourceInfoStructMaker;
 
 public class CassandraSourceInfoStructMaker extends AbstractSourceInfoStructMaker<SourceInfo> {
 
-    private final Schema schema;
+    private Schema schema;
 
-    public CassandraSourceInfoStructMaker(String connector, String version, CommonConnectorConfig connectorConfig) {
-        super(connector, version, connectorConfig);
+    @Override
+    public void init(String connector, String version, CommonConnectorConfig connectorConfig) {
+        super.init(connector, version, connectorConfig);
         schema = commonSchemaBuilder()
                 .name(connectorConfig.schemaNameAdjuster().adjust(Record.SOURCE))
                 .field(SourceInfo.CLUSTER_KEY, Schema.STRING_SCHEMA)
