@@ -465,6 +465,14 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
             .withType(Type.STRING)
             .withDescription("Id of the Cassandra node - must be unique among all Cassandra connectors running on all nodes");
 
+    public static final Field SOURCE_INFO_STRUCT_MAKER = Field.create("sourceinfo.struct.maker")
+            .withDisplayName("Source info struct maker class")
+            .withType(Type.CLASS)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.LOW)
+            .withDescription("The name of the SourceInfoStructMaker class that returns SourceInfo schema and struct.")
+            .withDefault(CassandraSourceInfoStructMaker.class.getName());
+
     private static List<Field> validationFieldList = new ArrayList<>(
             Arrays.asList(OFFSET_BACKING_STORE_DIR, COMMIT_LOG_RELOCATION_DIR, SCHEMA_POLL_INTERVAL_MS, SNAPSHOT_POLL_INTERVAL_MS));
 
@@ -685,7 +693,7 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
 
     @Override
     protected SourceInfoStructMaker<? extends AbstractSourceInfo> getSourceInfoStructMaker(Version version) {
-        return new CassandraSourceInfoStructMaker(Module.name(), Module.version(), this);
+        return getSourceInfoStructMaker(SOURCE_INFO_STRUCT_MAKER, Module.name(), Module.version(), this);
     }
 
     @Override
