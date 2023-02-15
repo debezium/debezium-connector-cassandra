@@ -1,14 +1,14 @@
 #!/bin/sh
 
 DSE_VERSION=6.8.16
-mvn dependency:get -Dartifact=com.datastax:dse-db-all:${DSE_VERSION} -o && mvn dependency:get -Dartifact=com.datastax:dse-commons:${DSE_VERSION} -o && mvn dependency:get -Dartifact=io.netty:netty-all:4.1.25.7.dse
+2>/dev/null 1>&2 mvn dependency:get -Dartifact=com.datastax:dse-db-all:${DSE_VERSION} -o && mvn dependency:get -Dartifact=com.datastax:dse-commons:${DSE_VERSION} -o && mvn dependency:get -Dartifact=io.netty:netty-all:4.1.25.7.dse
 EXISTS=$?
 if [ ${EXISTS} -eq 0 ]; then
 	echo "DSE artifacts already installed"
 	exit 0
 fi
 
-DOCKER_DSE_SERVER_DIR=target/docker-dse-server
+DOCKER_DSE_SERVER_DIR=.docker-dse-server
 DSE_SERVER_DIR=${DOCKER_DSE_SERVER_DIR}/${DSE_VERSION}
 mkdir -p ${DSE_SERVER_DIR}
 

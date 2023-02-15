@@ -30,3 +30,4 @@ generated-sources/
 bin/
 cassandra-3/driver.log
 cassandra-4/driver.log
+.docker-dse-server
