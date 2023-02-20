@@ -13,9 +13,6 @@ Licensed under the [Apache License, Version 2.0](http://www.apache.org/licenses/
 
 Debezium is an open source project that provides a low latency data streaming platform for change data capture (CDC).
 
-This repository contains incubating connector for Apache Cassandra which is in an **early stage of its development**.
-You are encouraged to explore this connector and test it, but it is not recommended yet for production usage.
-
 Please see the [README.md](https://github.com/debezium/debezium#building-debezium) in the main repository for general instructions on building Debezium from source (prerequisites, usage of Docker etc).
 
 ## Cassandra compatibility
