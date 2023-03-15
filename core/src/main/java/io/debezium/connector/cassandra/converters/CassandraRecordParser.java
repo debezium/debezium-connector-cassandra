@@ -5,15 +5,16 @@
  */
 package io.debezium.connector.cassandra.converters;
 
-import io.debezium.connector.cassandra.SourceInfo;
-import io.debezium.converters.spi.RecordParser;
-import io.debezium.data.Envelope;
-import io.debezium.util.Collect;
+import java.util.Set;
+
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
 
-import java.util.Set;
+import io.debezium.connector.cassandra.SourceInfo;
+import io.debezium.converters.spi.RecordParser;
+import io.debezium.data.Envelope;
+import io.debezium.util.Collect;
 
 /**
  * Parser for records produced by the Cassandra connector.

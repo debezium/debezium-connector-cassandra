@@ -5,11 +5,12 @@
  */
 package io.debezium.connector.cassandra.transforms;
 
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.Struct;
+
 import io.debezium.connector.cassandra.converters.CassandraRecordParser;
 import io.debezium.converters.spi.RecordParser;
 import io.debezium.transforms.spi.RecordParserProvider;
-import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.Struct;
 
 public abstract class CassandraAbstractRecordParserProvider implements RecordParserProvider {
 
