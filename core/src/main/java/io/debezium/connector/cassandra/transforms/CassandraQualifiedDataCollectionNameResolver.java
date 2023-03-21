@@ -8,9 +8,9 @@ package io.debezium.connector.cassandra.transforms;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.cassandra.SourceInfo;
 import io.debezium.converters.spi.RecordParser;
-import io.debezium.transforms.spi.QualifiedTableNameResolver;
+import io.debezium.transforms.spi.QualifiedDataCollectionNameResolver;
 
-public class CassandraQualifiedTableNameResolver extends CassandraAbstractRecordParserProvider implements QualifiedTableNameResolver {
+public class CassandraQualifiedDataCollectionNameResolver extends CassandraAbstractRecordParserProvider implements QualifiedDataCollectionNameResolver {
     public static final String FULLY_QUALIFIED_NAME_FORMAT = "%s.%s";
 
     @Override
