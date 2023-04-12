@@ -13,6 +13,21 @@
     <name>Debezium Connector for Cassandra 3</name>
     <packaging>jar</packaging>
 
+    <properties>
+        <!-- Fixes compatibility JDK versions that may not yet dots in their names -->
+        <version.jamm>0.3.3</version.jamm>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+        <dependency>
+            <groupId>com.github.jbellis</groupId>
+            <artifactId>jamm</artifactId>
+            <version>${version.jamm}</version>
+        </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <dependencies>
         <dependency>
             <groupId>io.debezium</groupId>
@@ -45,18 +60,7 @@
                     <groupId>org.slf4j</groupId>
                     <artifactId>log4j-over-slf4j</artifactId>
                 </exclusion>
-                <!-- Exclude bundled version that is not compatible with JDK names that do not have dots in their names -->
-                <exclusion>
-                    <groupId>com.github.jbellis</groupId>
-                    <artifactId>jamm</artifactId>
-                </exclusion>
             </exclusions>
-        </dependency>
-        <!-- Fixes compatibility JDK versions that may not yet dots in their names -->
-        <dependency>
-            <groupId>com.github.jbellis</groupId>
-            <artifactId>jamm</artifactId>
-            <version>0.3.3</version>
         </dependency>
     </dependencies>
 
