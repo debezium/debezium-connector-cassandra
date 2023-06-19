@@ -101,4 +101,13 @@ public abstract class AbstractCommitLogProcessorTest extends EmbeddedCassandra3C
             reader.readCommitLogSegment(commitLogReadHandler, commitLog, true);
         }
     }
+
+    public void assertEventTypes(List<Event> events, Event.EventType eventType, Record.Operation... operations) {
+        assertEquals(events.size(), operations.length);
+        for (int i = 0; i < events.size(); i++) {
+            Record record = (Record) events.get(i);
+            assertEquals(record.getEventType(), eventType);
+            assertEquals(operations[i], record.getOp());
+        }
+    }
 }

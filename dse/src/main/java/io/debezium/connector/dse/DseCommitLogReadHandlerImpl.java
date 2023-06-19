@@ -8,6 +8,8 @@ package io.debezium.connector.dse;
 import static io.debezium.connector.cassandra.CassandraSchemaFactory.CellData.ColumnType.CLUSTERING;
 import static io.debezium.connector.cassandra.CassandraSchemaFactory.CellData.ColumnType.PARTITION;
 import static io.debezium.connector.cassandra.CassandraSchemaFactory.CellData.ColumnType.REGULAR;
+import static io.debezium.connector.dse.DseCommitLogReadHandlerImpl.PartitionType.PARTITION_AND_CLUSTERING_KEY_ROW_DELETION;
+import static io.debezium.connector.dse.DseCommitLogReadHandlerImpl.PartitionType.PARTITION_KEY_ROW_DELETION;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -64,6 +66,7 @@ import io.debezium.connector.cassandra.KeyspaceTable;
 import io.debezium.connector.cassandra.OffsetPosition;
 import io.debezium.connector.cassandra.OffsetWriter;
 import io.debezium.connector.cassandra.RangeTombstoneContext;
+import io.debezium.connector.cassandra.Record;
 import io.debezium.connector.cassandra.RecordMaker;
 import io.debezium.connector.cassandra.SchemaHolder;
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorSchemaException;
@@ -308,36 +311,32 @@ public class DseCommitLogReadHandlerImpl implements CommitLogReadHandler {
             return;
         }
 
-        switch (partitionType) {
-            case PARTITION_KEY_ROW_DELETION:
-            case PARTITION_AND_CLUSTERING_KEY_ROW_DELETION:
-                handlePartitionDeletion(pu, offsetPosition, keyspaceTable);
-                break;
-            case ROW_LEVEL_MODIFICATION:
-                UnfilteredRowIterator it = pu.unfilteredIterator();
-                while (it.hasNext()) {
-                    Unfiltered rowOrRangeTombstone = it.next();
-                    RowType rowType = RowType.getRowType(rowOrRangeTombstone);
-                    if (!RowType.isValid(rowType)) {
-                        LOGGER.warn("Encountered an unsupported row type {}, skipping...", rowType);
-                        continue;
-                    }
-                    if (rowOrRangeTombstone instanceof Row) {
-                        Row row = (Row) rowOrRangeTombstone;
-                        handleRowModifications(row, rowType, pu, offsetPosition, keyspaceTable);
-                    }
-                    else if (rowOrRangeTombstone instanceof RangeTombstoneBoundMarker) {
-                        handleRangeTombstoneBoundMarker((RangeTombstoneBoundMarker) rowOrRangeTombstone,
-                                rowType, pu, offsetPosition, keyspaceTable);
-                    }
-                    else {
-                        throw new CassandraConnectorSchemaException("Encountered unsupported Unfiltered type " + rowOrRangeTombstone.getClass());
-                    }
-                }
-                break;
+        if (partitionType == PARTITION_AND_CLUSTERING_KEY_ROW_DELETION || partitionType == PARTITION_KEY_ROW_DELETION) {
+            handlePartitionDeletion(pu, offsetPosition, keyspaceTable);
+        }
+        handleRowIterator(pu, offsetPosition, keyspaceTable);
+    }
 
-            default:
-                throw new CassandraConnectorSchemaException("Unsupported partition type " + partitionType + " should have been skipped");
+    private void handleRowIterator(PartitionUpdate pu, OffsetPosition offsetPosition, KeyspaceTable keyspaceTable) {
+        UnfilteredRowIterator it = pu.unfilteredIterator();
+        while (it.hasNext()) {
+            Unfiltered rowOrRangeTombstone = it.next();
+            RowType rowType = RowType.getRowType(rowOrRangeTombstone);
+            if (!RowType.isValid(rowType)) {
+                LOGGER.warn("Encountered an unsupported row type {}, skipping...", rowType);
+                continue;
+            }
+            if (rowOrRangeTombstone instanceof Row) {
+                Row row = (Row) rowOrRangeTombstone;
+                handleRowModifications(row, rowType, pu, offsetPosition, keyspaceTable);
+            }
+            else if (rowOrRangeTombstone instanceof RangeTombstoneBoundMarker) {
+                handleRangeTombstoneBoundMarker((RangeTombstoneBoundMarker) rowOrRangeTombstone,
+                        rowType, pu, offsetPosition, keyspaceTable);
+            }
+            else {
+                throw new CassandraConnectorSchemaException("Encountered unsupported Unfiltered type " + rowOrRangeTombstone.getClass());
+            }
         }
     }
 
