@@ -34,6 +34,7 @@ import io.debezium.connector.cassandra.CommitLogProcessorMetrics;
 import io.debezium.connector.cassandra.CommitLogUtil;
 import io.debezium.connector.cassandra.Event;
 import io.debezium.connector.cassandra.KeyspaceTable;
+import io.debezium.connector.cassandra.Record;
 import io.debezium.util.Testing;
 
 public abstract class AbstractCommitLogProcessorTest extends DseConnectorTestBase {
@@ -106,6 +107,15 @@ public abstract class AbstractCommitLogProcessorTest extends DseConnectorTestBas
 
         for (File commitLog : commitLogs) {
             reader.readCommitLogSegment(commitLogReadHandler, commitLog, true);
+        }
+    }
+
+    public void assertEventTypes(List<Event> events, Event.EventType eventType, Record.Operation... operations) {
+        assertEquals(events.size(), operations.length);
+        for (int i = 0; i < events.size(); i++) {
+            Record record = (Record) events.get(i);
+            assertEquals(record.getEventType(), eventType);
+            assertEquals(operations[i], record.getOp());
         }
     }
 }
