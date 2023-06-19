@@ -22,6 +22,7 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.SimpleStatement;
+import com.datastax.oss.driver.api.core.cql.Statement;
 import com.datastax.oss.driver.api.querybuilder.SchemaBuilder;
 
 public class TestUtils {
@@ -125,7 +126,7 @@ public class TestUtils {
         runCql(SimpleStatement.builder(statement).build());
     }
 
-    public static void runCql(SimpleStatement statement) {
+    public static void runCql(Statement<?> statement) {
         try (CqlSession session = CqlSession.builder().build()) {
             session.execute(statement);
         }
