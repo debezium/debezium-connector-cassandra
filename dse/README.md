@@ -41,7 +41,7 @@ mvn install:install-file -DgroupId=com.datastax -DartifactId=dse-commons -Dversi
 mvn install:install-file -DgroupId=io.netty -DartifactId=netty-all -Dversion=4.1.25.7.dse -Dpackaging=jar -Dfile=netty-all-4.1.25.7.dse.jar
 ```
 
-## Running under Debezium Server
+## Running under Debezium Server+
 
 Please check also the Debezium documentation: [Debezium Server](https://debezium.io/documentation/reference/stable/operations/debezium-server.html) and [Cassandra Connector](https://debezium.io/documentation/reference/stable/operations/debezium-server.html#_cassandra_connector).
 
@@ -49,27 +49,12 @@ Please check also the Debezium documentation: [Debezium Server](https://debezium
 
 - Debezium Server distribution must be deployed on the same instance running Datastax Enterprise.
 - DSE_HOME environment variable should be properly defined (usually it is already defined, but if not, it should be something like `DSE_HOME=/opt/dse`). It is used in the `run.sh` startup script.
-- Running with java 11+ requires setting the following java options at startup trough the JDK_JAVA_OPTIONS environment variable or equivalent:
-```
-JDK_JAVA_OPTIONS="--add-exports java.base/jdk.internal.misc=ALL-UNNAMED --add-exports java.base/jdk.internal.ref=ALL-UNNAMED --add-exports java.base/sun.nio.ch=ALL-UNNAMED --add-exports java.management.rmi/com.sun.jmx.remote.internal.rmi=ALL-UNNAMED --add-exports java.rmi/sun.rmi.registry=ALL-UNNAMED --add-exports java.rmi/sun.rmi.server=ALL-UNNAMED --add-exports java.sql/java.sql=ALL-UNNAMED  --add-opens java.base/java.lang.module=ALL-UNNAMED --add-opens java.base/jdk.internal.loader=ALL-UNNAMED --add-opens java.base/jdk.internal.ref=ALL-UNNAMED --add-opens java.base/jdk.internal.reflect=ALL-UNNAMED --add-opens java.base/jdk.internal.math=ALL-UNNAMED --add-opens java.base/jdk.internal.module=ALL-UNNAMED --add-opens java.base/jdk.internal.util.jar=ALL-UNNAMED --add-opens jdk.management/com.sun.management.internal=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-opens java.base/sun.nio.ch=ALL-UNNAMED"
-```
 
 ### 2. Deploy Datastax connector:
 
 Create a `dse/lib` folder (it is used in the run.sh script bellow) under Debezium Server deployment and extract there and flatten the contents of the Datastax connector distribution archive (e.g `debezium-connector-dse-{version}-plugin.zip`).
 
-### 3. Changes to Debezium Server `run.sh`:
-
-Replace last line:
-```
-exec "$JAVA_BINARY" $DEBEZIUM_OPTS $JAVA_OPTS -cp "$RUNNER"$PATH_SEP"conf"$PATH_SEP$LIB_PATH io.debezium.server.Main
-```
-with line:
-```
-exec "$JAVA_BINARY" $DEBEZIUM_OPTS $JAVA_OPTS -cp "$RUNNER"$PATH_SEP"conf"$PATH_SEP"lib/slf4j-jboss-logmanager-1.2.0.Final.jar"$PATH_SEP"$DSE_HOME/resources/cassandra/lib/*"$PATH_SEP"dse/lib/*"$PATH_SEP"$DSE_HOME/resources/cassandra/conf"$PATH_SEP"$LIB_PATH"$PATH_SEP"$DSE_HOME/lib/*"$PATH_SEP"$DSE_HOME/resources/solr/lib/*" io.debezium.server.Main
-```
-
-### 4. Configure Debezium Server - Sample of basic `application.properties` for running Datastax connector with the Redis sink:
+### 3. Configure Debezium Server - Sample of basic `application.properties` for running Datastax connector with the Redis sink:
 
 ```
 # Sink
@@ -82,6 +67,8 @@ debezium.source.cassandra.node.id=dse_node_01
 debezium.source.cassandra.hosts=127.0.0.1
 debezium.source.cassandra.port=9042
 debezium.source.cassandra.config=${DSE_HOME}/resources/cassandra/conf/cassandra.yaml
+# This line is optional but required to secure a Datastax Cassandra user
+debezium.source.cassandra.driver.config.file=${user.dir}/conf/cassandra/driver.conf
 debezium.source.commit.log.relocation.dir=dse/relocdir
 debezium.source.commit.log.real.time.processing.enabled=true
 debezium.source.commit.log.marked.complete.poll.interval.ms=2000
@@ -98,8 +85,31 @@ quarkus.log.level=INFO
 quarkus.log.console.json=false
 quarkus.http.port=8980
 ```
+### 4. driver.conf example:
 
-### 5. Transformation for Operation Code:
+```
+datastax-java-driver {
+    advanced.auth-provider {
+        class = PlainTextAuthProvider
+        username = dbz_user
+        password = secret
+    }
+}
+```
+The above will secure Cassandra access with user dbz_user and password secret.
+Grant appropriate permissions to the user for the required keyspace. 
+To grant all permissions on the keyspace, execute the following command:
+```
+GRANT ALL PERMISSIONS ON KEYSPACE <keyspace> TO dbz_user;
+```
+
+### 5. Environment variables
+```
+CASSANDRA_VERSION - Can be one of v3, v4, dse
+JMX_HOST and JMX_PORT - To enable JMX monitoring on Cassandra via JConsole or a similar application
+```
+
+### 6. Transformation for Operation Code:
 
 By default, Datastax connector has it's own Operation Codes which are not entirely compatible with Debezium Operation Codes.
 
@@ -117,6 +127,7 @@ DELETE "d"          -> DELETE "d"
 RANGE_TOMBSTONE "r" -> TRUNCATE "t"
 ```
 
+### 5. Transformation for Operation Code:
 ## Contributing
 
 The Debezium community welcomes anyone that wants to help out in any way, whether that includes reporting problems, helping with documentation, or contributing code changes to fix bugs, add tests, or implement new features. See [this document](https://github.com/debezium/debezium/blob/master/CONTRIBUTE.md) for details.
