@@ -49,10 +49,13 @@ Please check also the Debezium documentation: [Debezium Server](https://debezium
 
 - Debezium Server distribution must be deployed on the same instance running Datastax Enterprise.
 - DSE_HOME environment variable should be properly defined (usually it is already defined, but if not, it should be something like `DSE_HOME=/opt/dse`). It is used in the `run.sh` startup script.
+- EXTRA_CONNECTOR environment variable must be set to one of the following values: "dse," "cassandra-4," or "cassandra-3," depending on the version of Cassandra being used.
 
 ### 2. Deploy Datastax connector:
 
-Create a `dse/lib` folder (it is used in the run.sh script bellow) under Debezium Server deployment and extract there and flatten the contents of the Datastax connector distribution archive (e.g `debezium-connector-dse-{version}-plugin.zip`).
+Unpack Datastax connector distribution archive (e.g `debezium-connector-dse-{version}-plugin.zip`).
+Make sure that **DSE_HOME** and **EXTRA_CONNECTOR** environment variables defined correctly.
+run.sh script is used to start Debezium.
 
 ### 3. Configure Debezium Server - Sample of basic `application.properties` for running Datastax connector with the Redis sink:
 
@@ -62,6 +65,7 @@ debezium.sink.type=redis
 debezium.sink.redis.address=host.docker.internal:6379
 # Dse Connector
 debezium.source.connector.class=io.debezium.connector.dse.Dse6816Connector
+debezium.source.snapshot.consistency=ONE
 debezium.source.topic.prefix=dse
 debezium.source.cassandra.node.id=dse_node_01
 debezium.source.cassandra.hosts=127.0.0.1
@@ -86,7 +90,8 @@ quarkus.log.console.json=false
 quarkus.http.port=8980
 ```
 ### 4. driver.conf example:
-
+The location is defined in application.properties file:
+debezium.source.cassandra.driver.config.file=${user.dir}/conf/cassandra/driver.conf
 ```
 datastax-java-driver {
     advanced.auth-provider {
@@ -103,10 +108,27 @@ To grant all permissions on the keyspace, execute the following command:
 GRANT ALL PERMISSIONS ON KEYSPACE <keyspace> TO dbz_user;
 ```
 
-### 5. Environment variables
+### 5. JMX Environment variables
 ```
-CASSANDRA_VERSION - Can be one of v3, v4, dse
 JMX_HOST and JMX_PORT - To enable JMX monitoring on Cassandra via JConsole or a similar application
+```
+The monitoring can be secured by placing jmxremote.access and jmxremote.password files under jmx directory.
+This directory is part of the distribution package.
+
+In below example we are defining two roles: 
+    monitor with read only permissions and password - monitor123
+    admin with read/write permissions and password - admin123
+
+_jmxremote.access_ file:
+```
+monitor readonly
+admin readwrite
+```
+
+_jmxremote.password
+```
+admin admin123
+monitor monitor123
 ```
 
 ### 6. Transformation for Operation Code:
