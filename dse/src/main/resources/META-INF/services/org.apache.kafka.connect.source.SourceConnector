@@ -1,0 +1,2 @@
+io.debezium.connector.dse.Dse680Connector
+io.debezium.connector.dse.Dse6816Connector
