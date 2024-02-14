@@ -5,8 +5,7 @@
  */
 package io.debezium.connector.cassandra;
 
-import static com.datastax.oss.driver.api.core.type.DataTypes.INT;
-import static com.datastax.oss.driver.api.core.type.DataTypes.TEXT;
+import static com.datastax.oss.driver.api.core.type.DataTypes.*;
 import static io.debezium.connector.cassandra.CassandraSchemaFactory.CellData.ColumnType.CLUSTERING;
 import static io.debezium.connector.cassandra.CassandraSchemaFactory.CellData.ColumnType.PARTITION;
 import static io.debezium.connector.cassandra.CassandraSchemaFactory.CellData.ColumnType.REGULAR;
@@ -19,14 +18,18 @@ import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
 import java.io.File;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.datastax.oss.driver.api.core.type.DataTypes;
+
+import io.confluent.connect.avro.AvroConverter;
+import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient;
+import io.confluent.kafka.serializers.AbstractKafkaAvroSerDeConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.cassandra.CassandraSchemaFactory.RowData;
@@ -64,7 +67,7 @@ public abstract class AbstractQueueProcessorTest {
                 .withTable("cdc_table")
                 .withKafkaTopicPrefix(context.getCassandraConnectorConfig().getLogicalName())
                 .withSourceInfoStructMarker(context.getCassandraConnectorConfig().getSourceInfoStructMaker())
-                .withRowSchema(rowSchema(asList("col1", "col2"), asList(TEXT, INT)))
+                .withRowSchema(rowSchema(asList("col1", "col2", "col3"), asList(TEXT, INT, DataTypes.setOf(DataTypes.TEXT))))
                 .withPrimaryKeyNames(asList("p1", "c1"))
                 .withPrimaryKeySchemas(getPrimaryKeySchemas(asList(INT, INT)))
                 .build();
@@ -76,6 +79,7 @@ public abstract class AbstractQueueProcessorTest {
         rowData.addCell(schemaFactory.cellData("c1", 2, null, CLUSTERING));
         rowData.addCell(schemaFactory.cellData("col1", "col1value", null, REGULAR));
         rowData.addCell(schemaFactory.cellData("col2", 3, null, REGULAR));
+        rowData.addCell(schemaFactory.cellData("col3", Arrays.asList("A", "B"), null, REGULAR));
 
         sourceInfo = new SourceInfo(context.getCassandraConnectorConfig(), "cluster1",
                 new OffsetPosition("CommitLog-6-123.log", 0),
@@ -159,4 +163,41 @@ public abstract class AbstractQueueProcessorTest {
         assertEquals(0, emitter.records.size());
         assertEquals(queue.totalCapacity(), queue.remainingCapacity());
     }
+
+    @Test
+    public void testInsertChangeRecordProcessingForAvro() throws Exception {
+
+        context = generateTaskContext(Configuration.from(TestUtils.generateDefaultConfigMapWithAvro()));
+
+        AvroConverter avroConverter = new AvroConverter(new MockSchemaRegistryClient());
+        Map<String, Object> valueConverterConfigs = Map.of(AbstractKafkaAvroSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, "mock://my-scope-name");
+        avroConverter.configure(valueConverterConfigs, false);
+
+        emitter = new TestingKafkaRecordEmitter(
+                context.getCassandraConnectorConfig(),
+                null,
+                context.getOffsetWriter(),
+                context.getCassandraConnectorConfig().offsetFlushIntervalMs(),
+                context.getCassandraConnectorConfig().maxOffsetFlushSize(),
+                context.getCassandraConnectorConfig().getKeyConverter(),
+                avroConverter,
+                context.getErroneousCommitLogs(),
+                context.getCassandraConnectorConfig().getCommitLogTransfer());
+
+        queueProcessor = new QueueProcessor(context, 0, emitter);
+
+        ChangeEventQueue<Event> queue = context.getQueues().get(0);
+        Record record = new ChangeRecord(sourceInfo, rowData, keyValueSchema.keySchema(),
+                keyValueSchema.valueSchema(), INSERT, false);
+
+        queue.enqueue(record);
+
+        assertEquals(1, queue.totalCapacity() - queue.remainingCapacity());
+
+        queueProcessor.process();
+
+        assertEquals(1, emitter.records.size());
+        assertEquals(queue.totalCapacity(), queue.remainingCapacity());
+    }
+
 }
