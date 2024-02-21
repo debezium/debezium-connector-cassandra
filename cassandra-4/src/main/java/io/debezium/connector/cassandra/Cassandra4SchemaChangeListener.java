@@ -21,7 +21,6 @@ import org.apache.cassandra.schema.Schema;
 import org.apache.cassandra.schema.TableId;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.schema.TableMetadataRef;
-import org.apache.commons.lang3.ArrayUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -243,13 +242,10 @@ public class Cassandra4SchemaChangeListener extends AbstractSchemaChangeListener
                     newCdc);
             // else if it was not cdc before nor now, do nothing with schema holder
             // but add it to Cassandra for subsequent deserialization path in every case
-
-            UUID uuid = UUID.nameUUIDFromBytes(ArrayUtils.addAll(newTableMetadata.getKeyspace().toString().getBytes(),
-                    newTableMetadata.getName().toString().getBytes()));
-
+            // we need to use the id of the existing table to correctly replace it
             org.apache.cassandra.schema.TableMetadata metadata = CreateTableStatement.parse(newTableMetadata.describe(true),
                     newTableMetadata.getKeyspace().toString())
-                    .id(TableId.fromUUID(uuid))
+                    .id(TableId.fromUUID(oldTableMetaData.getId().get()))
                     .build();
 
             org.apache.cassandra.schema.KeyspaceMetadata current = Schema.instance.getKeyspaceMetadata(metadata.keyspace);
