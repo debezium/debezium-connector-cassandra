@@ -48,7 +48,6 @@ public class CassandraSchemaFactory extends SchemaFactory {
     /*
      * Cell data schema
      */
-    public static final String CELL_SCHEMA_NAME = "cell_value";
     public static final int CELL_SCHEMA_VERSION = 1;
 
     /*
@@ -195,7 +194,7 @@ public class CassandraSchemaFactory extends SchemaFactory {
             for (int i = 0; i < columnNames.size(); i++) {
                 Schema valueSchema = CassandraTypeDeserializer.getSchemaBuilder(columnsTypes.get(i)).build();
                 String columnName = columnNames.get(i);
-                Schema optionalCellSchema = CellData.cellSchema(valueSchema, true);
+                Schema optionalCellSchema = CellData.cellSchema(columnName, valueSchema, true);
                 if (optionalCellSchema != null) {
                     schemaBuilder.field(columnName, optionalCellSchema);
                 }
@@ -296,13 +295,13 @@ public class CassandraSchemaFactory extends SchemaFactory {
             }
         }
 
-        static Schema cellSchema(Schema columnSchema, boolean optional) {
+        static Schema cellSchema(String columnName, Schema columnSchema, boolean optional) {
             if (columnSchema == null) {
                 return null;
             }
 
             SchemaBuilder schemaBuilder = SchemaBuilder.struct()
-                    .name(CELL_SCHEMA_NAME)
+                    .name(columnName)
                     .version(CELL_SCHEMA_VERSION)
                     .field(CELL_VALUE_KEY, columnSchema)
                     .field(CELL_DELETION_TS_KEY, OPTIONAL_INT64_SCHEMA)
