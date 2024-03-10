@@ -8,11 +8,13 @@ package io.debezium.connector.cassandra.transforms;
 import java.util.Map;
 
 import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.connect.components.Versioned;
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.transforms.Transformation;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.cassandra.Module;
 import io.debezium.connector.cassandra.Record;
 import io.debezium.data.Envelope;
 import io.debezium.transforms.SmtManager;
@@ -20,7 +22,7 @@ import io.debezium.transforms.SmtManager;
 /**
  * This SMT allows the Cassandra connector to emit events in accordance with {@link Envelope}.
  */
-public class EnvelopeTransformation<R extends ConnectRecord<R>> implements Transformation<R> {
+public class EnvelopeTransformation<R extends ConnectRecord<R>> implements Transformation<R>, Versioned {
 
     private SmtManager<R> smtManager;
 
@@ -76,5 +78,10 @@ public class EnvelopeTransformation<R extends ConnectRecord<R>> implements Trans
     public void configure(Map<String, ?> props) {
         final Configuration config = Configuration.from(props);
         smtManager = new SmtManager<>(config);
+    }
+
+    @Override
+    public String version() {
+        return Module.version();
     }
 }
