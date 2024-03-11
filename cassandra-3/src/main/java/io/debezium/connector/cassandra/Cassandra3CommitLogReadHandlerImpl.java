@@ -308,6 +308,7 @@ public class Cassandra3CommitLogReadHandlerImpl implements CommitLogReadHandler 
     }
 
     private void handleRowIterator(PartitionUpdate pu, OffsetPosition offsetPosition, KeyspaceTable keyspaceTable) {
+        long maxTimePu = pu.maxTimestamp();
         UnfilteredRowIterator it = pu.unfilteredIterator();
         while (it.hasNext()) {
             Unfiltered rowOrRangeTombstone = it.next();
@@ -318,7 +319,7 @@ public class Cassandra3CommitLogReadHandlerImpl implements CommitLogReadHandler 
             }
             if (rowOrRangeTombstone instanceof Row) {
                 Row row = (Row) rowOrRangeTombstone;
-                handleRowModifications(row, rowType, pu, offsetPosition, keyspaceTable);
+                handleRowModifications(row, rowType, pu, offsetPosition, keyspaceTable, maxTimePu);
             }
             else if (rowOrRangeTombstone instanceof RangeTombstoneBoundMarker) {
                 handleRangeTombstoneBoundMarker((RangeTombstoneBoundMarker) rowOrRangeTombstone,
@@ -328,6 +329,7 @@ public class Cassandra3CommitLogReadHandlerImpl implements CommitLogReadHandler 
                 throw new CassandraConnectorSchemaException("Encountered unsupported Unfiltered type " + rowOrRangeTombstone.getClass());
             }
         }
+        it.close();
     }
 
     /**
@@ -407,7 +409,7 @@ public class Cassandra3CommitLogReadHandlerImpl implements CommitLogReadHandler 
      *          d. for deletions, populate regular columns with null values
      *      (4) Assemble a {@link Record} object from the populated data and queue the record
      */
-    private void handleRowModifications(Row row, RowType rowType, PartitionUpdate pu, OffsetPosition offsetPosition, KeyspaceTable keyspaceTable) {
+    private void handleRowModifications(Row row, RowType rowType, PartitionUpdate pu, OffsetPosition offsetPosition, KeyspaceTable keyspaceTable, long maxTimePu) {
         KeyValueSchema keyValueSchema = schemaHolder.getKeyValueSchema(keyspaceTable);
         if (keyValueSchema == null) {
             LOGGER.trace("Unable to get KeyValueSchema for table {}. It might have been deleted or CDC disabled.", keyspaceTable.toString());
@@ -421,8 +423,7 @@ public class Cassandra3CommitLogReadHandlerImpl implements CommitLogReadHandler 
         populateClusteringColumns(after, row, pu);
         populateRegularColumns(after, row, rowType, keyValueSchema);
 
-        long ts = rowType == RowType.DELETE ? row.deletion().time().markedForDeleteAt() : pu.maxTimestamp();
-
+        long ts = rowType == RowType.DELETE ? row.deletion().time().markedForDeleteAt() : maxTimePu;
         switch (rowType) {
             case INSERT:
                 recordMaker.insert(DatabaseDescriptor.getClusterName(), offsetPosition, keyspaceTable, false,
