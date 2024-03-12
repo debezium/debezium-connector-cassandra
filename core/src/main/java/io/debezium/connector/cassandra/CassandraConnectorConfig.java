@@ -227,6 +227,56 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
     }
 
     /**
+     * The set of predefined EventOrderGuaranteeMode options.
+     * Each option determines to which property used for hashing.
+     * Events with the same hash value maintain the same order.
+     * Preferred to use PARTITION_VALUES to have same hashing strategy with messages in kafka.
+     */
+    public enum EventOrderGuaranteeMode implements EnumeratedValue {
+
+        /**
+         * Use commit log file name to calculate the hash of the event to determine the queue index.
+         */
+        COMMITLOG_FILE("commitlog_file"),
+
+        /**
+         * Use partition column values to calculate the hash of event to determine queue index.
+         */
+        PARTITION_VALUES("partition_values");
+
+        private final String value;
+
+        EventOrderGuaranteeMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static EventOrderGuaranteeMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (EventOrderGuaranteeMode option : values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return null;
+        }
+
+    }
+
+    /**
      * The prefix prepended to all Kafka producer configurations, including schema registry
      */
     public static final String KAFKA_PRODUCER_CONFIG_PREFIX = "kafka.producer.";
@@ -468,6 +518,16 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
     public static final Field SOURCE_INFO_STRUCT_MAKER = CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER
             .withDefault(CassandraSourceInfoStructMaker.class.getName());
 
+    /**
+     * Must be one of 'COMMITLOG_FILE', or 'PARTITION_VALUES'. The default order guarantee mode is 'COMMITLOG_FILE'.
+     * See {@link EventOrderGuaranteeMode for details}.
+     */
+    public static final Field EVENT_ORDER_GUARANTEE_MODE = Field.create("event.order.guarantee.mode")
+            .withDisplayName("VarInt Handling")
+            .withEnum(EventOrderGuaranteeMode.class, EventOrderGuaranteeMode.COMMITLOG_FILE)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("Specifies how grantee order of change events.");
+
     private static List<Field> validationFieldList = new ArrayList<>(
             Arrays.asList(OFFSET_BACKING_STORE_DIR, COMMIT_LOG_RELOCATION_DIR, SCHEMA_POLL_INTERVAL_MS, SNAPSHOT_POLL_INTERVAL_MS));
 
@@ -706,5 +766,9 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
 
     public String getNodeId() {
         return this.getConfig().getString(CASSANDRA_NODE_ID);
+    }
+
+    public EventOrderGuaranteeMode getEventOrderGuaranteeMode() {
+        return EventOrderGuaranteeMode.parse(this.getConfig().getString(EVENT_ORDER_GUARANTEE_MODE));
     }
 }
