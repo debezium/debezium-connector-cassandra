@@ -53,6 +53,7 @@ import com.datastax.oss.driver.api.core.metadata.schema.TableMetadata;
 
 import io.debezium.DebeziumException;
 import io.debezium.connector.base.ChangeEventQueue;
+import io.debezium.connector.cassandra.CassandraConnectorConfig;
 import io.debezium.connector.cassandra.CassandraConnectorContext;
 import io.debezium.connector.cassandra.CassandraSchemaFactory;
 import io.debezium.connector.cassandra.CassandraSchemaFactory.CellData;
@@ -92,6 +93,7 @@ public class DseCommitLogReadHandlerImpl implements CommitLogReadHandler {
     private final CommitLogProcessorMetrics metrics;
     private final RangeTombstoneContext<org.apache.cassandra.schema.TableMetadata> rangeTombstoneContext = new RangeTombstoneContext<>();
     private final CassandraSchemaFactory schemaFactory;
+    private final CassandraConnectorConfig.EventOrderGuaranteeMode eventOrderGuaranteeMode;
 
     DseCommitLogReadHandlerImpl(CassandraConnectorContext context, CommitLogProcessorMetrics metrics) {
         this.queues = context.getQueues();
@@ -102,6 +104,7 @@ public class DseCommitLogReadHandlerImpl implements CommitLogReadHandler {
         this.schemaHolder = context.getSchemaHolder();
         this.metrics = metrics;
         this.schemaFactory = CassandraSchemaFactory.get();
+        this.eventOrderGuaranteeMode = context.getCassandraConnectorConfig().getEventOrderGuaranteeMode();
     }
 
     /**
@@ -401,7 +404,7 @@ public class DseCommitLogReadHandlerImpl implements CommitLogReadHandler {
 
         recordMaker.delete(DatabaseDescriptor.getClusterName(), offsetPosition, keyspaceTable, false,
                 Conversions.toInstantFromMicros(pu.maxTimestamp()), after, keySchema, valueSchema,
-                MARK_OFFSET, queues.get(Math.abs(offsetPosition.fileName.hashCode() % queues.size()))::enqueue);
+                MARK_OFFSET, queues.get(getPartitionQueueIndex(pu, offsetPosition))::enqueue);
     }
 
     /**
@@ -439,25 +442,25 @@ public class DseCommitLogReadHandlerImpl implements CommitLogReadHandler {
             case INSERT:
                 recordMaker.insert(DatabaseDescriptor.getClusterName(), offsetPosition, keyspaceTable, false,
                         Conversions.toInstantFromMicros(ts), after, keySchema, valueSchema, MARK_OFFSET,
-                        queues.get(Math.abs(offsetPosition.fileName.hashCode() % queues.size()))::enqueue);
+                        queues.get(getPartitionQueueIndex(pu, offsetPosition))::enqueue);
                 break;
 
             case UPDATE:
                 recordMaker.update(DatabaseDescriptor.getClusterName(), offsetPosition, keyspaceTable, false,
                         Conversions.toInstantFromMicros(ts), after, keySchema, valueSchema, MARK_OFFSET,
-                        queues.get(Math.abs(offsetPosition.fileName.hashCode() % queues.size()))::enqueue);
+                        queues.get(getPartitionQueueIndex(pu, offsetPosition))::enqueue);
                 break;
 
             case DELETE:
                 recordMaker.delete(DatabaseDescriptor.getClusterName(), offsetPosition, keyspaceTable, false,
                         Conversions.toInstantFromMicros(ts), after, keySchema, valueSchema, MARK_OFFSET,
-                        queues.get(Math.abs(offsetPosition.fileName.hashCode() % queues.size()))::enqueue);
+                        queues.get(getPartitionQueueIndex(pu, offsetPosition))::enqueue);
                 break;
 
             case RANGE_TOMBSTONE:
                 recordMaker.rangeTombstone(DatabaseDescriptor.getClusterName(), offsetPosition, keyspaceTable, false,
                         Conversions.toInstantFromMicros(ts), after, keySchema, valueSchema, MARK_OFFSET,
-                        queues.get(Math.abs(offsetPosition.fileName.hashCode() % queues.size()))::enqueue);
+                        queues.get(getPartitionQueueIndex(pu, offsetPosition))::enqueue);
                 break;
 
             default:
@@ -496,7 +499,7 @@ public class DseCommitLogReadHandlerImpl implements CommitLogReadHandler {
 
                 recordMaker.rangeTombstone(DatabaseDescriptor.getClusterName(), offsetPosition, keyspaceTable, false,
                         Conversions.toInstantFromMicros(ts), after, keyValueSchema.keySchema(), keyValueSchema.valueSchema(), MARK_OFFSET,
-                        queues.get(Math.abs(offsetPosition.fileName.hashCode() % queues.size()))::enqueue);
+                        queues.get(getPartitionQueueIndex(pu, offsetPosition))::enqueue);
             }
             finally {
                 rangeTombstoneContext.remove(pu.metadata());
@@ -674,6 +677,21 @@ public class DseCommitLogReadHandlerImpl implements CommitLogReadHandler {
         }
 
         return values;
+    }
+
+    private int getPartitionQueueIndex(PartitionUpdate partitionUpdate, OffsetPosition offsetPosition) {
+        int hash;
+        switch (eventOrderGuaranteeMode) {
+            case COMMITLOG_FILE:
+                hash = offsetPosition.fileName.hashCode();
+                break;
+            case PARTITION_VALUES:
+                hash = partitionUpdate.partitionKey().hashCode();
+                break;
+            default:
+                throw new IllegalStateException();
+        }
+        return ((hash % queues.size()) + queues.size()) % queues.size();
     }
 
 }
