@@ -43,23 +43,34 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
     /**
      * The set of predefined SnapshotMode options.
      */
-    public enum SnapshotMode {
+    public enum SnapshotMode implements EnumeratedValue {
 
         /**
          * Perform a snapshot whenever a new table with cdc enabled is detected. This is detected by periodically
          * scanning tables in Cassandra.
          */
-        ALWAYS,
+        ALWAYS("always"),
 
         /**
          * Perform a snapshot for unsnapshotted tables upon initial startup of the cdc agent.
          */
-        INITIAL,
+        INITIAL("initial"),
 
         /**
          * Never perform a snapshot, instead change events are only read from commit logs.
          */
-        NEVER;
+        NEVER("never");
+
+        private final String value;
+
+        SnapshotMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
 
         public static Optional<SnapshotMode> fromText(String text) {
             return Arrays.stream(values())
@@ -754,6 +765,16 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
     @Override
     public String getConnectorName() {
         return Module.name();
+    }
+
+    @Override
+    public EnumeratedValue getSnapshotMode() {
+        return snapshotMode();
+    }
+
+    @Override
+    public Optional<? extends EnumeratedValue> getSnapshotLockingMode() {
+        return Optional.empty();
     }
 
     public Field.Set getValidationFieldSet() {
