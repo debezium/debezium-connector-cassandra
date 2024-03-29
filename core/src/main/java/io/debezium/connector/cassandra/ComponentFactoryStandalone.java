@@ -16,7 +16,7 @@ public class ComponentFactoryStandalone implements ComponentFactory {
     @Override
     public OffsetWriter offsetWriter(CassandraConnectorConfig config) {
         try {
-            return new FileOffsetWriter(config.offsetBackingStoreDir());
+            return new FileOffsetWriter(config.offsetBackingStoreDir(), config.offsetFlushIntervalMs(), config.maxOffsetFlushSize());
         }
         catch (IOException e) {
             throw new CassandraConnectorConfigException(String.format("cannot create file offset writer into %s", config.offsetBackingStoreDir()), e);
@@ -30,8 +30,6 @@ public class ComponentFactoryStandalone implements ComponentFactory {
                 config,
                 new KafkaProducer<>(config.getKafkaConfigs()),
                 context.getOffsetWriter(),
-                config.offsetFlushIntervalMs(),
-                config.maxOffsetFlushSize(),
                 config.getKeyConverter(),
                 config.getValueConverter(),
                 context.getErroneousCommitLogs(),

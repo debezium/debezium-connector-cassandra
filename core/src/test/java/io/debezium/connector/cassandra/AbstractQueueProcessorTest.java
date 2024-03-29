@@ -50,8 +50,6 @@ public abstract class AbstractQueueProcessorTest {
                 context.getCassandraConnectorConfig(),
                 null,
                 context.getOffsetWriter(),
-                context.getCassandraConnectorConfig().offsetFlushIntervalMs(),
-                context.getCassandraConnectorConfig().maxOffsetFlushSize(),
                 context.getCassandraConnectorConfig().getKeyConverter(),
                 context.getCassandraConnectorConfig().getValueConverter(),
                 context.getErroneousCommitLogs(),
