@@ -534,7 +534,7 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
      * See {@link EventOrderGuaranteeMode for details}.
      */
     public static final Field EVENT_ORDER_GUARANTEE_MODE = Field.create("event.order.guarantee.mode")
-            .withDisplayName("VarInt Handling")
+            .withDisplayName("Event order guarantee")
             .withEnum(EventOrderGuaranteeMode.class, EventOrderGuaranteeMode.COMMITLOG_FILE)
             .withImportance(Importance.MEDIUM)
             .withDescription("Specifies how grantee order of change events.");

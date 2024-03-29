@@ -23,6 +23,10 @@ public interface OffsetFlushPolicy {
         return new AlwaysFlushOffsetPolicy();
     }
 
+    static OffsetFlushPolicy never() {
+        return new NeverFlushOffsetPolicy();
+    }
+
     static OffsetFlushPolicy periodic(Duration offsetFlushInterval, long maxOffsetFlushSize) {
         return new PeriodicFlushOffsetPolicy(offsetFlushInterval, maxOffsetFlushSize);
     }
@@ -47,6 +51,14 @@ public interface OffsetFlushPolicy {
         @Override
         public boolean shouldFlush(Duration timeSinceLastFlush, long numOfRecordsSinceLastFlush) {
             return true;
+        }
+    }
+
+    class NeverFlushOffsetPolicy implements OffsetFlushPolicy {
+
+        @Override
+        public boolean shouldFlush(Duration timeSinceLastFlush, long numOfRecordsSinceLastFlush) {
+            return false;
         }
     }
 }

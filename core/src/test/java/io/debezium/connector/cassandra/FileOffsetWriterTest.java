@@ -107,6 +107,13 @@ public class FileOffsetWriterTest {
         process(commitLogRecordDiffTable);
 
         offsetWriter.flush();
+        // Sleep a little bit to ensure the operation is done
+        try {
+            Thread.sleep(100);
+        }
+        catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
         try (FileInputStream fis = new FileInputStream(offsetDir.toString() + "/" + FileOffsetWriter.SNAPSHOT_OFFSET_FILE)) {
             snapshotProps.load(fis);
         }
@@ -153,5 +160,12 @@ public class FileOffsetWriterTest {
                 record.getSource().keyspaceTable.name(),
                 record.getSource().offsetPosition.serialize(),
                 record.getSource().snapshot);
+        // Sleep a little bit to ensure the operation is done
+        try {
+            Thread.sleep(100);
+        }
+        catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

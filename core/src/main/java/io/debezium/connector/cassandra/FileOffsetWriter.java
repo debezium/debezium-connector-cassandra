@@ -16,7 +16,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.time.Duration;
 import java.util.Properties;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,10 +58,19 @@ public class FileOffsetWriter implements OffsetWriter {
     private final FileLock snapshotOffsetFileLock;
     private final FileLock commitLogOffsetFileLock;
 
-    public FileOffsetWriter(String offsetDir) throws IOException {
+    private final OffsetFlushPolicy offsetFlushPolicy;
+    private final ExecutorService executorService;
+
+    private long timeOfLastFlush;
+    private long unflushedRecordCount;
+
+    public FileOffsetWriter(String offsetDir, OffsetFlushPolicy offsetFlushPolicy) throws IOException {
         if (offsetDir == null) {
             throw new CassandraConnectorConfigException("Offset file directory must be configured at the start");
         }
+
+        this.offsetFlushPolicy = offsetFlushPolicy;
+        this.timeOfLastFlush = System.currentTimeMillis();
 
         File offsetDirectory = new File(offsetDir);
         if (!offsetDirectory.exists()) {
@@ -71,58 +84,84 @@ public class FileOffsetWriter implements OffsetWriter {
 
         loadOffset(this.snapshotOffsetFile, snapshotProps);
         loadOffset(this.commitLogOffsetFile, commitLogProps);
+        this.executorService = Executors.newFixedThreadPool(1);
+    }
+
+    public FileOffsetWriter(String offsetDir, Duration offsetFlushIntervalMs, long maxOffsetFlushSize) throws IOException {
+        this(offsetDir, offsetFlushIntervalMs.isZero() ? OffsetFlushPolicy.always() : OffsetFlushPolicy.periodic(offsetFlushIntervalMs, maxOffsetFlushSize));
+    }
+
+    public FileOffsetWriter(String offsetDir) throws IOException {
+        this(offsetDir, OffsetFlushPolicy.never());
     }
 
     @Override
     public void markOffset(String sourceTable, String sourceOffset, boolean isSnapshot) {
+        executorService.submit(() -> performMarkOffset(sourceTable, sourceOffset, isSnapshot));
+    }
+
+    private void performMarkOffset(String sourceTable, String sourceOffset, boolean isSnapshot) {
         if (isSnapshot) {
-            synchronized (snapshotOffsetFileLock) {
-                if (!isOffsetProcessed(sourceTable, sourceOffset, isSnapshot)) {
-                    snapshotProps.setProperty(sourceTable, sourceOffset);
-                }
+            if (!isOffsetProcessed(sourceTable, sourceOffset, isSnapshot)) {
+                snapshotProps.setProperty(sourceTable, sourceOffset);
             }
         }
         else {
-            synchronized (commitLogOffsetFileLock) {
-                if (!isOffsetProcessed(sourceTable, sourceOffset, isSnapshot)) {
-                    commitLogProps.setProperty(sourceTable, sourceOffset);
-                }
+            if (!isOffsetProcessed(sourceTable, sourceOffset, isSnapshot)) {
+                commitLogProps.setProperty(sourceTable, sourceOffset);
             }
         }
+        unflushedRecordCount += 1;
+        maybeFlushOffset();
     }
 
     @Override
     public boolean isOffsetProcessed(String sourceTable, String sourceOffset, boolean isSnapshot) {
         if (isSnapshot) {
-            synchronized (snapshotOffsetFileLock) {
-                return snapshotProps.containsKey(sourceTable);
-            }
+            return snapshotProps.containsKey(sourceTable);
         }
         else {
-            synchronized (commitLogOffsetFileLock) {
-                OffsetPosition currentOffset = OffsetPosition.parse(sourceOffset);
-                OffsetPosition recordedOffset = commitLogProps.containsKey(sourceTable) ? OffsetPosition.parse((String) commitLogProps.get(sourceTable)) : null;
-                return recordedOffset != null && currentOffset.compareTo(recordedOffset) <= 0;
-            }
+            OffsetPosition currentOffset = OffsetPosition.parse(sourceOffset);
+            OffsetPosition recordedOffset = commitLogProps.containsKey(sourceTable) ? OffsetPosition.parse((String) commitLogProps.get(sourceTable)) : null;
+            return recordedOffset != null && currentOffset.compareTo(recordedOffset) <= 0;
+        }
+    }
+
+    private void maybeFlushOffset() {
+        long now = System.currentTimeMillis();
+        long timeSinceLastFlush = now - timeOfLastFlush;
+        if (offsetFlushPolicy.shouldFlush(Duration.ofMillis(timeSinceLastFlush), unflushedRecordCount)) {
+            this.performFlush();
+            timeOfLastFlush = now;
+            unflushedRecordCount = 0;
         }
     }
 
     @Override
     public void flush() {
+        executorService.submit(this::performFlush);
+    }
+
+    private void performFlush() {
         try {
-            synchronized (snapshotOffsetFileLock) {
-                saveOffset(snapshotOffsetFile, snapshotProps);
-            }
-            synchronized (commitLogOffsetFileLock) {
-                saveOffset(commitLogOffsetFile, commitLogProps);
-            }
+            saveOffset(snapshotOffsetFile, snapshotProps);
+            saveOffset(commitLogOffsetFile, commitLogProps);
         }
         catch (IOException e) {
             LOGGER.warn("Ignoring flush failure", e);
         }
     }
 
+    @Override
     public void close() {
+        try {
+            if (!executorService.awaitTermination(1, TimeUnit.SECONDS)) {
+                executorService.shutdown();
+            }
+        }
+        catch (InterruptedException ignored) {
+        }
+
         try {
             snapshotOffsetFileLock.release();
         }

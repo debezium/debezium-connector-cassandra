@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.cassandra;
 
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -19,11 +18,9 @@ public class TestingKafkaRecordEmitter extends KafkaRecordEmitter {
     public List<ProducerRecord<byte[], byte[]>> records = new ArrayList<>();
 
     public TestingKafkaRecordEmitter(CassandraConnectorConfig connectorConfig, KafkaProducer<byte[], byte[]> kafkaProducer,
-                                     OffsetWriter offsetWriter, Duration offsetFlushIntervalMs, long maxOffsetFlushSize,
-                                     Converter keyConverter, Converter valueConverter, Set<String> erroneousCommitLogs,
-                                     CommitLogTransfer commitLogTransfer) {
-        super(connectorConfig, kafkaProducer, offsetWriter, offsetFlushIntervalMs, maxOffsetFlushSize, keyConverter, valueConverter,
-                erroneousCommitLogs, commitLogTransfer);
+                                     OffsetWriter offsetWriter, Converter keyConverter, Converter valueConverter,
+                                     Set<String> erroneousCommitLogs, CommitLogTransfer commitLogTransfer) {
+        super(connectorConfig, kafkaProducer, offsetWriter, keyConverter, valueConverter, erroneousCommitLogs, commitLogTransfer);
     }
 
     @Override
