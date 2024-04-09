@@ -23,6 +23,7 @@ import io.debezium.spi.topic.TopicNamingStrategy;
  */
 public class KafkaRecordEmitter implements Emitter {
     private static final Logger LOGGER = LoggerFactory.getLogger(KafkaRecordEmitter.class);
+    private static final int RECORD_LOG_COUNT = 10_000;
 
     private final KafkaProducer<byte[], byte[]> producer;
     private final TopicNamingStrategy<KeyspaceTable> topicNamingStrategy;
@@ -75,7 +76,7 @@ public class KafkaRecordEmitter implements Emitter {
             return;
         }
         long emitted = emitCount.incrementAndGet();
-        if (emitted % 10_000 == 0) {
+        if (emitted % RECORD_LOG_COUNT == 0) {
             LOGGER.debug("Emitted {} records to Kafka Broker", emitted);
             emitCount.addAndGet(-emitted);
         }

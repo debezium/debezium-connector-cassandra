@@ -23,6 +23,6 @@ public abstract class EmbeddedCassandra4ConnectorTestBase extends CassandraConne
         return new CassandraConnectorContext(config,
                 new Cassandra4SchemaLoader(),
                 new Cassandra4SchemaChangeListenerProvider(),
-                new FileOffsetWriter(config.offsetBackingStoreDir()));
+                new FileOffsetWriter(config));
     }
 }

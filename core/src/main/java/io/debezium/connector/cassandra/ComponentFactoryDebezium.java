@@ -5,6 +5,9 @@
  */
 package io.debezium.connector.cassandra;
 
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
+
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.pipeline.DataChangeEvent;
@@ -36,8 +39,9 @@ public class ComponentFactoryDebezium implements ComponentFactory {
         return new OffsetWriter() {
 
             @Override
-            public void markOffset(String sourceTable, String sourceOffset, boolean isSnapshot) {
+            public Future<?> markOffset(String sourceTable, String sourceOffset, boolean isSnapshot) {
                 offset.putOffset(sourceTable, isSnapshot, sourceOffset);
+                return CompletableFuture.completedFuture(new Object());
             }
 
             @Override
@@ -50,8 +54,8 @@ public class ComponentFactoryDebezium implements ComponentFactory {
             }
 
             @Override
-            public void flush() {
-
+            public Future<?> flush() {
+                return CompletableFuture.completedFuture(new Object());
             }
 
             @Override

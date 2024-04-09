@@ -16,7 +16,7 @@ public class ComponentFactoryStandalone implements ComponentFactory {
     @Override
     public OffsetWriter offsetWriter(CassandraConnectorConfig config) {
         try {
-            return new FileOffsetWriter(config.offsetBackingStoreDir(), config.offsetFlushIntervalMs(), config.maxOffsetFlushSize());
+            return new FileOffsetWriter(config);
         }
         catch (IOException e) {
             throw new CassandraConnectorConfigException(String.format("cannot create file offset writer into %s", config.offsetBackingStoreDir()), e);

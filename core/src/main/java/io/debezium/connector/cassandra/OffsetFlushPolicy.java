@@ -7,6 +7,9 @@ package io.debezium.connector.cassandra;
 
 import java.time.Duration;
 
+import io.debezium.util.Clock;
+import io.debezium.util.ElapsedTimeStrategy;
+
 /**
  * This policy determines how frequently the offset is flushed to disk.
  *
@@ -17,14 +20,10 @@ import java.time.Duration;
  * Always means that the offset if flushed to disk every time a record is processed.
  */
 public interface OffsetFlushPolicy {
-    boolean shouldFlush(Duration timeSinceLastFlush, long numOfRecordsSinceLastFlush);
+    boolean shouldFlush();
 
     static OffsetFlushPolicy always() {
         return new AlwaysFlushOffsetPolicy();
-    }
-
-    static OffsetFlushPolicy never() {
-        return new NeverFlushOffsetPolicy();
     }
 
     static OffsetFlushPolicy periodic(Duration offsetFlushInterval, long maxOffsetFlushSize) {
@@ -32,33 +31,40 @@ public interface OffsetFlushPolicy {
     }
 
     class PeriodicFlushOffsetPolicy implements OffsetFlushPolicy {
-        private final Duration offsetFlushInterval;
         private final long maxOffsetFlushSize;
+        private long unflushedRecordCount;
+        private final ElapsedTimeStrategy elapsedTimeStrategy;
 
         PeriodicFlushOffsetPolicy(Duration offsetFlushInterval, long maxOffsetFlushSize) {
-            this.offsetFlushInterval = offsetFlushInterval;
             this.maxOffsetFlushSize = maxOffsetFlushSize;
+            this.unflushedRecordCount = 0;
+            this.elapsedTimeStrategy = ElapsedTimeStrategy.constant(Clock.system(), offsetFlushInterval);
         }
 
         @Override
-        public boolean shouldFlush(Duration timeSinceLastFlush, long numOfRecordsSinceLastFlush) {
-            return timeSinceLastFlush.compareTo(offsetFlushInterval) >= 0 || numOfRecordsSinceLastFlush >= this.maxOffsetFlushSize;
+        public boolean shouldFlush() {
+            if (unflushedRecordCount >= this.maxOffsetFlushSize) {
+                clear();
+                return true;
+            }
+            if (elapsedTimeStrategy.hasElapsed()) {
+                clear();
+                return true;
+            }
+            unflushedRecordCount += 1;
+            return false;
+        }
+
+        private void clear() {
+            unflushedRecordCount = 0;
         }
     }
 
     class AlwaysFlushOffsetPolicy implements OffsetFlushPolicy {
 
         @Override
-        public boolean shouldFlush(Duration timeSinceLastFlush, long numOfRecordsSinceLastFlush) {
+        public boolean shouldFlush() {
             return true;
-        }
-    }
-
-    class NeverFlushOffsetPolicy implements OffsetFlushPolicy {
-
-        @Override
-        public boolean shouldFlush(Duration timeSinceLastFlush, long numOfRecordsSinceLastFlush) {
-            return false;
         }
     }
 }

@@ -11,9 +11,9 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Properties;
+import java.util.concurrent.ExecutionException;
 
 import org.apache.kafka.connect.data.Schema;
 import org.junit.Before;
@@ -30,11 +30,13 @@ public class FileOffsetWriterTest {
     private Properties snapshotProps;
     private Properties commitLogProps;
     private CassandraSchemaFactory schemaFactory = CassandraSchemaFactory.get();
+    private CassandraConnectorConfig config;
 
     @Before
     public void setUp() throws IOException {
-        offsetDir = Files.createTempDirectory("offset");
-        offsetWriter = new FileOffsetWriter(offsetDir.toAbsolutePath().toString());
+        config = new CassandraConnectorConfig(Configuration.from(TestUtils.generateDefaultConfigMap()));
+        offsetDir = Path.of(config.offsetBackingStoreDir());
+        offsetWriter = new FileOffsetWriter(config);
         snapshotProps = new Properties();
         commitLogProps = new Properties();
     }
@@ -106,12 +108,10 @@ public class FileOffsetWriterTest {
         process(commitLogRecord);
         process(commitLogRecordDiffTable);
 
-        offsetWriter.flush();
-        // Sleep a little bit to ensure the operation is done
         try {
-            Thread.sleep(100);
+            offsetWriter.flush().get();
         }
-        catch (InterruptedException e) {
+        catch (InterruptedException | ExecutionException e) {
             throw new RuntimeException(e);
         }
         try (FileInputStream fis = new FileInputStream(offsetDir.toString() + "/" + FileOffsetWriter.SNAPSHOT_OFFSET_FILE)) {
@@ -132,7 +132,7 @@ public class FileOffsetWriterTest {
 
     @Test(expected = CassandraConnectorTaskException.class)
     public void testTwoFileWriterCannotCoexist() throws IOException {
-        new FileOffsetWriter(offsetDir.toAbsolutePath().toString());
+        new FileOffsetWriter(config);
     }
 
     private ChangeRecord generateRecord(boolean markOffset, boolean isSnapshot, OffsetPosition offsetPosition, KeyspaceTable keyspaceTable) {
@@ -156,15 +156,13 @@ public class FileOffsetWriterTest {
     }
 
     private void process(ChangeRecord record) {
-        offsetWriter.markOffset(
-                record.getSource().keyspaceTable.name(),
-                record.getSource().offsetPosition.serialize(),
-                record.getSource().snapshot);
-        // Sleep a little bit to ensure the operation is done
         try {
-            Thread.sleep(100);
+            offsetWriter.markOffset(
+                    record.getSource().keyspaceTable.name(),
+                    record.getSource().offsetPosition.serialize(),
+                    record.getSource().snapshot).get();
         }
-        catch (InterruptedException e) {
+        catch (InterruptedException | ExecutionException e) {
             throw new RuntimeException(e);
         }
     }
