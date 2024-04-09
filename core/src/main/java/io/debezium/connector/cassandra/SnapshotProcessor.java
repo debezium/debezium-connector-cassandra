@@ -12,6 +12,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -233,8 +234,19 @@ public class SnapshotProcessor extends AbstractProcessor {
         long rowNum = 0L;
         // mark snapshot complete immediately if table is empty
         if (!rowIter.hasNext()) {
-            offsetWriter.markOffset(tableName, OffsetPosition.defaultOffsetPosition().serialize(), true);
-            offsetWriter.flush();
+            try {
+                offsetWriter.markOffset(tableName, OffsetPosition.defaultOffsetPosition().serialize(), true).get();
+            }
+            catch (InterruptedException | ExecutionException e) {
+                LOGGER.error("error in marking snapshot offset of table {}", tableMetadata.getName(), e);
+            }
+            try {
+                offsetWriter.flush().get();
+            }
+            catch (InterruptedException | ExecutionException e) {
+                LOGGER.error("error in flushing snapshot offsets to disk of table {}", tableMetadata.getName(), e);
+            }
+
         }
 
         while (rowIter.hasNext()) {

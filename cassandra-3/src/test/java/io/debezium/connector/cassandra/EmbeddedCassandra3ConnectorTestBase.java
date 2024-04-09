@@ -23,6 +23,6 @@ public class EmbeddedCassandra3ConnectorTestBase extends CassandraConnectorTestB
         return new CassandraConnectorContext(config,
                 new Cassandra3SchemaLoader(),
                 new Cassandra3SchemaChangeListenerProvider(),
-                new FileOffsetWriter(config.offsetBackingStoreDir()));
+                new FileOffsetWriter(config));
     }
 }

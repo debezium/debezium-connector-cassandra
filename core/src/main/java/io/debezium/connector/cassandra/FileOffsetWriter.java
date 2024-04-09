@@ -16,10 +16,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.time.Duration;
 import java.util.Properties;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
@@ -27,6 +26,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorConfigException;
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorTaskException;
+import io.debezium.util.Threads;
 
 /**
  * A concrete implementation of {@link OffsetWriter} which tracks the progress of events
@@ -61,18 +61,19 @@ public class FileOffsetWriter implements OffsetWriter {
     private final OffsetFlushPolicy offsetFlushPolicy;
     private final ExecutorService executorService;
 
-    private long timeOfLastFlush;
-    private long unflushedRecordCount;
-
-    public FileOffsetWriter(String offsetDir, OffsetFlushPolicy offsetFlushPolicy) throws IOException {
-        if (offsetDir == null) {
+    public FileOffsetWriter(CassandraConnectorConfig config) throws IOException {
+        if (config.offsetBackingStoreDir() == null) {
             throw new CassandraConnectorConfigException("Offset file directory must be configured at the start");
         }
 
-        this.offsetFlushPolicy = offsetFlushPolicy;
-        this.timeOfLastFlush = System.currentTimeMillis();
+        if (config.offsetFlushIntervalMs().isZero()) {
+            this.offsetFlushPolicy = OffsetFlushPolicy.always();
+        }
+        else {
+            this.offsetFlushPolicy = OffsetFlushPolicy.periodic(config.offsetFlushIntervalMs(), config.maxOffsetFlushSize());
+        }
 
-        File offsetDirectory = new File(offsetDir);
+        File offsetDirectory = new File(config.offsetBackingStoreDir());
         if (!offsetDirectory.exists()) {
             Files.createDirectories(offsetDirectory.toPath());
         }
@@ -84,20 +85,12 @@ public class FileOffsetWriter implements OffsetWriter {
 
         loadOffset(this.snapshotOffsetFile, snapshotProps);
         loadOffset(this.commitLogOffsetFile, commitLogProps);
-        this.executorService = Executors.newFixedThreadPool(1);
-    }
-
-    public FileOffsetWriter(String offsetDir, Duration offsetFlushIntervalMs, long maxOffsetFlushSize) throws IOException {
-        this(offsetDir, offsetFlushIntervalMs.isZero() ? OffsetFlushPolicy.always() : OffsetFlushPolicy.periodic(offsetFlushIntervalMs, maxOffsetFlushSize));
-    }
-
-    public FileOffsetWriter(String offsetDir) throws IOException {
-        this(offsetDir, OffsetFlushPolicy.never());
+        this.executorService = Threads.newSingleThreadExecutor(AbstractSourceConnector.class, config.getConnectorName(), "offset-writer");
     }
 
     @Override
-    public void markOffset(String sourceTable, String sourceOffset, boolean isSnapshot) {
-        executorService.submit(() -> performMarkOffset(sourceTable, sourceOffset, isSnapshot));
+    public Future<?> markOffset(String sourceTable, String sourceOffset, boolean isSnapshot) {
+        return executorService.submit(() -> performMarkOffset(sourceTable, sourceOffset, isSnapshot));
     }
 
     private void performMarkOffset(String sourceTable, String sourceOffset, boolean isSnapshot) {
@@ -111,8 +104,9 @@ public class FileOffsetWriter implements OffsetWriter {
                 commitLogProps.setProperty(sourceTable, sourceOffset);
             }
         }
-        unflushedRecordCount += 1;
-        maybeFlushOffset();
+        if (offsetFlushPolicy.shouldFlush()) {
+            this.performFlush();
+        }
     }
 
     @Override
@@ -127,19 +121,9 @@ public class FileOffsetWriter implements OffsetWriter {
         }
     }
 
-    private void maybeFlushOffset() {
-        long now = System.currentTimeMillis();
-        long timeSinceLastFlush = now - timeOfLastFlush;
-        if (offsetFlushPolicy.shouldFlush(Duration.ofMillis(timeSinceLastFlush), unflushedRecordCount)) {
-            this.performFlush();
-            timeOfLastFlush = now;
-            unflushedRecordCount = 0;
-        }
-    }
-
     @Override
-    public void flush() {
-        executorService.submit(this::performFlush);
+    public Future<?> flush() {
+        return executorService.submit(this::performFlush);
     }
 
     private void performFlush() {

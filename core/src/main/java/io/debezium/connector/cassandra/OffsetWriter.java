@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.cassandra;
 
+import java.util.concurrent.Future;
+
 /**
  * Interface for recording offset.
  */
@@ -16,7 +18,7 @@ public interface OffsetWriter {
      * @param sourceOffset string in the format of <file_name>:<file_position>
      * @param isSnapshot whether the offset is coming from a snapshot or commit log
      */
-    void markOffset(String sourceTable, String sourceOffset, boolean isSnapshot);
+    Future<?> markOffset(String sourceTable, String sourceOffset, boolean isSnapshot);
 
     /**
      * Determine if an offset has been processed based on the table name, offset position, and whether
@@ -31,7 +33,7 @@ public interface OffsetWriter {
     /**
      * Flush latest offsets to disk.
      */
-    void flush();
+    Future<?> flush();
 
     /**
      * Close all resources used by this class.

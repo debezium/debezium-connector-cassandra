@@ -25,6 +25,6 @@ public abstract class DseConnectorTestBase extends CassandraConnectorTestBase {
         return new CassandraConnectorContext(config,
                 new DseSchemaLoader(),
                 new DseSchemaChangeListenerProvider(),
-                new FileOffsetWriter(config.offsetBackingStoreDir()));
+                new FileOffsetWriter(config));
     }
 }
