@@ -6,6 +6,7 @@
 package io.debezium.connector.cassandra;
 
 import static com.google.common.collect.ImmutableMap.of;
+import static io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig.AUTO_REGISTER_SCHEMAS;
 
 import java.io.File;
 import java.io.IOException;
@@ -24,6 +25,8 @@ import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.SimpleStatement;
 import com.datastax.oss.driver.api.core.cql.Statement;
 import com.datastax.oss.driver.api.querybuilder.SchemaBuilder;
+
+import io.confluent.kafka.serializers.AbstractKafkaAvroSerDeConfig;
 
 public class TestUtils {
 
@@ -54,6 +57,16 @@ public class TestUtils {
         props.put(CassandraConnectorConfig.CASSANDRA_DRIVER_CONFIG_FILE.name(), Paths.get("src/test/resources/application.conf").toAbsolutePath().toString());
         // props.put(CassandraConnectorConfig.MAX_QUEUE_SIZE.name(), 1_000_000);
         // props.put(CassandraConnectorConfig.MAX_QUEUE_SIZE_IN_BYTES.name(), 1_000_000_000);
+        return props;
+    }
+
+    public static Properties generateDefaultConfigMapWithAvro() throws IOException {
+        Properties props = generateDefaultConfigMap();
+        props.put(CassandraConnectorConfig.KEY_CONVERTER_CLASS_CONFIG.name(), "org.apache.kafka.connect.json.JsonConverter");
+        props.put(CassandraConnectorConfig.VALUE_CONVERTER_CLASS_CONFIG.name(), "io.confluent.connect.avro.AvroConverter");
+        props.put(CassandraConnectorConfig.VALUE_CONVERTER_PREFIX + AUTO_REGISTER_SCHEMAS, "false");
+        props.put(CassandraConnectorConfig.VALUE_CONVERTER_PREFIX + AbstractKafkaAvroSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, "mock://my-scope-name");
+        props.put(CassandraConnectorConfig.KEY_CONVERTER_PREFIX + AbstractKafkaAvroSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, "mock://my-scope-name");
         return props;
     }
 
