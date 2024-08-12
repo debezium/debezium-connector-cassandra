@@ -29,7 +29,7 @@ public class CassandraConnectorContext extends CdcSourceTaskContext {
     private final Set<String> erroneousCommitLogs = ConcurrentHashMap.newKeySet();
 
     public CassandraConnectorContext(CassandraConnectorConfig config) {
-        super(config.getContextName(), config.getLogicalName(), config.getCustomMetricTags(), Collections::emptySet);
+        super(config, config.getCustomMetricTags(), Collections::emptySet);
         this.config = config;
         prepareQueues();
     }
@@ -38,7 +38,7 @@ public class CassandraConnectorContext extends CdcSourceTaskContext {
                                      SchemaLoader schemaLoader,
                                      SchemaChangeListenerProvider schemaChangeListenerProvider,
                                      OffsetWriter offsetWriter) {
-        super(config.getContextName(), config.getLogicalName(), config.getCustomMetricTags(), Collections::emptySet);
+        super(config, config.getCustomMetricTags(), Collections::emptySet);
         this.config = config;
         this.offsetWriter = offsetWriter;
 
