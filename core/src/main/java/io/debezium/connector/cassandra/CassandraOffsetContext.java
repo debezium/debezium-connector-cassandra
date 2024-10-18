@@ -51,7 +51,7 @@ public class CassandraOffsetContext implements OffsetContext {
     }
 
     @Override
-    public void preSnapshotStart() {
+    public void preSnapshotStart(boolean onDemand) {
         throw new UnsupportedOperationException();
     }
 
