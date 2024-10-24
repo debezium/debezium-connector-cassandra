@@ -5,9 +5,9 @@
  */
 package io.debezium.connector.cassandra;
 
-import static io.debezium.connector.cassandra.TestUtils.clearCommitLogFromDirectory;
-import static io.debezium.connector.cassandra.TestUtils.generateDefaultConfigMap;
-import static io.debezium.connector.cassandra.TestUtils.populateFakeCommitLogsForDirectory;
+import static io.debezium.connector.cassandra.utils.TestUtils.clearCommitLogFromDirectory;
+import static io.debezium.connector.cassandra.utils.TestUtils.generateDefaultConfigMap;
+import static io.debezium.connector.cassandra.utils.TestUtils.populateFakeCommitLogsForDirectory;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;

@@ -23,6 +23,7 @@
 
     <modules>
         <module>core</module>
+        <module>tests</module>
         <module>cassandra-3</module>
         <module>cassandra-4</module>
         <module>cassandra-5</module>
@@ -124,19 +125,6 @@
                 <version>${version.debezium}</version>
                 <type>test-jar</type>
                 <scope>test</scope>
-            </dependency>
-
-            <dependency>
-                <groupId>com.github.nosan</groupId>
-                <artifactId>embedded-cassandra</artifactId>
-                <version>${version.embedded.cassandra}</version>
-                <scope>test</scope>
-                <exclusions>
-                    <exclusion>
-                        <groupId>com.datastax.oss</groupId>
-                        <artifactId>java-driver-core</artifactId>
-                    </exclusion>
-                </exclusions>
             </dependency>
 
             <dependency>
@@ -270,12 +258,6 @@
         </dependency>
 
         <dependency>
-            <groupId>com.github.nosan</groupId>
-            <artifactId>embedded-cassandra</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
             <groupId>org.awaitility</groupId>
             <artifactId>awaitility</artifactId>
             <scope>test</scope>
@@ -310,6 +292,22 @@
                 </includes>
             </testResource>
         </testResources>
+
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>test-jar</id>
+                        <phase>none</phase> <!-- Disable the test-jar goal -->
+                        <goals>
+                            <goal>test-jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
 
         <pluginManagement>
             <plugins>

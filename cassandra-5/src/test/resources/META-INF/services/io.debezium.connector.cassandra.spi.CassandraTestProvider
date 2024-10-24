@@ -1,0 +1,1 @@
+io.debezium.connector.cassandra.Cassandra5TestProvider
