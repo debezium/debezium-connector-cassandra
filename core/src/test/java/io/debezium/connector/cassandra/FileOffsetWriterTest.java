@@ -21,6 +21,7 @@ import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorTaskException;
+import io.debezium.connector.cassandra.utils.TestUtils;
 import io.debezium.time.Conversions;
 
 public class FileOffsetWriterTest {

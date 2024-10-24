@@ -108,7 +108,7 @@ public class CassandraConnectorTaskTemplate {
         initDeserializer();
 
         LOGGER.info("Initializing Cassandra connector task context ...");
-        taskContext = new CassandraConnectorContext(config, schemaLoader, schemaChangeListenerProvider, factory.offsetWriter(config));
+        taskContext = new DefaultCassandraConnectorContext(config, schemaLoader, schemaChangeListenerProvider, factory.offsetWriter(config));
 
         LOGGER.info("Starting processor group ...");
         AbstractProcessor[] processors = cassandraSpecificProcessors.getProcessors(taskContext);
@@ -154,7 +154,7 @@ public class CassandraConnectorTaskTemplate {
                 processorGroup.addProcessor(processor);
             }
 
-            processorGroup.addProcessor(new SnapshotProcessor(taskContext, deserializerProvider.getClusterName()));
+            processorGroup.addProcessor(new SnapshotProcessor(taskContext, taskContext.getClusterName()));
             List<ChangeEventQueue<Event>> queues = taskContext.getQueues();
             for (int i = 0; i < queues.size(); i++) {
                 processorGroup.addProcessor(new QueueProcessor(taskContext, i, recordEmitter));
