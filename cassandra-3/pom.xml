@@ -45,7 +45,6 @@
         <dependency>
             <groupId>org.apache.cassandra</groupId>
             <artifactId>cassandra-all</artifactId>
-            <!-- why is this version not controlled in this pom? as of now it is somewhere in parent -->
             <version>${version.cassandra3}</version>
             <exclusions>
                 <exclusion>
