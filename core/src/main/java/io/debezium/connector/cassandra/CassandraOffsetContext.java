@@ -41,7 +41,7 @@ public class CassandraOffsetContext implements OffsetContext {
     }
 
     @Override
-    public boolean isSnapshotRunning() {
+    public boolean isInitialSnapshotRunning() {
         throw new UnsupportedOperationException();
     }
 
