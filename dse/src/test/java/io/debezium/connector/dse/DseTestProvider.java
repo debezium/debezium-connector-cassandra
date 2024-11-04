@@ -7,6 +7,7 @@ package io.debezium.connector.dse;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Paths;
 
 import org.apache.cassandra.db.commitlog.CommitLogReadHandler;
 import org.apache.cassandra.db.commitlog.CommitLogReader;
@@ -67,7 +68,7 @@ public class DseTestProvider implements CassandraTestProvider {
         @Override
         public void readAllCommitLogs(File[] commitLogs) throws IOException {
             CommitLogReader reader = new CommitLogReader();
-            File cdcLoc = new File(context.getCassandraConnectorConfig().getCdcLogLocation());
+            File cdcLoc = Paths.get("target/data/cassandra/cdc_raw").toAbsolutePath().toFile();
             for (File commitLog : CommitLogUtil.getCommitLogs(cdcLoc)) {
                 reader.readCommitLogSegment(commitLogReadHandler, commitLog, true);
             }

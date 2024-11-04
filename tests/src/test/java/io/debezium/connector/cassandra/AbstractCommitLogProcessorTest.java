@@ -16,6 +16,7 @@ import static org.junit.Assert.assertEquals;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -124,7 +125,7 @@ public abstract class AbstractCommitLogProcessorTest extends CassandraConnectorT
         assertEquals(queue.totalCapacity(), queue.remainingCapacity());
 
         // process the logs in commit log directory
-        File cdcLoc = new File(context.getCassandraConnectorConfig().getCdcLogLocation());
+        File cdcLoc = Paths.get("target/data/cassandra/cdc_raw").toAbsolutePath().toFile();
         File[] commitLogs = CommitLogUtil.getCommitLogs(cdcLoc);
 
         commitLogProcessing.readAllCommitLogs(commitLogs);

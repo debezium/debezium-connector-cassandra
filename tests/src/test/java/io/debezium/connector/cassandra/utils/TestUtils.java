@@ -54,7 +54,6 @@ public class TestUtils {
         props.put(CassandraConnectorConfig.KEY_CONVERTER_CLASS_CONFIG.name(), "org.apache.kafka.connect.json.JsonConverter");
         props.put(CassandraConnectorConfig.VALUE_CONVERTER_CLASS_CONFIG.name(), "org.apache.kafka.connect.json.JsonConverter");
         props.put(CassandraConnectorConfig.CASSANDRA_DRIVER_CONFIG_FILE.name(), Paths.get("src/test/resources/application.conf").toAbsolutePath().toString());
-        props.put(CassandraConnectorConfig.CASSANDRA_CDC_LOG_LOCATION.name(), Paths.get("target/data/cassandra/cdc_raw").toAbsolutePath().toString());
         // props.put(CassandraConnectorConfig.MAX_QUEUE_SIZE.name(), 1_000_000);
         // props.put(CassandraConnectorConfig.MAX_QUEUE_SIZE_IN_BYTES.name(), 1_000_000_000);
         return props;
@@ -72,7 +71,6 @@ public class TestUtils {
                 put(CassandraConnectorConfig.KEY_CONVERTER_CLASS_CONFIG.name(), "org.apache.kafka.connect.json.JsonConverter");
                 put(CassandraConnectorConfig.VALUE_CONVERTER_CLASS_CONFIG.name(), "org.apache.kafka.connect.json.JsonConverter");
                 put(CassandraConnectorConfig.CASSANDRA_DRIVER_CONFIG_FILE.name(), Paths.get("src/test/resources/application.conf").toAbsolutePath().toString());
-                put(CassandraConnectorConfig.CASSANDRA_CDC_LOG_LOCATION.name(), Paths.get("target/data/cassandra/cdc_raw").toAbsolutePath().toString());
                 // put(CassandraConnectorConfig.MAX_QUEUE_SIZE.name(), 1_000_000);
                 // put(CassandraConnectorConfig.MAX_QUEUE_SIZE_IN_BYTES.name(), 1_000_000_000);
             }
