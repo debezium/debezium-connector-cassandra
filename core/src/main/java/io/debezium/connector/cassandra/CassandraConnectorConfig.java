@@ -357,12 +357,6 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
             .withValidation(Field::isRequired)
             .withDescription("The local directory which commit logs get relocated to once processed.");
 
-    public static final Field CASSANDRA_CDC_LOG_LOCATION = Field.create("commit.log.location")
-            .withType(Type.STRING)
-            .withValidation(Field::isRequired)
-            .withDescription("Cassandra directory where cdc logs are located. Corresponds to cdc_raw_directory setting in Cassandra")
-            .withDefault("/var/lib/cassandra/cdc_raw");
-
     /**
      * If disabled, commit logs would not be deleted post-process, and this could lead to disk storage
      */
@@ -612,10 +606,6 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
 
     public String clusterName() {
         return this.getConfig().getString(CASSANDRA_CLUSTER_NAME);
-    }
-
-    public String getCdcLogLocation() {
-        return this.getConfig().getString(CASSANDRA_CDC_LOG_LOCATION);
     }
 
     public String commitLogRelocationDir() {

@@ -7,6 +7,7 @@ package io.debezium.connector.cassandra;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Paths;
 
 import org.apache.cassandra.db.commitlog.CommitLogReadHandler;
 import org.apache.cassandra.db.commitlog.CommitLogReader;
@@ -26,18 +27,16 @@ public class Cassandra3TestProvider implements CassandraTestProvider {
 
         private final CommitLogReadHandler commitLogReadHandler;
         private final CommitLogSegmentReader commitLogSegmentReader;
-        private final CassandraConnectorContext context;
 
         Cassandra3CommitLogProcessing(CassandraConnectorContext context, CommitLogProcessorMetrics metrics) {
             commitLogReadHandler = new Cassandra3CommitLogReadHandlerImpl(context, metrics);
             commitLogSegmentReader = new Cassandra3CommitLogSegmentReader(context, metrics);
-            this.context = context;
         }
 
         @Override
         public void readAllCommitLogs(File[] commitLogs) throws IOException {
             CommitLogReader reader = new CommitLogReader();
-            File cdcLoc = new File(context.getCassandraConnectorConfig().getCdcLogLocation());
+            File cdcLoc = Paths.get("target/data/cassandra/cdc_raw").toAbsolutePath().toFile();
             for (File commitLog : CommitLogUtil.getCommitLogs(cdcLoc)) {
                 reader.readCommitLogSegment(commitLogReadHandler, commitLog, true);
             }
