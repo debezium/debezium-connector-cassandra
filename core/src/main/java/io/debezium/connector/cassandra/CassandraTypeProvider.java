@@ -16,4 +16,5 @@ public interface CassandraTypeProvider {
 
     Function<Object, Object> baseTypeForReversedType();
 
+    String getClusterName();
 }
