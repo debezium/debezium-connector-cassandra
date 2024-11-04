@@ -22,6 +22,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.AsciiType;
 import org.apache.cassandra.db.marshal.BooleanType;
@@ -109,5 +110,10 @@ public class DseTypeProvider implements CassandraTypeProvider {
     @Override
     public Function<Object, Object> baseTypeForReversedType() {
         return abstractType -> ((AbstractType<?>) abstractType).isReversed() ? ((ReversedType<?>) abstractType).baseType : abstractType;
+    }
+
+    @Override
+    public String getClusterName() {
+        return DatabaseDescriptor.getClusterName();
     }
 }

@@ -154,7 +154,7 @@ public class CassandraConnectorTaskTemplate {
                 processorGroup.addProcessor(processor);
             }
 
-            processorGroup.addProcessor(new SnapshotProcessor(taskContext, taskContext.getClusterName()));
+            processorGroup.addProcessor(new SnapshotProcessor(taskContext, deserializerProvider.getClusterName()));
             List<ChangeEventQueue<Event>> queues = taskContext.getQueues();
             for (int i = 0; i < queues.size(); i++) {
                 processorGroup.addProcessor(new QueueProcessor(taskContext, i, recordEmitter));

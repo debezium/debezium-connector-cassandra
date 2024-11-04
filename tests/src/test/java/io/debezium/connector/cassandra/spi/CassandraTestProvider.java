@@ -16,4 +16,6 @@ public interface CassandraTestProvider {
     CassandraConnectorContext provideContextWithoutSchemaManagement(Configuration configuration);
 
     CommitLogProcessing provideCommitLogProcessing(CassandraConnectorContext context, CommitLogProcessorMetrics metrics);
+
+    String getClusterName();
 }

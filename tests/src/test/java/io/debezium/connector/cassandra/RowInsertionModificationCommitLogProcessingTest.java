@@ -33,7 +33,7 @@ public class RowInsertionModificationCommitLogProcessingTest extends AbstractCom
             if (event instanceof Record) {
                 Record record = (Record) event;
                 assertEquals(record.getEventType(), Event.EventType.CHANGE_EVENT);
-                assertEquals(record.getSource().cluster, context.getCassandraConnectorConfig().clusterName());
+                assertEquals(record.getSource().cluster, provider.getClusterName());
                 assertFalse(record.getSource().snapshot);
                 assertEquals(record.getSource().keyspaceTable.name(), keyspaceTable(TEST_TABLE_NAME));
             }

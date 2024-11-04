@@ -32,6 +32,4 @@ public interface CassandraConnectorContext {
     SchemaHolder getSchemaHolder();
 
     Set<String> getErroneousCommitLogs();
-
-    String getClusterName();
 }
