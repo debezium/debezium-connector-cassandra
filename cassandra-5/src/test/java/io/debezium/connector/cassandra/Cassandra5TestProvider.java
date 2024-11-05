@@ -9,7 +9,6 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
 
-import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.commitlog.CommitLogReadHandler;
 import org.apache.cassandra.db.commitlog.CommitLogReader;
 
@@ -45,11 +44,6 @@ public class Cassandra5TestProvider implements CassandraTestProvider {
     @Override
     public CommitLogProcessing provideCommitLogProcessing(CassandraConnectorContext context, CommitLogProcessorMetrics metrics) {
         return new Cassandra5CommitLogProcessing(context, metrics);
-    }
-
-    @Override
-    public String getClusterName() {
-        return DatabaseDescriptor.getClusterName();
     }
 
     private static class Cassandra5CommitLogProcessing implements CommitLogProcessing {

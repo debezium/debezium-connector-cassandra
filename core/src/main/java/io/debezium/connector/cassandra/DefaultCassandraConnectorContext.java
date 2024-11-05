@@ -114,4 +114,9 @@ public class DefaultCassandraConnectorContext extends CdcSourceTaskContext imple
     public Set<String> getErroneousCommitLogs() {
         return erroneousCommitLogs;
     }
+
+    @Override
+    public String getClusterName() {
+        return this.config.clusterName();
+    }
 }

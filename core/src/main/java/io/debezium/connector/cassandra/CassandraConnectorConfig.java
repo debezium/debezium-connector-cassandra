@@ -347,6 +347,11 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
             .withType(Type.STRING)
             .withDescription("The absolute path of the YAML config file used by a Cassandra node.");
 
+    public static final Field CASSANDRA_CLUSTER_NAME = Field.create("cassandra.cluster.name")
+            .withType(Type.STRING)
+            .withDescription("Name of Cassandra cluster.")
+            .withDefault("Test Cluster");
+
     public static final Field COMMIT_LOG_RELOCATION_DIR = Field.create("commit.log.relocation.dir")
             .withType(Type.STRING)
             .withValidation(Field::isRequired)
@@ -597,6 +602,10 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
 
     public String cassandraConfig() {
         return this.getConfig().getString(CASSANDRA_CONFIG);
+    }
+
+    public String clusterName() {
+        return this.getConfig().getString(CASSANDRA_CLUSTER_NAME);
     }
 
     public String commitLogRelocationDir() {
