@@ -1,4 +1,4 @@
-FROM cassandra:3.11
+FROM mirror.gcr.io/library/cassandra:3.11
 
 ENV CASSANDRA_YAML=/opt/cassandra/conf
 
