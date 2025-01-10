@@ -1,4 +1,4 @@
-FROM quay.io/debezium/datastax-dse-server:6.8.16
+FROM mirror.gcr.io/datastax/dse-server:6.8.16
 
 ENV DS_LICENSE=accept
 ENV DSE_AUTO_CONF_OFF=all
