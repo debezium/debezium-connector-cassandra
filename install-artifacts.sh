@@ -12,8 +12,8 @@ DOCKER_DSE_SERVER_DIR=.docker-dse-server
 DSE_SERVER_DIR=${DOCKER_DSE_SERVER_DIR}/${DSE_VERSION}
 mkdir -p ${DSE_SERVER_DIR}
 
-docker pull datastax/dse-server:${DSE_VERSION}
-CONT_ID=$(docker create datastax/dse-server:${DSE_VERSION})
+docker pull mirror.gcr.io/datastax/dse-server:${DSE_VERSION}
+CONT_ID=$(docker create mirror.gcr.io/datastax/dse-server:${DSE_VERSION})
 docker export ${CONT_ID} -o "${DSE_SERVER_DIR}/dse-server.tar.gz"
 docker rm ${CONT_ID}
 
