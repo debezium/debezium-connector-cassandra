@@ -11,6 +11,7 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
+import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -54,6 +55,7 @@ import org.apache.cassandra.db.marshal.TupleType;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.db.marshal.UUIDType;
 import org.apache.cassandra.db.marshal.UserType;
+import org.apache.cassandra.utils.TimeUUID;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.junit.Assert;
@@ -446,8 +448,7 @@ public class CassandraTypeDeserializerTest {
 
     @Test
     public void testTimeUUIDType() {
-        UUID timeUUID = UUID.randomUUID();
-
+        TimeUUID timeUUID = TimeUUID.maxAtUnixMillis(Instant.now().toEpochMilli());
         ByteBuffer serializedTimeUUID = TimeUUIDType.instance.decompose(timeUUID);
 
         Object deserializedTimeUUID = CassandraTypeDeserializer.deserialize(TimeUUIDType.instance, serializedTimeUUID);

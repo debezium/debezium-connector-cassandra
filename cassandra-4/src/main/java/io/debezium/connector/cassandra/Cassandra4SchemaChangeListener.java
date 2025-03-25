@@ -72,7 +72,7 @@ public class Cassandra4SchemaChangeListener extends AbstractSchemaChangeListener
                     KeyspaceParams.create(keyspaceMetadata.isDurableWrites(),
                             keyspaceMetadata.getReplication()));
 
-            Schema.instance.load(newKMD);
+            Schema.instance.updateHandler.apply(schema -> schema.withAddedOrUpdated(newKMD), true);
             Keyspace.openWithoutSSTables(keyspaceMetadata.getName().toString());
             LOGGER.info("Added keyspace [{}] to schema instance.", keyspaceMetadata.describe(true));
         }
@@ -84,10 +84,11 @@ public class Cassandra4SchemaChangeListener extends AbstractSchemaChangeListener
     @Override
     public void onKeyspaceUpdated(final KeyspaceMetadata current, final KeyspaceMetadata previous) {
         try {
-            Schema.instance.load(org.apache.cassandra.schema.KeyspaceMetadata.create(
+            org.apache.cassandra.schema.KeyspaceMetadata keyspaceMetadata = org.apache.cassandra.schema.KeyspaceMetadata.create(
                     current.getName().asInternal(),
                     KeyspaceParams.create(current.isDurableWrites(),
-                            current.getReplication())));
+                            current.getReplication()));
+            Schema.instance.updateHandler.apply(schema -> schema.withAddedOrUpdated(keyspaceMetadata), true);
             LOGGER.info("Updated keyspace [{}] in schema instance.", current.describe(true));
         }
         catch (Exception e) {
@@ -101,7 +102,7 @@ public class Cassandra4SchemaChangeListener extends AbstractSchemaChangeListener
             for (Map.Entry<CqlIdentifier, com.datastax.oss.driver.api.core.metadata.schema.TableMetadata> entries : keyspaceMetadata.getTables().entrySet()) {
                 onTableDropped(entries.getValue());
             }
-            Schema.instance.removeKeyspaceInstance(keyspaceMetadata.getName().toString());
+            Schema.instance.updateHandler.apply(schema -> schema.without(keyspaceMetadata.getName().toString()), true);
             LOGGER.info("Removed keyspace [{}] from schema instance.", keyspaceMetadata.describe(true));
         }
         catch (Exception e) {
@@ -148,8 +149,8 @@ public class Cassandra4SchemaChangeListener extends AbstractSchemaChangeListener
                 LOGGER.debug("Table {}.{} is already added!", tableMetadata.getKeyspace(), tableMetadata.getName());
                 return;
             }
-            org.apache.cassandra.schema.KeyspaceMetadata transformed = current.withSwapped(current.tables.with(metadata));
-            Schema.instance.load(transformed);
+
+            Schema.instance.updateHandler.apply(schema -> schema.withAddedOrUpdated(current.withSwapped(current.tables.with(metadata))), true);
             LOGGER.info("Added table [{}] to schema instance.", tableMetadata.describe(true));
         }
         catch (Exception e) {
@@ -202,8 +203,7 @@ public class Cassandra4SchemaChangeListener extends AbstractSchemaChangeListener
             final Optional<TableMetadata> cfm = oldKsm.tables.get(tableName);
 
             if (cfm.isPresent()) {
-                final org.apache.cassandra.schema.KeyspaceMetadata newKsm = oldKsm.withSwapped(oldKsm.tables.without(tableName));
-                Schema.instance.load(newKsm);
+                Schema.instance.updateHandler.apply(schema -> schema.withAddedOrUpdated(oldKsm.withSwapped(oldKsm.tables.without(tableName))), true);
                 LOGGER.info("Removed table [{}] from schema instance.", tableMetadata.describe(true));
             }
             else {
@@ -250,7 +250,7 @@ public class Cassandra4SchemaChangeListener extends AbstractSchemaChangeListener
 
             org.apache.cassandra.schema.KeyspaceMetadata current = Schema.instance.getKeyspaceMetadata(metadata.keyspace);
             if (current != null) {
-                Schema.instance.load(current.withSwapped(current.tables.withSwapped(metadata)));
+                Schema.instance.updateHandler.apply(schema -> schema.withAddedOrUpdated(current.withSwapped(current.tables.withSwapped(metadata))), true);
             }
             LOGGER.info("Updated table [{}] in schema instance.", newTableMetadata.describe(true));
         }
