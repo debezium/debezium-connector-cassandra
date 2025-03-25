@@ -24,7 +24,7 @@ public class CassandraConnectorTask {
             System.setProperty("cassandra.config", "file://" + cassandraYaml);
             if (!DatabaseDescriptor.isDaemonInitialized() && !DatabaseDescriptor.isToolInitialized()) {
                 DatabaseDescriptor.toolInitialization();
-                Schema.instance.loadFromDisk(false);
+                Schema.instance.updateHandler.reset(true);
             }
         }
     }

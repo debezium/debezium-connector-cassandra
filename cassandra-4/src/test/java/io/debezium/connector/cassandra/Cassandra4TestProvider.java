@@ -63,7 +63,7 @@ public class Cassandra4TestProvider implements CassandraTestProvider {
             CommitLogReader reader = new CommitLogReader();
             File cdcLoc = Paths.get("target/data/cassandra/cdc_raw").toAbsolutePath().toFile();
             for (File commitLog : CommitLogUtil.getCommitLogs(cdcLoc)) {
-                reader.readCommitLogSegment(commitLogReadHandler, commitLog, true);
+                reader.readCommitLogSegment(commitLogReadHandler, new org.apache.cassandra.io.util.File(commitLog), true);
             }
         }
 

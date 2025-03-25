@@ -25,7 +25,8 @@ public class Cassandra4CommitLogSegmentReader implements CommitLogSegmentReader 
 
     @Override
     public void readCommitLogSegment(File file, long segmentId, int position) throws IOException {
-        commitLogReader.readCommitLogSegment(commitLogReadHandler, file, new CommitLogPosition(segmentId, position),
+        commitLogReader.readCommitLogSegment(commitLogReadHandler,
+                new org.apache.cassandra.io.util.File(file), new CommitLogPosition(segmentId, position),
                 CommitLogReader.ALL_MUTATIONS, false);
     }
 
