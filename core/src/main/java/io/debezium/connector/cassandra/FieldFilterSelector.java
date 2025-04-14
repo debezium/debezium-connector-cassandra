@@ -61,11 +61,30 @@ public class FieldFilterSelector {
         final String column;
 
         private Field(String fieldExcludeList) {
-            String[] elements = fieldExcludeList.split("\\.", 3);
-            String keyspace = elements[0];
-            String table = elements[1];
+            if (Strings.isNullOrEmpty(fieldExcludeList)) {
+                throw new IllegalArgumentException("Field exclude list entry cannot be null or empty");
+            }
+
+            String[] elements = fieldExcludeList.split("\\.", -1);
+            if (elements.length != 3) {
+                throw new IllegalArgumentException(
+                    "Invalid field exclude list format: '" + fieldExcludeList + 
+                    "'. Expected format: 'keyspace.table.column'"
+                );
+            }
+
+            String keyspace = elements[0].trim();
+            String table = elements[1].trim();
+            String column = elements[2].trim();
+            
+            if (keyspace.isEmpty() || table.isEmpty() || column.isEmpty()) {
+                throw new IllegalArgumentException(
+                    "Keyspace, table, and column names cannot be empty in: '" + fieldExcludeList + "'"
+                );
+            }
+
             keyspaceTable = new KeyspaceTable(keyspace, table);
-            column = elements[2];
+            this.column = column;
         }
     }
 
