@@ -8,6 +8,8 @@ package io.debezium.connector.cassandra;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.google.common.base.Strings;
+
 import io.debezium.connector.cassandra.CassandraSchemaFactory.RowData;
 
 /**
@@ -68,24 +70,21 @@ public class FieldFilterSelector {
             String[] elements = fieldExcludeList.split("\\.", -1);
             if (elements.length != 3) {
                 throw new IllegalArgumentException(
-                    "Invalid field exclude list format: '" + fieldExcludeList + 
-                    "'. Expected format: 'keyspace.table.column'"
-                );
+                        "Invalid field exclude list format: '" + fieldExcludeList +
+                                "'. Expected format: 'keyspace.table.column'");
             }
 
             String keyspace = elements[0].trim();
             String table = elements[1].trim();
             String column = elements[2].trim();
-            
+
             if (keyspace.isEmpty() || table.isEmpty() || column.isEmpty()) {
                 throw new IllegalArgumentException(
-                    "Keyspace, table, and column names cannot be empty in: '" + fieldExcludeList + "'"
-                );
+                        "Keyspace, table, and column names cannot be empty in: '" + fieldExcludeList + "'");
             }
 
             keyspaceTable = new KeyspaceTable(keyspace, table);
             this.column = column;
         }
     }
-
 }
