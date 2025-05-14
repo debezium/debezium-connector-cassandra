@@ -13,6 +13,8 @@
     <version>3.1.2-SNAPSHOT</version>
     <name>Debezium Connector Reactor for Cassandra</name>
     <packaging>pom</packaging>
+    <description>Debezium Cassandra connector is an open source change data capture connector Cassandra databases</description>
+    <url>https://debezium.io</url>
 
     <scm>
         <connection>scm:git:git@github.com:debezium/debezium-connector-cassandra.git</connection>
@@ -20,6 +22,35 @@
         <url>https://github.com/debezium/debezium-connector-cassandra</url>
         <tag>HEAD</tag>
     </scm>
+
+    <issueManagement>
+        <system>jira</system>
+        <url>https://issues.redhat.com/browse/DBZ</url>
+    </issueManagement>
+
+    <licenses>
+        <license>
+            <name>Apache Software License 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+    <developers>
+        <developer>
+            <id>rhauch</id>
+            <name>Randall Hauch</name>
+            <organization>Red Hat</organization>
+            <organizationUrl>http://redhat.com</organizationUrl>
+            <timezone>-6</timezone>
+        </developer>
+        <developer>
+            <id>gunnarmorling</id>
+            <name>Gunnar Morling</name>
+            <organization>Red Hat</organization>
+            <organizationUrl>http://redhat.com</organizationUrl>
+            <timezone>+2</timezone>
+        </developer>
+    </developers>
 
     <modules>
         <module>core</module>
