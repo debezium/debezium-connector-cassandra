@@ -14,6 +14,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.source.SourceRecord;
@@ -26,6 +27,7 @@ import io.debezium.connector.cassandra.exceptions.CassandraConnectorTaskExceptio
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
+import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.spi.Offsets;
 
 public abstract class AbstractConnectorTask extends BaseSourceTask<CassandraPartition, CassandraOffsetContext> {
@@ -99,4 +101,15 @@ public abstract class AbstractConnectorTask extends BaseSourceTask<CassandraPart
     protected Iterable<Field> getAllConfigurationFields() {
         return Collections.emptyList();
     }
+
+    @Override
+    protected String connectorName() {
+        return Module.name();
+    }
+
+    @Override
+    protected Optional<ErrorHandler> getErrorHandler() {
+        return Optional.empty();
+    }
+
 }
