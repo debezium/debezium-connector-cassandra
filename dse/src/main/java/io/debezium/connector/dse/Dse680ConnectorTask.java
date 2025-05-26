@@ -34,5 +34,4 @@ public class Dse680ConnectorTask extends AbstractConnectorTask {
         return new CommitLogProcessor(context, metrics, new DseCommitLogSegmentReader(context, metrics), DatabaseDescriptor.getCDCLogLocation(),
                 DatabaseDescriptor.getCommitLogLocation());
     }
-
 }
