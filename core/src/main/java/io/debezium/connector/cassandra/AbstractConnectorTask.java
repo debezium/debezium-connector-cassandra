@@ -22,6 +22,8 @@ import org.apache.kafka.connect.source.SourceRecord;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
+import io.debezium.connector.base.ChangeEventQueueConfig;
+import io.debezium.connector.base.DefaultChangeEventQueue;
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorConfigException;
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorTaskException;
 import io.debezium.connector.common.BaseSourceTask;
@@ -52,13 +54,14 @@ public abstract class AbstractConnectorTask extends BaseSourceTask<CassandraPart
         connectorConfig.setValidationFieldList(Arrays.asList(CASSANDRA_NODE_ID, COMMIT_LOG_RELOCATION_DIR,
                 SCHEMA_POLL_INTERVAL_MS, SNAPSHOT_POLL_INTERVAL_MS));
 
-        this.queue = new ChangeEventQueue.Builder<DataChangeEvent>()
+        ChangeEventQueueConfig changeEventQueueConfig = ChangeEventQueueConfig.builder()
                 .pollInterval(connectorConfig.getPollInterval())
                 .maxBatchSize(connectorConfig.getMaxBatchSize())
                 .maxQueueSize(connectorConfig.getMaxQueueSize())
                 .maxQueueSizeInBytes(connectorConfig.getMaxQueueSizeInBytes())
                 .loggingContextSupplier(() -> template.getTaskContext().configureLoggingContext(connectorConfig.getContextName()))
                 .build();
+        this.queue = new DefaultChangeEventQueue<>(changeEventQueueConfig);
 
         CassandraOffsetContext.Loader offsetLoader = new CassandraOffsetContext.Loader();
         Offsets<CassandraPartition, CassandraOffsetContext> previousOffsets = getPreviousOffsets(
