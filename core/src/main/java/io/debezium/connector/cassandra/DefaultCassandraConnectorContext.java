@@ -12,6 +12,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import io.debezium.connector.base.ChangeEventQueue;
+import io.debezium.connector.base.ChangeEventQueueConfig;
+import io.debezium.connector.base.DefaultChangeEventQueue;
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorTaskException;
 import io.debezium.connector.common.CdcSourceTaskContext;
 
@@ -62,12 +64,13 @@ public class DefaultCassandraConnectorContext extends CdcSourceTaskContext imple
     private void prepareQueues() {
         int numOfChangeEventQueues = this.config.numOfChangeEventQueues();
         for (int i = 0; i < numOfChangeEventQueues; i++) {
-            ChangeEventQueue<Event> queue = new ChangeEventQueue.Builder<Event>()
+            ChangeEventQueueConfig changeEventQueueConfig = ChangeEventQueueConfig.builder()
                     .pollInterval(this.config.pollInterval())
                     .maxBatchSize(this.config.maxBatchSize())
                     .maxQueueSize(this.config.maxQueueSize())
                     .loggingContextSupplier(() -> this.configureLoggingContext(this.config.getContextName()))
                     .build();
+            ChangeEventQueue<Event> queue = new DefaultChangeEventQueue<>(changeEventQueueConfig);
             queues.add(queue);
         }
     }
