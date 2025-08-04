@@ -59,7 +59,6 @@ import io.debezium.connector.cassandra.CassandraSchemaFactory;
 import io.debezium.connector.cassandra.CassandraSchemaFactory.CellData;
 import io.debezium.connector.cassandra.CassandraSchemaFactory.RangeData;
 import io.debezium.connector.cassandra.CassandraSchemaFactory.RowData;
-import io.debezium.connector.cassandra.CommitLogProcessorMetrics;
 import io.debezium.connector.cassandra.Event;
 import io.debezium.connector.cassandra.Filters;
 import io.debezium.connector.cassandra.KeyValueSchema;
@@ -71,6 +70,7 @@ import io.debezium.connector.cassandra.Record;
 import io.debezium.connector.cassandra.RecordMaker;
 import io.debezium.connector.cassandra.SchemaHolder;
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorSchemaException;
+import io.debezium.connector.cassandra.metrics.CassandraStreamingMetrics;
 import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;
 import io.debezium.time.Conversions;
 
@@ -90,12 +90,12 @@ public class DseCommitLogReadHandlerImpl implements CommitLogReadHandler {
     private final RecordMaker recordMaker;
     private final OffsetWriter offsetWriter;
     private final SchemaHolder schemaHolder;
-    private final CommitLogProcessorMetrics metrics;
     private final RangeTombstoneContext<org.apache.cassandra.schema.TableMetadata> rangeTombstoneContext = new RangeTombstoneContext<>();
     private final CassandraSchemaFactory schemaFactory;
     private final CassandraConnectorConfig.EventOrderGuaranteeMode eventOrderGuaranteeMode;
+    private final CassandraStreamingMetrics metrics;
 
-    DseCommitLogReadHandlerImpl(CassandraConnectorContext context, CommitLogProcessorMetrics metrics) {
+    DseCommitLogReadHandlerImpl(CassandraConnectorContext context, CassandraStreamingMetrics metrics) {
         this.queues = context.getQueues();
         this.recordMaker = new RecordMaker(context.getCassandraConnectorConfig().tombstonesOnDelete(),
                 new Filters(context.getCassandraConnectorConfig().fieldExcludeList()),

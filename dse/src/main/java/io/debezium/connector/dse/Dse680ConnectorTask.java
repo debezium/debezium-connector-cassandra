@@ -14,23 +14,26 @@ import io.debezium.connector.cassandra.CassandraConnectorConfig;
 import io.debezium.connector.cassandra.CassandraConnectorContext;
 import io.debezium.connector.cassandra.CassandraConnectorTaskTemplate;
 import io.debezium.connector.cassandra.CommitLogProcessor;
-import io.debezium.connector.cassandra.CommitLogProcessorMetrics;
 import io.debezium.connector.cassandra.ComponentFactory;
+import io.debezium.connector.cassandra.metrics.CassandraStreamingMetrics;
+import io.debezium.connector.common.CdcSourceTaskContext;
 
 public class Dse680ConnectorTask extends AbstractConnectorTask {
 
     @Override
     protected CassandraConnectorTaskTemplate init(CassandraConnectorConfig config, ComponentFactory factory) {
-        CommitLogProcessorMetrics metrics = new CommitLogProcessorMetrics();
         return new CassandraConnectorTaskTemplate(config,
                 new DseTypeProvider(),
                 new DseSchemaLoader(),
                 new DseSchemaChangeListenerProvider(),
-                context -> new AbstractProcessor[]{ getCommitLogProcessor(context, metrics, new DseCommitLogReadHandlerImpl(context, metrics)) },
+                context -> {
+                    CassandraStreamingMetrics metrics = new CassandraStreamingMetrics((CdcSourceTaskContext) context);
+                    return new AbstractProcessor[]{ getCommitLogProcessor(context, metrics, new DseCommitLogReadHandlerImpl(context, metrics)) };
+                },
                 factory);
     }
 
-    protected AbstractProcessor getCommitLogProcessor(CassandraConnectorContext context, CommitLogProcessorMetrics metrics, CommitLogReadHandler handler) {
+    protected AbstractProcessor getCommitLogProcessor(CassandraConnectorContext context, CassandraStreamingMetrics metrics, CommitLogReadHandler handler) {
         return new CommitLogProcessor(context, metrics, new DseCommitLogSegmentReader(context, metrics), DatabaseDescriptor.getCDCLogLocation(),
                 DatabaseDescriptor.getCommitLogLocation());
     }

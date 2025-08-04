@@ -21,13 +21,14 @@ import org.slf4j.LoggerFactory;
 import io.debezium.DebeziumException;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorTaskException;
+import io.debezium.connector.cassandra.metrics.CassandraStreamingMetrics;
 
 public class CommitLogIdxParser {
     private static final Logger LOGGER = LoggerFactory.getLogger(CommitLogIdxParser.class);
 
     private final CommitLogSegmentReader commitLogReader;
     private final List<ChangeEventQueue<Event>> queues;
-    private final CommitLogProcessorMetrics metrics;
+    private final CassandraStreamingMetrics metrics;
 
     private final CommitLogTransfer commitLogTransfer;
     private final Set<String> erroneousCommitLogs;
@@ -37,7 +38,7 @@ public class CommitLogIdxParser {
     private final boolean realTimeProcessingEnabled;
     private Integer offset;
 
-    public CommitLogIdxParser(LogicalCommitLog commitLog, final CommitLogProcessorMetrics metrics,
+    public CommitLogIdxParser(LogicalCommitLog commitLog, final CassandraStreamingMetrics metrics,
                               final CassandraConnectorContext context,
                               CommitLogSegmentReader commitLogReader) {
         this.queues = context.getQueues();

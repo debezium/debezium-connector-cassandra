@@ -12,13 +12,15 @@ import org.apache.cassandra.db.commitlog.CommitLogPosition;
 import org.apache.cassandra.db.commitlog.CommitLogReadHandler;
 import org.apache.cassandra.db.commitlog.CommitLogReader;
 
+import io.debezium.connector.cassandra.metrics.CassandraStreamingMetrics;
+
 public class Cassandra5CommitLogSegmentReader implements CommitLogSegmentReader {
 
     private final CommitLogReader commitLogReader;
 
     private final CommitLogReadHandler commitLogReadHandler;
 
-    public Cassandra5CommitLogSegmentReader(CassandraConnectorContext context, CommitLogProcessorMetrics metrics) {
+    public Cassandra5CommitLogSegmentReader(CassandraConnectorContext context, CassandraStreamingMetrics metrics) {
         this.commitLogReader = new CommitLogReader();
         this.commitLogReadHandler = new Cassandra5CommitLogReadHandlerImpl(context, metrics);
     }

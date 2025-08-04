@@ -7,7 +7,7 @@ package io.debezium.connector.cassandra.spi;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.cassandra.CassandraConnectorContext;
-import io.debezium.connector.cassandra.CommitLogProcessorMetrics;
+import io.debezium.connector.cassandra.metrics.CassandraStreamingMetrics;
 
 public interface CassandraTestProvider {
 
@@ -15,5 +15,5 @@ public interface CassandraTestProvider {
 
     CassandraConnectorContext provideContextWithoutSchemaManagement(Configuration configuration);
 
-    CommitLogProcessing provideCommitLogProcessing(CassandraConnectorContext context, CommitLogProcessorMetrics metrics);
+    CommitLogProcessing provideCommitLogProcessing(CassandraConnectorContext context, CassandraStreamingMetrics metrics);
 }

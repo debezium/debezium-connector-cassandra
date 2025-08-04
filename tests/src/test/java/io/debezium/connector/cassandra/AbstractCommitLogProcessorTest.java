@@ -31,15 +31,17 @@ import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.base.ChangeEventQueue;
+import io.debezium.connector.cassandra.metrics.CassandraStreamingMetrics;
 import io.debezium.connector.cassandra.spi.CassandraTestProvider;
 import io.debezium.connector.cassandra.spi.CommitLogProcessing;
 import io.debezium.connector.cassandra.spi.ProvidersResolver;
 import io.debezium.connector.cassandra.utils.TestUtils;
+import io.debezium.connector.common.CdcSourceTaskContext;
 
 public abstract class AbstractCommitLogProcessorTest extends CassandraConnectorTestBase {
-    protected CommitLogProcessorMetrics metrics = new CommitLogProcessorMetrics();
 
     protected CommitLogProcessing commitLogProcessing;
+    private CassandraStreamingMetrics metrics;
 
     public Configuration getContextConfiguration() throws Throwable {
         return Configuration.from(TestUtils.generateDefaultConfigMap());
@@ -52,12 +54,13 @@ public abstract class AbstractCommitLogProcessorTest extends CassandraConnectorT
         provider = ProvidersResolver.resolveConnectorContextProvider();
         context = provider.provideContext(getContextConfiguration());
 
+        metrics = new CassandraStreamingMetrics((CdcSourceTaskContext) context);
+
         commitLogProcessing = provider.provideCommitLogProcessing(context, metrics);
 
         await().atMost(Duration.ofSeconds(60)).until(() -> context.getSchemaHolder()
                 .getKeyValueSchema(new KeyspaceTable(TEST_KEYSPACE_NAME, TEST_TABLE_NAME)) != null);
 
-        metrics.registerMetrics();
     }
 
     @After
@@ -127,7 +130,6 @@ public abstract class AbstractCommitLogProcessorTest extends CassandraConnectorT
         // process the logs in commit log directory
         File cdcLoc = Paths.get("target/data/cassandra/cdc_raw").toAbsolutePath().toFile();
         File[] commitLogs = CommitLogUtil.getCommitLogs(cdcLoc);
-
         commitLogProcessing.readAllCommitLogs(commitLogs);
     }
 
