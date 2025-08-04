@@ -59,6 +59,7 @@ import io.debezium.connector.cassandra.CassandraSchemaFactory.CellData;
 import io.debezium.connector.cassandra.CassandraSchemaFactory.RangeData;
 import io.debezium.connector.cassandra.CassandraSchemaFactory.RowData;
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorSchemaException;
+import io.debezium.connector.cassandra.metrics.CassandraStreamingMetrics;
 import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;
 import io.debezium.time.Conversions;
 
@@ -78,12 +79,12 @@ public class Cassandra3CommitLogReadHandlerImpl implements CommitLogReadHandler 
     private final RecordMaker recordMaker;
     private final OffsetWriter offsetWriter;
     private final SchemaHolder schemaHolder;
-    private final CommitLogProcessorMetrics metrics;
+    private final CassandraStreamingMetrics metrics;
     private final RangeTombstoneContext<CFMetaData> rangeTombstoneContext = new RangeTombstoneContext<>();
     private final CassandraSchemaFactory schemaFactory;
     private final CassandraConnectorConfig.EventOrderGuaranteeMode eventOrderGuaranteeMode;
 
-    Cassandra3CommitLogReadHandlerImpl(CassandraConnectorContext context, CommitLogProcessorMetrics metrics) {
+    Cassandra3CommitLogReadHandlerImpl(CassandraConnectorContext context, CassandraStreamingMetrics metrics) {
         this.queues = context.getQueues();
         this.recordMaker = new RecordMaker(context.getCassandraConnectorConfig().tombstonesOnDelete(),
                 new Filters(context.getCassandraConnectorConfig().fieldExcludeList()),

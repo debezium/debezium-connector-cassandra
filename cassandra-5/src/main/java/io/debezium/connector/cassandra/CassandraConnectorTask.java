@@ -10,6 +10,9 @@ import java.io.File;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.schema.Schema;
 
+import io.debezium.connector.cassandra.metrics.CassandraStreamingMetrics;
+import io.debezium.connector.common.CdcSourceTaskContext;
+
 /**
  * A task that reads Cassandra commit log in CDC directory and generate corresponding data
  * change events which will be emitted to Kafka. If the table has not been bootstrapped,
@@ -43,14 +46,16 @@ public class CassandraConnectorTask {
     }
 
     static CassandraConnectorTaskTemplate init(CassandraConnectorConfig config, ComponentFactory factory) {
-        CommitLogProcessorMetrics metrics = new CommitLogProcessorMetrics();
         return new CassandraConnectorTaskTemplate(config,
                 new Cassandra5TypeProvider(),
                 new Cassandra5SchemaLoader(),
                 new Cassandra5SchemaChangeListenerProvider(),
-                context -> new AbstractProcessor[]{ new CommitLogIdxProcessor(context, metrics,
-                        new Cassandra5CommitLogSegmentReader(context, metrics),
-                        new File(DatabaseDescriptor.getCDCLogLocation())) },
+                context -> {
+                    CassandraStreamingMetrics metrics = new CassandraStreamingMetrics((CdcSourceTaskContext) context);
+                    return new AbstractProcessor[]{ new CommitLogIdxProcessor(context, metrics,
+                            new Cassandra5CommitLogSegmentReader(context, metrics),
+                            new File(DatabaseDescriptor.getCDCLogLocation())) };
+                },
                 factory);
     }
 }

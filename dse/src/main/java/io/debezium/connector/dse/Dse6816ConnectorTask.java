@@ -11,12 +11,12 @@ import org.apache.cassandra.db.commitlog.CommitLogReadHandler;
 import io.debezium.connector.cassandra.AbstractProcessor;
 import io.debezium.connector.cassandra.CassandraConnectorContext;
 import io.debezium.connector.cassandra.CommitLogIdxProcessor;
-import io.debezium.connector.cassandra.CommitLogProcessorMetrics;
+import io.debezium.connector.cassandra.metrics.CassandraStreamingMetrics;
 
 public class Dse6816ConnectorTask extends Dse680ConnectorTask {
 
     @Override
-    protected AbstractProcessor getCommitLogProcessor(CassandraConnectorContext context, CommitLogProcessorMetrics metrics, CommitLogReadHandler handler) {
+    protected AbstractProcessor getCommitLogProcessor(CassandraConnectorContext context, CassandraStreamingMetrics metrics, CommitLogReadHandler handler) {
         return new CommitLogIdxProcessor(context, metrics, new DseCommitLogSegmentReader(context, metrics), DatabaseDescriptor.getCDCLogLocation());
     }
 

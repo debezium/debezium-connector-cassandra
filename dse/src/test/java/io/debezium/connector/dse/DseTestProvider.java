@@ -15,11 +15,11 @@ import org.apache.cassandra.db.commitlog.CommitLogReader;
 import io.debezium.config.Configuration;
 import io.debezium.connector.cassandra.CassandraConnectorConfig;
 import io.debezium.connector.cassandra.CassandraConnectorContext;
-import io.debezium.connector.cassandra.CommitLogProcessorMetrics;
 import io.debezium.connector.cassandra.CommitLogSegmentReader;
 import io.debezium.connector.cassandra.CommitLogUtil;
 import io.debezium.connector.cassandra.DefaultCassandraConnectorContext;
 import io.debezium.connector.cassandra.FileOffsetWriter;
+import io.debezium.connector.cassandra.metrics.CassandraStreamingMetrics;
 import io.debezium.connector.cassandra.spi.CassandraTestProvider;
 import io.debezium.connector.cassandra.spi.CommitLogProcessing;
 import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;
@@ -49,7 +49,7 @@ public class DseTestProvider implements CassandraTestProvider {
     }
 
     @Override
-    public CommitLogProcessing provideCommitLogProcessing(CassandraConnectorContext context, CommitLogProcessorMetrics metrics) {
+    public CommitLogProcessing provideCommitLogProcessing(CassandraConnectorContext context, CassandraStreamingMetrics metrics) {
         return new DseCommitLogProcessing(context, metrics);
     }
 
@@ -59,7 +59,7 @@ public class DseTestProvider implements CassandraTestProvider {
         private final CommitLogSegmentReader commitLogSegmentReader;
         private final CassandraConnectorContext context;
 
-        DseCommitLogProcessing(CassandraConnectorContext context, CommitLogProcessorMetrics metrics) {
+        DseCommitLogProcessing(CassandraConnectorContext context, CassandraStreamingMetrics metrics) {
             commitLogReadHandler = new DseCommitLogReadHandlerImpl(context, metrics);
             commitLogSegmentReader = new DseCommitLogSegmentReader(context, metrics);
             this.context = context;

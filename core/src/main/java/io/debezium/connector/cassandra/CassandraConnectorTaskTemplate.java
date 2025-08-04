@@ -33,8 +33,10 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorConfigException;
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorTaskException;
+import io.debezium.connector.cassandra.metrics.CassandraSnapshotMetrics;
 import io.debezium.connector.cassandra.network.BuildInfoServlet;
 import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;
+import io.debezium.connector.common.CdcSourceTaskContext;
 
 public class CassandraConnectorTaskTemplate {
 
@@ -154,7 +156,8 @@ public class CassandraConnectorTaskTemplate {
                 processorGroup.addProcessor(processor);
             }
 
-            processorGroup.addProcessor(new SnapshotProcessor(taskContext, taskContext.getClusterName()));
+            CassandraSnapshotMetrics snapshotMetrics = new CassandraSnapshotMetrics((CdcSourceTaskContext) taskContext);
+            processorGroup.addProcessor(new SnapshotProcessor(taskContext, taskContext.getClusterName(), snapshotMetrics));
             List<ChangeEventQueue<Event>> queues = taskContext.getQueues();
             for (int i = 0; i < queues.size(); i++) {
                 processorGroup.addProcessor(new QueueProcessor(taskContext, i, recordEmitter));

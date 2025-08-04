@@ -38,6 +38,7 @@ import io.debezium.DebeziumException;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.cassandra.CassandraSchemaFactory.CellData;
 import io.debezium.connector.cassandra.CassandraSchemaFactory.RowData;
+import io.debezium.connector.cassandra.metrics.CassandraSnapshotMetrics;
 import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;
 import io.debezium.time.Conversions;
 import io.debezium.util.Collect;
@@ -71,11 +72,12 @@ public class SnapshotProcessor extends AbstractProcessor {
     private final CassandraConnectorConfig.SnapshotMode snapshotMode;
     private final ConsistencyLevel consistencyLevel;
     private final Set<String> startedTableNames = new HashSet<>();
-    private final SnapshotProcessorMetrics metrics = new SnapshotProcessorMetrics();
+    private final CassandraSnapshotMetrics metrics;
     private boolean initial = true;
     private final String clusterName;
 
-    public SnapshotProcessor(CassandraConnectorContext context, String clusterName) {
+    public SnapshotProcessor(CassandraConnectorContext context, String clusterName,
+                             CassandraSnapshotMetrics metrics) {
         super(NAME, context.getCassandraConnectorConfig().snapshotPollInterval());
         this.queues = context.getQueues();
         cassandraClient = context.getCassandraClient();
@@ -87,6 +89,7 @@ public class SnapshotProcessor extends AbstractProcessor {
         snapshotMode = context.getCassandraConnectorConfig().snapshotMode();
         consistencyLevel = context.getCassandraConnectorConfig().snapshotConsistencyLevel();
         this.clusterName = clusterName;
+        this.metrics = metrics;
     }
 
     @Override

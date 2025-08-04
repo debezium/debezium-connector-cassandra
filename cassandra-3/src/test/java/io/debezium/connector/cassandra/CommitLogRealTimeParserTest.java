@@ -29,7 +29,9 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.base.ChangeEventQueue;
+import io.debezium.connector.cassandra.metrics.CassandraStreamingMetrics;
 import io.debezium.connector.cassandra.utils.TestUtils;
+import io.debezium.connector.common.CdcSourceTaskContext;
 
 public class CommitLogRealTimeParserTest extends AbstractCommitLogProcessorTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(CommitLogRealTimeParserTest.class);
@@ -43,7 +45,8 @@ public class CommitLogRealTimeParserTest extends AbstractCommitLogProcessorTest 
     @Before
     public void setUp() throws Throwable {
         super.setUp();
-        commitLogProcessor = new CommitLogIdxProcessor(context, metrics,
+        CassandraStreamingMetrics streamingMetrics = new CassandraStreamingMetrics((CdcSourceTaskContext) context);
+        commitLogProcessor = new CommitLogIdxProcessor(context, streamingMetrics,
                 commitLogProcessing.getCommitLogSegmentReader(),
                 Paths.get("target/data/cassandra/cdc_raw").toAbsolutePath().toFile());
     }

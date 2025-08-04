@@ -23,6 +23,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.DebeziumException;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorTaskException;
+import io.debezium.connector.cassandra.metrics.CassandraStreamingMetrics;
 
 /**
  * The {@link CommitLogProcessor} is used to process CommitLog in CDC directory.
@@ -41,14 +42,14 @@ public class CommitLogProcessor extends AbstractProcessor {
     private AbstractDirectoryWatcher watcher;
     private final List<ChangeEventQueue<Event>> queues;
     private final boolean latestOnly;
-    private final CommitLogProcessorMetrics metrics;
+    private final CassandraStreamingMetrics metrics;
     private boolean initial = true;
     private final boolean errorCommitLogReprocessEnabled;
     private final CommitLogTransfer commitLogTransfer;
     private final Set<String> erroneousCommitLogs;
     private final File commitLogDir;
 
-    public CommitLogProcessor(CassandraConnectorContext context, CommitLogProcessorMetrics metrics,
+    public CommitLogProcessor(CassandraConnectorContext context, CassandraStreamingMetrics metrics,
                               CommitLogSegmentReader commitLogReader, File cdcDir,
                               File commitLogDir) {
         super(NAME, Duration.ZERO);
