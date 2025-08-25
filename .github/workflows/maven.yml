@@ -22,13 +22,13 @@ jobs:
 
     steps:
       - name: Checkout Core
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: debezium/debezium
           ref: ${{ github.ref }}
           path: core
       - name: Checkout Cassandra
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           path: cassandra
       - name: Cache Maven Packages
