@@ -12,6 +12,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import io.debezium.connector.base.ChangeEventQueue;
+import io.debezium.connector.base.DefaultQueueProvider;
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorTaskException;
 import io.debezium.connector.common.CdcSourceTaskContext;
 
@@ -66,6 +67,7 @@ public class DefaultCassandraConnectorContext extends CdcSourceTaskContext imple
                     .pollInterval(this.config.pollInterval())
                     .maxBatchSize(this.config.maxBatchSize())
                     .maxQueueSize(this.config.maxQueueSize())
+                    .queueProvider(new DefaultQueueProvider<>(this.config.getMaxQueueSize()))
                     .loggingContextSupplier(() -> this.configureLoggingContext(this.config.getContextName()))
                     .build();
             queues.add(queue);
