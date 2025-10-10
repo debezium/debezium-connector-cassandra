@@ -6,7 +6,6 @@
 package io.debezium.connector.cassandra;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -25,7 +24,7 @@ public class DefaultCassandraConnectorContext extends CdcSourceTaskContext imple
     private final Set<String> erroneousCommitLogs = ConcurrentHashMap.newKeySet();
 
     public DefaultCassandraConnectorContext(CassandraConnectorConfig config) {
-        super(config, config.getCustomMetricTags(), Collections::emptySet);
+        super(config, config.getCustomMetricTags());
         this.config = config;
         prepareQueues();
     }
@@ -34,7 +33,7 @@ public class DefaultCassandraConnectorContext extends CdcSourceTaskContext imple
                                             SchemaLoader schemaLoader,
                                             SchemaChangeListenerProvider schemaChangeListenerProvider,
                                             OffsetWriter offsetWriter) {
-        super(config, config.getCustomMetricTags(), Collections::emptySet);
+        super(config, config.getCustomMetricTags());
         this.config = config;
         this.offsetWriter = offsetWriter;
 
