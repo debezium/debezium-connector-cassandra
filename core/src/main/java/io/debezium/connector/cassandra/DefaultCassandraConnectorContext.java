@@ -14,8 +14,7 @@ import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorTaskException;
 import io.debezium.connector.common.CdcSourceTaskContext;
 
-public class DefaultCassandraConnectorContext extends CdcSourceTaskContext implements CassandraConnectorContext {
-    private final CassandraConnectorConfig config;
+public class DefaultCassandraConnectorContext extends CdcSourceTaskContext<CassandraConnectorConfig> implements CassandraConnectorContext {
     private CassandraClient cassandraClient;
     private final List<ChangeEventQueue<Event>> queues = new ArrayList<>();
     private SchemaHolder schemaHolder;
@@ -24,8 +23,7 @@ public class DefaultCassandraConnectorContext extends CdcSourceTaskContext imple
     private final Set<String> erroneousCommitLogs = ConcurrentHashMap.newKeySet();
 
     public DefaultCassandraConnectorContext(CassandraConnectorConfig config) {
-        super(config, config.getCustomMetricTags());
-        this.config = config;
+        super(config.getConfig(), config, config.getCustomMetricTags());
         prepareQueues();
     }
 
@@ -33,17 +31,16 @@ public class DefaultCassandraConnectorContext extends CdcSourceTaskContext imple
                                             SchemaLoader schemaLoader,
                                             SchemaChangeListenerProvider schemaChangeListenerProvider,
                                             OffsetWriter offsetWriter) {
-        super(config, config.getCustomMetricTags());
-        this.config = config;
+        super(config.getConfig(), config, config.getCustomMetricTags());
         this.offsetWriter = offsetWriter;
 
         try {
             prepareQueues();
 
             // Loading up DDL schemas from disk
-            schemaLoader.load(this.config.cassandraConfig());
+            schemaLoader.load(config.cassandraConfig());
 
-            AbstractSchemaChangeListener schemaChangeListener = schemaChangeListenerProvider.provide(this.config);
+            AbstractSchemaChangeListener schemaChangeListener = schemaChangeListenerProvider.provide(config);
 
             // Setting up Cassandra driver
             this.cassandraClient = new CassandraClient(config.cassandraDriverConfig(), schemaChangeListener);
@@ -59,13 +56,13 @@ public class DefaultCassandraConnectorContext extends CdcSourceTaskContext imple
     }
 
     private void prepareQueues() {
-        int numOfChangeEventQueues = this.config.numOfChangeEventQueues();
+        int numOfChangeEventQueues = getConfig().numOfChangeEventQueues();
         for (int i = 0; i < numOfChangeEventQueues; i++) {
             ChangeEventQueue<Event> queue = new ChangeEventQueue.Builder<Event>()
-                    .pollInterval(this.config.pollInterval())
-                    .maxBatchSize(this.config.maxBatchSize())
-                    .maxQueueSize(this.config.maxQueueSize())
-                    .loggingContextSupplier(() -> this.configureLoggingContext(this.config.getContextName()))
+                    .pollInterval(getConfig().pollInterval())
+                    .maxBatchSize(getConfig().maxBatchSize())
+                    .maxQueueSize(getConfig().maxQueueSize())
+                    .loggingContextSupplier(() -> this.configureLoggingContext(getConfig().getContextName()))
                     .build();
             queues.add(queue);
         }
@@ -91,7 +88,7 @@ public class DefaultCassandraConnectorContext extends CdcSourceTaskContext imple
     }
 
     public CassandraConnectorConfig getCassandraConnectorConfig() {
-        return config;
+        return getConfig();
     }
 
     public CassandraClient getCassandraClient() {
@@ -116,6 +113,6 @@ public class DefaultCassandraConnectorContext extends CdcSourceTaskContext imple
 
     @Override
     public String getClusterName() {
-        return this.config.clusterName();
+        return getConfig().clusterName();
     }
 }
