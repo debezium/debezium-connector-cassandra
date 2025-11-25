@@ -19,12 +19,14 @@ import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.source.SourceRecord;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorConfigException;
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorTaskException;
 import io.debezium.connector.common.BaseSourceTask;
+import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
@@ -35,6 +37,7 @@ public abstract class AbstractConnectorTask extends BaseSourceTask<CassandraPart
     private volatile ChangeEventQueue<DataChangeEvent> queue;
 
     private CassandraConnectorTaskTemplate template;
+    private CassandraConnectorConfig connectorConfig;
 
     @Override
     public String version() {
@@ -42,8 +45,15 @@ public abstract class AbstractConnectorTask extends BaseSourceTask<CassandraPart
     }
 
     @Override
+    public CdcSourceTaskContext<? extends CommonConnectorConfig> preStart(Configuration config) {
+
+        connectorConfig = new CassandraConnectorConfig(config);
+
+        return (DefaultCassandraConnectorContext) template.getTaskContext();
+    }
+
+    @Override
     protected ChangeEventSourceCoordinator<CassandraPartition, CassandraOffsetContext> start(Configuration config) {
-        CassandraConnectorConfig connectorConfig = new CassandraConnectorConfig(config);
 
         if (connectorConfig.numOfChangeEventQueues() != 1) {
             throw new CassandraConnectorConfigException(String.format("configuration property %s must be equal to 1",
