@@ -52,6 +52,7 @@ public class QueueProcessor extends AbstractProcessor {
             }
             catch (Exception ex) {
                 LOGGER.error("Processing of event {} was errorneous: {}", event, ex);
+                throw ex;
             }
         }
     }

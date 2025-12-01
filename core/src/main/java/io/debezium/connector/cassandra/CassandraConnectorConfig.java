@@ -544,6 +544,20 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
             .withImportance(Importance.MEDIUM)
             .withDescription("Specifies how grantee order of change events.");
 
+    /**
+     * The maximum time to wait for commit log processors to complete their tasks during shutdown.
+     * If processors don't finish within this timeout, they will be forcefully cancelled.
+     * Defaults to 5 seconds.
+     */
+    public static final int DEFAULT_COMMIT_LOG_PROCESSOR_SHUTDOWN_TIMEOUT_SECONDS = 5;
+    public static final Field COMMIT_LOG_PROCESSOR_SHUTDOWN_TIMEOUT_SECONDS = Field.createInternal("commit.log.processor.shutdown.timeout.seconds")
+            .withDisplayName("Commit Log Processor Shutdown Timeout")
+            .withType(Type.INT)
+            .withDefault(DEFAULT_COMMIT_LOG_PROCESSOR_SHUTDOWN_TIMEOUT_SECONDS)
+            .withValidation(Field::isNonNegativeInteger)
+            .withDescription(
+                    "The maximum time to wait for commit log processors to complete their tasks during shutdown. If processors don't finish within this timeout, they will be forcefully cancelled.");
+
     private static List<Field> validationFieldList = new ArrayList<>(
             Arrays.asList(OFFSET_BACKING_STORE_DIR, COMMIT_LOG_RELOCATION_DIR, SCHEMA_POLL_INTERVAL_MS, SNAPSHOT_POLL_INTERVAL_MS));
 
@@ -800,5 +814,9 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
 
     public EventOrderGuaranteeMode getEventOrderGuaranteeMode() {
         return EventOrderGuaranteeMode.parse(this.getConfig().getString(EVENT_ORDER_GUARANTEE_MODE));
+    }
+
+    public int getCommitLogProcessorShutdownTimeoutSeconds() {
+        return this.getConfig().getInteger(COMMIT_LOG_PROCESSOR_SHUTDOWN_TIMEOUT_SECONDS);
     }
 }

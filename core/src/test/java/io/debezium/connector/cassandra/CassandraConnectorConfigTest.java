@@ -118,6 +118,10 @@ public class CassandraConnectorConfigTest {
         String valueConverterClass = "org.apache.kafka.connect.json.JsonConverter";
         config = buildTaskConfig(CassandraConnectorConfig.VALUE_CONVERTER_CLASS_CONFIG.name(), valueConverterClass);
         assertEquals(valueConverterClass, config.getValueConverter().getClass().getName());
+
+        int shutdownTimeoutSeconds = 10;
+        config = buildTaskConfig(CassandraConnectorConfig.COMMIT_LOG_PROCESSOR_SHUTDOWN_TIMEOUT_SECONDS.name(), String.valueOf(shutdownTimeoutSeconds));
+        assertEquals(shutdownTimeoutSeconds, config.getCommitLogProcessorShutdownTimeoutSeconds());
     }
 
     private CassandraConnectorConfig buildTaskConfigs(HashMap<String, Object> map) {
@@ -160,6 +164,7 @@ public class CassandraConnectorConfigTest {
         assertEquals(CassandraConnectorConfig.DEFAULT_COMMIT_LOG_POST_PROCESSING_ENABLED, config.postProcessEnabled());
         assertEquals(CassandraConnectorConfig.DEFAULT_COMMIT_LOG_ERROR_REPROCESSING_ENABLED, config.errorCommitLogReprocessEnabled());
         assertEquals(CassandraConnectorConfig.DEFAULT_COMMIT_LOG_TRANSFER_CLASS, config.getCommitLogTransfer().getClass().getName());
+        assertEquals(CassandraConnectorConfig.DEFAULT_COMMIT_LOG_PROCESSOR_SHUTDOWN_TIMEOUT_SECONDS, config.getCommitLogProcessorShutdownTimeoutSeconds());
         assertFalse(config.tombstonesOnDelete());
         assertEquals(CassandraConnectorConfig.SnapshotMode.INITIAL, config.snapshotMode());
         assertEquals(CassandraConnectorConfig.DEFAULT_LATEST_COMMIT_LOG_ONLY, config.latestCommitLogOnly());

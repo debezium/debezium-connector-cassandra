@@ -132,6 +132,7 @@ public class CassandraConnectorTaskTemplate {
             while (processorGroup.isRunning()) {
                 Thread.sleep(1000);
             }
+            throw new CassandraConnectorTaskException("Processor group stopped unexpectedly");
         }
         finally {
             stopAll();
@@ -289,6 +290,9 @@ public class CassandraConnectorTaskTemplate {
         private void stopProcessors() throws Exception {
             for (AbstractProcessor processor : processors) {
                 processor.stop();
+            }
+
+            for (AbstractProcessor processor : processors) {
                 processor.destroy();
             }
         }
