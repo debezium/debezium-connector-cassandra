@@ -19,6 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.math3.util.Pair;
 import org.slf4j.Logger;
@@ -44,6 +45,7 @@ public class CommitLogIdxProcessor extends AbstractProcessor {
     private boolean initial = true;
     private final boolean errorCommitLogReprocessEnabled;
     private final CommitLogTransfer commitLogTransfer;
+    private final int shutdownTimeoutSeconds;
     private final ExecutorService executorService;
     final static Set<Pair<CommitLogIdxParser, Future<CommitLogProcessingResult>>> submittedProcessings = ConcurrentHashMap.newKeySet();
     private final CommitLogSegmentReader commitLogReader;
@@ -54,6 +56,7 @@ public class CommitLogIdxProcessor extends AbstractProcessor {
         this.context = context;
         commitLogTransfer = this.context.getCassandraConnectorConfig().getCommitLogTransfer();
         errorCommitLogReprocessEnabled = this.context.getCassandraConnectorConfig().errorCommitLogReprocessEnabled();
+        shutdownTimeoutSeconds = this.context.getCassandraConnectorConfig().getCommitLogProcessorShutdownTimeoutSeconds();
         this.cdcDir = cdcDir;
         executorService = Executors.newSingleThreadExecutor();
         this.metrics = metrics;
@@ -77,10 +80,11 @@ public class CommitLogIdxProcessor extends AbstractProcessor {
             for (final Pair<CommitLogIdxParser, Future<CommitLogProcessingResult>> submittedProcessing : submittedProcessings) {
                 try {
                     submittedProcessing.getFirst().complete();
-                    submittedProcessing.getSecond().get();
+                    submittedProcessing.getSecond().get(shutdownTimeoutSeconds, TimeUnit.SECONDS);
                 }
                 catch (final Exception ex) {
                     LOGGER.warn("Waiting for submitted task to finish has failed.");
+                    submittedProcessing.getSecond().cancel(true);
                 }
             }
         }
