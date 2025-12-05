@@ -10,10 +10,10 @@ import static io.debezium.connector.cassandra.utils.TestUtils.TEST_TABLE_NAME_2;
 import static io.debezium.connector.cassandra.utils.TestUtils.deleteTestKeyspaceTables;
 import static io.debezium.connector.cassandra.utils.TestUtils.deleteTestOffsets;
 import static io.debezium.connector.cassandra.utils.TestUtils.keyspaceTable;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.lang.management.ManagementFactory;
 
@@ -23,23 +23,23 @@ import javax.management.ObjectName;
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.TabularData;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.cassandra.CassandraConnectorTestBase;
 import io.debezium.connector.cassandra.utils.TestUtils;
 import io.debezium.connector.common.CdcSourceTaskContext;
 
-public class CassandraSnapshotMetricsTest extends CassandraConnectorTestBase {
+class CassandraSnapshotMetricsTest extends CassandraConnectorTestBase {
 
     private CassandraSnapshotMetrics snapshotMetrics;
     private MBeanServer mBeanServer;
     private ObjectName snapshotMetricsObjectName;
 
-    @Before
-    public void setUp() throws Exception {
+    @BeforeEach
+    void setUp() throws Exception {
         // Setup context
         provider = io.debezium.connector.cassandra.spi.ProvidersResolver.resolveConnectorContextProvider();
         try {
@@ -60,8 +60,8 @@ public class CassandraSnapshotMetricsTest extends CassandraConnectorTestBase {
         snapshotMetricsObjectName = new ObjectName("debezium.cassandra:type=connector-metrics,context=snapshot,server=" + serverName);
     }
 
-    @After
-    public void tearDown() throws Exception {
+    @AfterEach
+    void tearDown() throws Exception {
         deleteTestOffsets(context);
         snapshotMetrics.unregisterMetrics();
         deleteTestKeyspaceTables();
@@ -69,94 +69,94 @@ public class CassandraSnapshotMetricsTest extends CassandraConnectorTestBase {
     }
 
     @Test
-    public void testSnapshotMetricsRegistration() throws Exception {
+    void testSnapshotMetricsRegistration() throws Exception {
         // Verify that snapshot metrics MBean is registered
-        assertTrue("Snapshot metrics MBean should be registered",
-                mBeanServer.isRegistered(snapshotMetricsObjectName));
+        assertTrue(mBeanServer.isRegistered(snapshotMetricsObjectName),
+                "Snapshot metrics MBean should be registered");
 
         // Verify initial values
-        assertEquals("Initial total table count should be 0",
-                0,
-                mBeanServer.getAttribute(snapshotMetricsObjectName, "TotalTableCount"));
+        assertEquals(0,
+                mBeanServer.getAttribute(snapshotMetricsObjectName, "TotalTableCount"),
+                "Initial total table count should be 0");
 
-        assertEquals("Initial remaining table count should be 0",
-                0,
-                mBeanServer.getAttribute(snapshotMetricsObjectName, "RemainingTableCount"));
+        assertEquals(0,
+                mBeanServer.getAttribute(snapshotMetricsObjectName, "RemainingTableCount"),
+                "Initial remaining table count should be 0");
 
-        assertFalse("Snapshot should not be running initially",
-                (Boolean) mBeanServer.getAttribute(snapshotMetricsObjectName, "SnapshotRunning"));
+        assertFalse((Boolean) mBeanServer.getAttribute(snapshotMetricsObjectName, "SnapshotRunning"),
+                "Snapshot should not be running initially");
 
-        assertFalse("Snapshot should not be completed initially",
-                (Boolean) mBeanServer.getAttribute(snapshotMetricsObjectName, "SnapshotCompleted"));
+        assertFalse((Boolean) mBeanServer.getAttribute(snapshotMetricsObjectName, "SnapshotCompleted"),
+                "Snapshot should not be completed initially");
 
-        assertFalse("Snapshot should not be aborted initially",
-                (Boolean) mBeanServer.getAttribute(snapshotMetricsObjectName, "SnapshotAborted"));
+        assertFalse((Boolean) mBeanServer.getAttribute(snapshotMetricsObjectName, "SnapshotAborted"),
+                "Snapshot should not be aborted initially");
 
-        assertEquals("Initial snapshot duration should be 0",
-                0L,
-                mBeanServer.getAttribute(snapshotMetricsObjectName, "SnapshotDurationInSeconds"));
+        assertEquals(0L,
+                mBeanServer.getAttribute(snapshotMetricsObjectName, "SnapshotDurationInSeconds"),
+                "Initial snapshot duration should be 0");
     }
 
     @Test
-    public void testSnapshotMetricsLifecycle() throws Exception {
+    void testSnapshotMetricsLifecycle() throws Exception {
         // Start snapshot
         int totalTables = 2;
         snapshotMetrics.setTableCount(totalTables);
         snapshotMetrics.startSnapshot();
 
         // Verify snapshot started
-        assertTrue("Snapshot should be running",
-                (Boolean) mBeanServer.getAttribute(snapshotMetricsObjectName, "SnapshotRunning"));
+        assertTrue((Boolean) mBeanServer.getAttribute(snapshotMetricsObjectName, "SnapshotRunning"),
+                "Snapshot should be running");
 
-        assertFalse("Snapshot should not be completed when running",
-                (Boolean) mBeanServer.getAttribute(snapshotMetricsObjectName, "SnapshotCompleted"));
+        assertFalse((Boolean) mBeanServer.getAttribute(snapshotMetricsObjectName, "SnapshotCompleted"),
+                "Snapshot should not be completed when running");
 
-        assertEquals("Total table count should be set",
-                totalTables,
-                mBeanServer.getAttribute(snapshotMetricsObjectName, "TotalTableCount"));
+        assertEquals(totalTables,
+                mBeanServer.getAttribute(snapshotMetricsObjectName, "TotalTableCount"),
+                "Total table count should be set");
 
-        assertEquals("Remaining table count should equal total initially",
-                totalTables,
-                mBeanServer.getAttribute(snapshotMetricsObjectName, "RemainingTableCount"));
+        assertEquals(totalTables,
+                mBeanServer.getAttribute(snapshotMetricsObjectName, "RemainingTableCount"),
+                "Remaining table count should equal total initially");
 
         // Simulate table completion
         String tableName1 = keyspaceTable(TEST_TABLE_NAME);
         snapshotMetrics.setRowsScanned(tableName1, 100L);
         snapshotMetrics.completeTable();
 
-        assertEquals("Remaining table count should decrease",
-                totalTables - 1,
-                mBeanServer.getAttribute(snapshotMetricsObjectName, "RemainingTableCount"));
+        assertEquals(totalTables - 1,
+                mBeanServer.getAttribute(snapshotMetricsObjectName, "RemainingTableCount"),
+                "Remaining table count should decrease");
 
         // Complete second table
         String tableName2 = keyspaceTable(TEST_TABLE_NAME_2);
         snapshotMetrics.setRowsScanned(tableName2, 50L);
         snapshotMetrics.completeTable();
 
-        assertEquals("Remaining table count should be 0",
-                0,
-                mBeanServer.getAttribute(snapshotMetricsObjectName, "RemainingTableCount"));
+        assertEquals(0,
+                mBeanServer.getAttribute(snapshotMetricsObjectName, "RemainingTableCount"),
+                "Remaining table count should be 0");
 
         // Stop snapshot
         snapshotMetrics.stopSnapshot();
 
         // Verify snapshot completed
-        assertFalse("Snapshot should not be running after stop",
-                (Boolean) mBeanServer.getAttribute(snapshotMetricsObjectName, "SnapshotRunning"));
+        assertFalse((Boolean) mBeanServer.getAttribute(snapshotMetricsObjectName, "SnapshotRunning"),
+                "Snapshot should not be running after stop");
 
-        assertTrue("Snapshot should be completed",
-                (Boolean) mBeanServer.getAttribute(snapshotMetricsObjectName, "SnapshotCompleted"));
+        assertTrue((Boolean) mBeanServer.getAttribute(snapshotMetricsObjectName, "SnapshotCompleted"),
+                "Snapshot should be completed");
 
-        assertFalse("Snapshot should not be aborted",
-                (Boolean) mBeanServer.getAttribute(snapshotMetricsObjectName, "SnapshotAborted"));
+        assertFalse((Boolean) mBeanServer.getAttribute(snapshotMetricsObjectName, "SnapshotAborted"),
+                "Snapshot should not be aborted");
 
         // Verify duration is calculated
-        assertTrue("Snapshot duration should be greater than 0",
-                (Long) mBeanServer.getAttribute(snapshotMetricsObjectName, "SnapshotDurationInSeconds") >= 0);
+        assertTrue((Long) mBeanServer.getAttribute(snapshotMetricsObjectName, "SnapshotDurationInSeconds") >= 0,
+                "Snapshot duration should be greater than 0");
     }
 
     @Test
-    public void testSnapshotMetricsRowsScanned() throws Exception {
+    void testSnapshotMetricsRowsScanned() throws Exception {
         // Set rows scanned for different tables
         String table1 = keyspaceTable(TEST_TABLE_NAME);
         String table2 = keyspaceTable(TEST_TABLE_NAME_2);
@@ -166,7 +166,7 @@ public class CassandraSnapshotMetricsTest extends CassandraConnectorTestBase {
 
         // Get rows scanned map
         TabularData rowsScannedAttr = (TabularData) mBeanServer.getAttribute(snapshotMetricsObjectName, "RowsScanned");
-        assertNotNull("RowsScanned should not be null", rowsScannedAttr);
+        assertNotNull(rowsScannedAttr, "RowsScanned should not be null");
 
         CompositeData r1 = rowsScannedAttr.get(new Object[]{ table1 });
         CompositeData r2 = rowsScannedAttr.get(new Object[]{ table2 });
@@ -183,30 +183,30 @@ public class CassandraSnapshotMetricsTest extends CassandraConnectorTestBase {
     }
 
     @Test
-    public void testSnapshotMetricsAbort() throws Exception {
+    void testSnapshotMetricsAbort() throws Exception {
         // Start snapshot
         snapshotMetrics.setTableCount(2);
         snapshotMetrics.startSnapshot();
 
-        assertTrue("Snapshot should be running",
-                (Boolean) mBeanServer.getAttribute(snapshotMetricsObjectName, "SnapshotRunning"));
+        assertTrue((Boolean) mBeanServer.getAttribute(snapshotMetricsObjectName, "SnapshotRunning"),
+                "Snapshot should be running");
 
         // Abort snapshot
         snapshotMetrics.abortSnapshot();
 
         // Verify snapshot aborted
-        assertFalse("Snapshot should not be running after abort",
-                (Boolean) mBeanServer.getAttribute(snapshotMetricsObjectName, "SnapshotRunning"));
+        assertFalse((Boolean) mBeanServer.getAttribute(snapshotMetricsObjectName, "SnapshotRunning"),
+                "Snapshot should not be running after abort");
 
-        assertFalse("Snapshot should not be completed after abort",
-                (Boolean) mBeanServer.getAttribute(snapshotMetricsObjectName, "SnapshotCompleted"));
+        assertFalse((Boolean) mBeanServer.getAttribute(snapshotMetricsObjectName, "SnapshotCompleted"),
+                "Snapshot should not be completed after abort");
 
-        assertTrue("Snapshot should be aborted",
-                (Boolean) mBeanServer.getAttribute(snapshotMetricsObjectName, "SnapshotAborted"));
+        assertTrue((Boolean) mBeanServer.getAttribute(snapshotMetricsObjectName, "SnapshotAborted"),
+                "Snapshot should be aborted");
     }
 
     @Test
-    public void testSnapshotMetricsReset() throws Exception {
+    void testSnapshotMetricsReset() throws Exception {
         // Set up some metrics
         snapshotMetrics.setTableCount(3);
         snapshotMetrics.startSnapshot();
@@ -215,43 +215,43 @@ public class CassandraSnapshotMetricsTest extends CassandraConnectorTestBase {
         snapshotMetrics.stopSnapshot();
 
         // Verify metrics are set
-        assertTrue("Total table count should be greater than 0",
-                (Integer) mBeanServer.getAttribute(snapshotMetricsObjectName, "TotalTableCount") > 0);
+        assertTrue((Integer) mBeanServer.getAttribute(snapshotMetricsObjectName, "TotalTableCount") > 0,
+                "Total table count should be greater than 0");
 
-        assertTrue("Snapshot should be completed",
-                (Boolean) mBeanServer.getAttribute(snapshotMetricsObjectName, "SnapshotCompleted"));
+        assertTrue((Boolean) mBeanServer.getAttribute(snapshotMetricsObjectName, "SnapshotCompleted"),
+                "Snapshot should be completed");
 
         // Reset metrics
         snapshotMetrics.reset();
 
         // Verify metrics are reset
-        assertEquals("Total table count should be 0 after reset",
-                0,
-                mBeanServer.getAttribute(snapshotMetricsObjectName, "TotalTableCount"));
+        assertEquals(0,
+                mBeanServer.getAttribute(snapshotMetricsObjectName, "TotalTableCount"),
+                "Total table count should be 0 after reset");
 
-        assertEquals("Remaining table count should be 0 after reset",
-                0,
-                mBeanServer.getAttribute(snapshotMetricsObjectName, "RemainingTableCount"));
+        assertEquals(0,
+                mBeanServer.getAttribute(snapshotMetricsObjectName, "RemainingTableCount"),
+                "Remaining table count should be 0 after reset");
 
-        assertFalse("Snapshot should not be running after reset",
-                (Boolean) mBeanServer.getAttribute(snapshotMetricsObjectName, "SnapshotRunning"));
+        assertFalse((Boolean) mBeanServer.getAttribute(snapshotMetricsObjectName, "SnapshotRunning"),
+                "Snapshot should not be running after reset");
 
-        assertFalse("Snapshot should not be completed after reset",
-                (Boolean) mBeanServer.getAttribute(snapshotMetricsObjectName, "SnapshotCompleted"));
+        assertFalse((Boolean) mBeanServer.getAttribute(snapshotMetricsObjectName, "SnapshotCompleted"),
+                "Snapshot should not be completed after reset");
 
-        assertFalse("Snapshot should not be aborted after reset",
-                (Boolean) mBeanServer.getAttribute(snapshotMetricsObjectName, "SnapshotAborted"));
+        assertFalse((Boolean) mBeanServer.getAttribute(snapshotMetricsObjectName, "SnapshotAborted"),
+                "Snapshot should not be aborted after reset");
 
-        assertEquals("Snapshot duration should be 0 after reset",
-                0L,
-                mBeanServer.getAttribute(snapshotMetricsObjectName, "SnapshotDurationInSeconds"));
+        assertEquals(0L,
+                mBeanServer.getAttribute(snapshotMetricsObjectName, "SnapshotDurationInSeconds"),
+                "Snapshot duration should be 0 after reset");
     }
 
     @Test
-    public void testSnapshotMetricsUnregistration() throws Exception {
+    void testSnapshotMetricsUnregistration() throws Exception {
         // Verify MBean is registered
-        assertTrue("Snapshot metrics MBean should be registered",
-                mBeanServer.isRegistered(snapshotMetricsObjectName));
+        assertTrue(mBeanServer.isRegistered(snapshotMetricsObjectName),
+                "Snapshot metrics MBean should be registered");
 
         // Unregister metrics
         snapshotMetrics.unregisterMetrics();

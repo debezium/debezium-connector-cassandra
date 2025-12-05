@@ -14,11 +14,11 @@ import static io.debezium.connector.cassandra.Record.Operation.INSERT;
 import static io.debezium.connector.cassandra.utils.TestUtils.TEST_KEYSPACE_NAME;
 import static io.debezium.connector.cassandra.utils.TestUtils.TEST_TABLE_NAME;
 import static io.debezium.connector.cassandra.utils.TestUtils.runCql;
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.List;
 
-public class PartitionKeyRowDeletionCommitLogProcessingTest extends AbstractCommitLogProcessorTest {
+class PartitionKeyRowDeletionCommitLogProcessingTest extends AbstractCommitLogProcessorTest {
 
     @Override
     public void initialiseData() throws Exception {

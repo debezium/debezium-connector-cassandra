@@ -17,11 +17,11 @@ import static io.debezium.connector.cassandra.utils.TestUtils.TEST_TABLE_NAME;
 import static io.debezium.connector.cassandra.utils.TestUtils.TEST_TABLE_NAME_2;
 import static io.debezium.connector.cassandra.utils.TestUtils.createTestKeyspace;
 import static io.debezium.connector.cassandra.utils.TestUtils.runCql;
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.List;
 
-public class MultipleTablesProcessingTest extends AbstractCommitLogProcessorTest {
+class MultipleTablesProcessingTest extends AbstractCommitLogProcessorTest {
 
     @Override
     public void initialiseData() throws Exception {

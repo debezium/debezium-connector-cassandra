@@ -12,7 +12,7 @@ import static io.debezium.connector.cassandra.utils.TestUtils.deleteTestOffsets;
 import static io.debezium.connector.cassandra.utils.TestUtils.runCql;
 import static java.lang.String.format;
 import static org.awaitility.Awaitility.await;
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.File;
 import java.io.IOException;
@@ -24,10 +24,10 @@ import java.util.ServiceLoader;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.junit.After;
-import org.junit.Assume;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.base.ChangeEventQueue;
@@ -38,7 +38,7 @@ import io.debezium.connector.cassandra.spi.ProvidersResolver;
 import io.debezium.connector.cassandra.utils.TestUtils;
 import io.debezium.connector.common.CdcSourceTaskContext;
 
-public abstract class AbstractCommitLogProcessorTest extends CassandraConnectorTestBase {
+abstract class AbstractCommitLogProcessorTest extends CassandraConnectorTestBase {
 
     protected CommitLogProcessing commitLogProcessing;
     private CassandraStreamingMetrics metrics;
@@ -47,8 +47,8 @@ public abstract class AbstractCommitLogProcessorTest extends CassandraConnectorT
         return Configuration.from(TestUtils.generateDefaultConfigMap());
     }
 
-    @Before
-    public void setUp() throws Throwable {
+    @BeforeEach
+    void setUp() throws Throwable {
         initialiseData();
 
         provider = ProvidersResolver.resolveConnectorContextProvider();
@@ -63,8 +63,8 @@ public abstract class AbstractCommitLogProcessorTest extends CassandraConnectorT
 
     }
 
-    @After
-    public void tearDown() throws Exception {
+    @AfterEach
+    void tearDown() throws Exception {
         deleteTestOffsets(context);
         metrics.unregisterMetrics();
         deleteTestKeyspaceTables();
@@ -72,7 +72,7 @@ public abstract class AbstractCommitLogProcessorTest extends CassandraConnectorT
     }
 
     @Test
-    public void test() throws Throwable {
+    void test() throws Throwable {
         assumeTestRuns();
         verifyEvents();
     }
@@ -81,11 +81,11 @@ public abstract class AbstractCommitLogProcessorTest extends CassandraConnectorT
     }
 
     protected void assumeNotDse() {
-        Assume.assumeFalse(ServiceLoader.load(CassandraTestProvider.class).findFirst().get().getClass().getName().contains("io.debezium.connector.dse"));
+        Assumptions.assumeFalse(ServiceLoader.load(CassandraTestProvider.class).findFirst().get().getClass().getName().contains("io.debezium.connector.dse"));
     }
 
     protected void assumeNotCassandra3() {
-        Assume.assumeFalse(ServiceLoader.load(CassandraTestProvider.class).findFirst().get().getClass().getName().contains("Cassandra3TestProvider"));
+        Assumptions.assumeFalse(ServiceLoader.load(CassandraTestProvider.class).findFirst().get().getClass().getName().contains("Cassandra3TestProvider"));
     }
 
     public abstract void initialiseData() throws Throwable;

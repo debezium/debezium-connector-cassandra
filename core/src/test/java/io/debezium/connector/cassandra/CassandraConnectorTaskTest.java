@@ -5,21 +5,23 @@
  */
 package io.debezium.connector.cassandra;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 import io.debezium.connector.cassandra.CassandraConnectorTaskTemplate.ProcessorGroup;
 
-public class CassandraConnectorTaskTest {
+class CassandraConnectorTaskTest {
 
-    @Test(timeout = 60000)
-    public void testProcessorGroup() throws Exception {
+    @Test
+    @Timeout(60)
+    void testProcessorGroup() throws Exception {
         ProcessorGroup processorGroup = new ProcessorGroup();
         AtomicInteger running = new AtomicInteger(0);
         AtomicInteger iteration = new AtomicInteger(0);

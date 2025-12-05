@@ -9,8 +9,8 @@ import static io.debezium.connector.cassandra.utils.TestUtils.deleteTestKeyspace
 import static io.debezium.connector.cassandra.utils.TestUtils.deleteTestOffsets;
 import static io.debezium.connector.cassandra.utils.TestUtils.keyspaceTable;
 import static io.debezium.connector.cassandra.utils.TestUtils.propertiesForContext;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -23,10 +23,10 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.kafka.clients.producer.ProducerConfig;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import io.debezium.config.Configuration;
@@ -36,22 +36,22 @@ import io.debezium.connector.cassandra.spi.ProvidersResolver;
 import io.debezium.connector.cassandra.utils.TestUtils;
 import io.debezium.connector.common.CdcSourceTaskContext;
 
-public class SnapshotProcessorTest extends CassandraConnectorTestBase {
+class SnapshotProcessorTest extends CassandraConnectorTestBase {
 
-    @After
-    public void afterTest() {
+    @AfterEach
+    void afterTest() {
         if (context != null) {
             context.cleanUp();
         }
     }
 
-    @Before
-    public void beforeTest() {
+    @BeforeEach
+    void beforeTest() {
         provider = ProvidersResolver.resolveConnectorContextProvider();
     }
 
     @Test
-    public void testSnapshotTable() throws Throwable {
+    void testSnapshotTable() throws Throwable {
         context = provider.provideContext(Configuration.from(TestUtils.generateDefaultConfigMap()));
         CassandraSnapshotMetrics snapshotMetrics = new CassandraSnapshotMetrics((CdcSourceTaskContext) context);
         SnapshotProcessor snapshotProcessor = Mockito.spy(new SnapshotProcessor(context, context.getClusterName(), snapshotMetrics));
@@ -74,9 +74,9 @@ public class SnapshotProcessorTest extends CassandraConnectorTestBase {
         final List<ChangeRecord> table2 = new ArrayList<>();
         for (Event event : queue.poll()) {
             ChangeRecord record = (ChangeRecord) event;
-            Assert.assertEquals(record.getEventType(), Event.EventType.CHANGE_EVENT);
-            Assert.assertEquals(record.getOp(), Record.Operation.INSERT);
-            Assert.assertEquals(record.getSource().cluster, CLUSTER_NAME);
+            Assertions.assertEquals(record.getEventType(), Event.EventType.CHANGE_EVENT);
+            Assertions.assertEquals(record.getOp(), Record.Operation.INSERT);
+            Assertions.assertEquals(record.getSource().cluster, CLUSTER_NAME);
             assertTrue(record.getSource().snapshot);
             final String tableName = record.getSource().keyspaceTable.name();
             if (tableName.equals(keyspaceTable("cdc_table"))) {
@@ -85,7 +85,7 @@ public class SnapshotProcessorTest extends CassandraConnectorTestBase {
             else {
                 table2.add(record);
             }
-            Assert.assertEquals(record.getSource().offsetPosition, OffsetPosition.defaultOffsetPosition());
+            Assertions.assertEquals(record.getSource().offsetPosition, OffsetPosition.defaultOffsetPosition());
         }
         assertEquals(tableSize, table1.size());
         assertEquals(tableSize, table2.size());
@@ -94,7 +94,7 @@ public class SnapshotProcessorTest extends CassandraConnectorTestBase {
     }
 
     @Test
-    public void testSnapshotSkipsNonCdcEnabledTable() throws Throwable {
+    void testSnapshotSkipsNonCdcEnabledTable() throws Throwable {
         context = provider.provideContext(Configuration.from(TestUtils.generateDefaultConfigMap()));
         CassandraSnapshotMetrics snapshotMetrics = new CassandraSnapshotMetrics((CdcSourceTaskContext) context);
         SnapshotProcessor snapshotProcessor = Mockito.spy(new SnapshotProcessor(context, context.getClusterName(), snapshotMetrics));
@@ -116,7 +116,7 @@ public class SnapshotProcessorTest extends CassandraConnectorTestBase {
     }
 
     @Test
-    public void testSnapshotEmptyTable() throws Throwable {
+    void testSnapshotEmptyTable() throws Throwable {
         context = provider.provideContext(Configuration.from(TestUtils.generateDefaultConfigMap()));
         AtomicBoolean globalTaskState = new AtomicBoolean(true);
         CassandraSnapshotMetrics snapshotMetrics = new CassandraSnapshotMetrics((CdcSourceTaskContext) context);
@@ -143,7 +143,7 @@ public class SnapshotProcessorTest extends CassandraConnectorTestBase {
     }
 
     @Test
-    public void testSnapshotModeAlways() throws Throwable {
+    void testSnapshotModeAlways() throws Throwable {
         Map<String, Object> configs = propertiesForContext();
         configs.put(CassandraConnectorConfig.KAFKA_PRODUCER_CONFIG_PREFIX + ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, TestUtils.TEST_KAFKA_SERVERS);
         configs.put(CassandraConnectorConfig.SNAPSHOT_MODE.name(), "always");
@@ -162,7 +162,7 @@ public class SnapshotProcessorTest extends CassandraConnectorTestBase {
     }
 
     @Test
-    public void testSnapshotModeInitial() throws Throwable {
+    void testSnapshotModeInitial() throws Throwable {
         Map<String, Object> configs = propertiesForContext();
         configs.put(CassandraConnectorConfig.SNAPSHOT_MODE.name(), "initial");
         configs.put(CassandraConnectorConfig.SNAPSHOT_POLL_INTERVAL_MS.name(), "0");
@@ -178,7 +178,7 @@ public class SnapshotProcessorTest extends CassandraConnectorTestBase {
     }
 
     @Test
-    public void testSnapshotModeNever() throws Throwable {
+    void testSnapshotModeNever() throws Throwable {
         Map<String, Object> configs = propertiesForContext();
         configs.put(CassandraConnectorConfig.SNAPSHOT_MODE.name(), "never");
         configs.put(CassandraConnectorConfig.SNAPSHOT_POLL_INTERVAL_MS.name(), "0");

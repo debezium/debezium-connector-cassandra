@@ -8,9 +8,9 @@ package io.debezium.connector.cassandra;
 import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.literal;
 import static io.debezium.connector.cassandra.Event.EventType.CHANGE_EVENT;
 import static io.debezium.connector.cassandra.Record.Operation.INSERT;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 
@@ -18,7 +18,7 @@ import com.datastax.oss.driver.api.querybuilder.QueryBuilder;
 
 import io.debezium.connector.cassandra.utils.TestUtils;
 
-public class SchemaChangeListenerTest extends AbstractCommitLogProcessorTest {
+class SchemaChangeListenerTest extends AbstractCommitLogProcessorTest {
 
     @Override
     public void initialiseData() throws Exception {

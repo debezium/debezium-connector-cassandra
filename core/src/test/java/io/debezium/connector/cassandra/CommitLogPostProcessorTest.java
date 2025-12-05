@@ -8,22 +8,22 @@ package io.debezium.connector.cassandra;
 import static io.debezium.connector.cassandra.utils.TestUtils.clearCommitLogFromDirectory;
 import static io.debezium.connector.cassandra.utils.TestUtils.generateDefaultConfigMap;
 import static io.debezium.connector.cassandra.utils.TestUtils.populateFakeCommitLogsForDirectory;
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
 import java.io.File;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import io.debezium.config.Configuration;
 
-public class CommitLogPostProcessorTest {
+class CommitLogPostProcessorTest {
 
     @Test
-    public void testPostProcessor() throws Exception {
+    void testPostProcessor() throws Exception {
         int expectedArchivedFile = 10;
         int expectedErrorFile = 10;
         final AtomicInteger archivedFileCount = new AtomicInteger(0);

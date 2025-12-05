@@ -5,23 +5,23 @@
  */
 package io.debezium.connector.cassandra;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import io.confluent.kafka.serializers.AbstractKafkaAvroSerDeConfig;
 import io.debezium.config.Configuration;
 
-public class CassandraConnectorConfigTest {
+class CassandraConnectorConfigTest {
 
     @Test
-    public void testConfigs() {
+    void testConfigs() {
         String kafkaTopicPrefix = "test_prefix";
         CassandraConnectorConfig config = buildTaskConfig(CassandraConnectorConfig.TOPIC_PREFIX.name(), kafkaTopicPrefix);
         assertEquals(kafkaTopicPrefix, config.getLogicalName());
@@ -144,7 +144,7 @@ public class CassandraConnectorConfigTest {
     }
 
     @Test
-    public void testDefaultConfigs() {
+    void testDefaultConfigs() {
         Configuration configuration = Configuration.empty()
                 .edit()
                 .with(CassandraConnectorConfig.TOPIC_PREFIX, "someconnector")
@@ -171,7 +171,7 @@ public class CassandraConnectorConfigTest {
     }
 
     @Test
-    public void testSnapshotMode() {
+    void testSnapshotMode() {
         String mode = "initial";
         assertEquals(CassandraConnectorConfig.SnapshotMode.INITIAL, CassandraConnectorConfig.SnapshotMode.fromText(mode).get());
         mode = "INITIAL";
