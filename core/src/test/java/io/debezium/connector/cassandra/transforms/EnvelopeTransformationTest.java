@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.cassandra.transforms;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -14,30 +14,30 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.connector.cassandra.Record;
 import io.debezium.data.Envelope;
 
-public class EnvelopeTransformationTest {
+class EnvelopeTransformationTest {
 
     @Test
-    public void transformOperationInsert() {
+    void transformOperationInsert() {
         testTransformOperation(Record.Operation.INSERT, Envelope.Operation.CREATE);
     }
 
     @Test
-    public void transformOperationUpdate() {
+    void transformOperationUpdate() {
         testTransformOperation(Record.Operation.UPDATE, Envelope.Operation.UPDATE);
     }
 
     @Test
-    public void transformOperationDelete() {
+    void transformOperationDelete() {
         testTransformOperation(Record.Operation.DELETE, Envelope.Operation.DELETE);
     }
 
     @Test
-    public void transformOperationRangeTombostone() {
+    void transformOperationRangeTombostone() {
         testTransformOperation(Record.Operation.RANGE_TOMBSTONE, Envelope.Operation.TRUNCATE);
     }
 

@@ -5,9 +5,9 @@
  */
 package io.debezium.connector.cassandra.utils;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
@@ -15,14 +15,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.connector.cassandra.CommitLogUtil;
 
-public class CommitLogUtilTest {
+class CommitLogUtilTest {
 
     @Test
-    public void testMoveCommitLog() throws IOException {
+    void testMoveCommitLog() throws IOException {
         Path fromDr = Files.createTempDirectory("from");
         Path toDir = Files.createTempDirectory("to");
         assertTrue(new File(fromDr.toString(), "CommitLog-6-1.log").createNewFile());
@@ -38,7 +38,7 @@ public class CommitLogUtilTest {
     }
 
     @Test
-    public void testDeleteCommitLog() throws IOException {
+    void testDeleteCommitLog() throws IOException {
         Path dir = Files.createTempDirectory("temp");
         File commitLog = new File(dir.toString(), "CommitLog-6-1.log");
         File notCommitLog = new File(dir.toString(), "Not-CommitLog-6-1.log");
@@ -56,7 +56,7 @@ public class CommitLogUtilTest {
     }
 
     @Test
-    public void testGetCommitLogs() throws IOException {
+    void testGetCommitLogs() throws IOException {
         Path dir = Files.createTempDirectory("temp");
         for (int i = 0; i < 10; i++) {
             if (i % 2 == 0) {
@@ -70,7 +70,7 @@ public class CommitLogUtilTest {
     }
 
     @Test
-    public void testCompareCommitLogs() {
+    void testCompareCommitLogs() {
         String commit1 = "CommitLog-6-1.log";
         String commit2 = "CommitLog-6-2.log";
         String commit3 = "CommitLog-6-0.log";

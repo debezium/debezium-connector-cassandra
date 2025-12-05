@@ -16,16 +16,16 @@ import static io.debezium.connector.cassandra.Record.Operation.INSERT;
 import static io.debezium.connector.cassandra.Record.Operation.RANGE_TOMBSTONE;
 import static io.debezium.connector.cassandra.utils.TestUtils.TEST_KEYSPACE_NAME;
 import static java.util.Arrays.asList;
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.commons.lang3.tuple.Pair;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.base.ChangeEventQueue;
@@ -34,7 +34,7 @@ import io.debezium.connector.cassandra.spi.ProvidersResolver;
 import io.debezium.connector.cassandra.utils.TestUtils;
 import io.debezium.time.Conversions;
 
-public class QueueProcessorTest {
+class QueueProcessorTest {
     private CassandraConnectorContext context;
     private QueueProcessor queueProcessor;
     private TestingKafkaRecordEmitter emitter;
@@ -47,8 +47,8 @@ public class QueueProcessorTest {
         return ProvidersResolver.resolveConnectorContextProvider().provideContextWithoutSchemaManagement(configuration);
     }
 
-    @Before
-    public void setUp() throws Exception {
+    @BeforeEach
+    void setUp() throws Exception {
         context = generateTaskContext(Configuration.from(TestUtils.generateDefaultConfigMap()));
         emitter = new TestingKafkaRecordEmitter(
                 context.getCassandraConnectorConfig(),
@@ -85,13 +85,13 @@ public class QueueProcessorTest {
                 Conversions.toInstantFromMicros(System.currentTimeMillis() * 1000));
     }
 
-    @After
-    public void tearDown() {
+    @AfterEach
+    void tearDown() {
         context.cleanUp();
     }
 
     @Test
-    public void testInsertChangeRecordProcessing() throws Exception {
+    void testInsertChangeRecordProcessing() throws Exception {
         ChangeEventQueue<Event> queue = context.getQueues().get(0);
         Record record = new ChangeRecord(sourceInfo, rowData, keyValueSchema.keySchema(),
                 keyValueSchema.valueSchema(), INSERT, false);
@@ -107,7 +107,7 @@ public class QueueProcessorTest {
     }
 
     @Test
-    public void testRangeTombstoneChangeRecordProcessing() throws Exception {
+    void testRangeTombstoneChangeRecordProcessing() throws Exception {
         ChangeEventQueue<Event> queue = context.getQueues().get(0);
 
         Map<String, Pair<String, String>> values1 = new HashMap<>();
@@ -136,7 +136,7 @@ public class QueueProcessorTest {
     }
 
     @Test
-    public void testProcessTombstoneRecords() throws Exception {
+    void testProcessTombstoneRecords() throws Exception {
         ChangeEventQueue<Event> queue = context.getQueues().get(0);
         Record record = new TombstoneRecord(sourceInfo, rowData, keyValueSchema.keySchema());
 
@@ -151,7 +151,7 @@ public class QueueProcessorTest {
     }
 
     @Test
-    public void testProcessEofEvent() throws Exception {
+    void testProcessEofEvent() throws Exception {
         ChangeEventQueue<Event> queue = context.getQueues().get(0);
         File commitLogFile = new File("non-existing-log-file-path");
         queue.enqueue(new EOFEvent(commitLogFile));

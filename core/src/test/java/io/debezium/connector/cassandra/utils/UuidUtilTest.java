@@ -5,18 +5,18 @@
  */
 package io.debezium.connector.cassandra.utils;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.UUID;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.connector.cassandra.transforms.UuidUtil;
 
-public class UuidUtilTest {
+class UuidUtilTest {
 
     @Test
-    public void testUuidUtil() {
+    void testUuidUtil() {
         UUID uuid = UUID.randomUUID();
         assertEquals(uuid, UuidUtil.asUuid(UuidUtil.asBytes(uuid)));
     }

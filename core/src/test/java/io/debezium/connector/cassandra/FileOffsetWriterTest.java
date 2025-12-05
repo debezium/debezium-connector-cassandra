@@ -5,9 +5,10 @@
  */
 package io.debezium.connector.cassandra;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -16,15 +17,15 @@ import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 
 import org.apache.kafka.connect.data.Schema;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorTaskException;
 import io.debezium.connector.cassandra.utils.TestUtils;
 import io.debezium.time.Conversions;
 
-public class FileOffsetWriterTest {
+class FileOffsetWriterTest {
 
     private Path offsetDir;
     private OffsetWriter offsetWriter;
@@ -33,8 +34,8 @@ public class FileOffsetWriterTest {
     private CassandraSchemaFactory schemaFactory = CassandraSchemaFactory.get();
     private CassandraConnectorConfig config;
 
-    @Before
-    public void setUp() throws IOException {
+    @BeforeEach
+    void setUp() throws IOException {
         config = new CassandraConnectorConfig(Configuration.from(TestUtils.generateDefaultConfigMap()));
         offsetDir = Path.of(config.offsetBackingStoreDir());
         offsetWriter = new FileOffsetWriter(config);
@@ -43,7 +44,7 @@ public class FileOffsetWriterTest {
     }
 
     @Test
-    public void testMarkOffset() {
+    void testMarkOffset() {
         ChangeRecord snapshotRecord = generateRecord(true, true,
                 new OffsetPosition("", -1),
                 new KeyspaceTable("test_keyspace", "test_table"));
@@ -84,7 +85,7 @@ public class FileOffsetWriterTest {
     }
 
     @Test
-    public void testFlush() throws IOException {
+    void testFlush() throws IOException {
         offsetWriter.flush();
         try (FileInputStream fis = new FileInputStream(offsetDir.toString() + "/" + FileOffsetWriter.SNAPSHOT_OFFSET_FILE)) {
             snapshotProps.load(fis);
@@ -131,9 +132,11 @@ public class FileOffsetWriterTest {
                 commitLogProps.getProperty(new KeyspaceTable("test_keyspace", "test_another_table").name()));
     }
 
-    @Test(expected = CassandraConnectorTaskException.class)
-    public void testTwoFileWriterCannotCoexist() throws IOException {
-        new FileOffsetWriter(config);
+    @Test
+    void testTwoFileWriterCannotCoexist() {
+        assertThrows(CassandraConnectorTaskException.class, () -> {
+            new FileOffsetWriter(config);
+        });
     }
 
     private ChangeRecord generateRecord(boolean markOffset, boolean isSnapshot, OffsetPosition offsetPosition, KeyspaceTable keyspaceTable) {

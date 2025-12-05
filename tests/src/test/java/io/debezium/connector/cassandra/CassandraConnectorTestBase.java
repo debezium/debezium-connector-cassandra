@@ -18,13 +18,13 @@ import java.time.Duration;
 import java.util.Set;
 import java.util.function.Consumer;
 
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.ClassRule;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.testcontainers.containers.BindMode;
 import org.testcontainers.containers.Container;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.images.builder.ImageFromDockerfile;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.querybuilder.SchemaBuilder;
@@ -37,6 +37,7 @@ import io.debezium.connector.cassandra.spi.CassandraTestProvider;
 import io.debezium.connector.cassandra.utils.TestUtils;
 import io.debezium.util.Testing;
 
+@Testcontainers
 public abstract class CassandraConnectorTestBase {
 
     public static final String CLUSTER_NAME = "Test Cluster";
@@ -48,22 +49,22 @@ public abstract class CassandraConnectorTestBase {
     protected CassandraConnectorContext context;
     protected CassandraTestProvider provider;
 
-    @ClassRule
-    public static GenericContainer cassandra = new GenericContainer(new ImageFromDockerfile().withFileFromPath(".", (new File(dockerDir)).toPath()))
+    @org.testcontainers.junit.jupiter.Container
+    static GenericContainer cassandra = new GenericContainer(new ImageFromDockerfile().withFileFromPath(".", (new File(dockerDir)).toPath()))
             .withExposedPorts(9042)
             .withStartupTimeout(Duration.ofMinutes(3))
             .withCreateContainerCmdModifier(cmd)
             .withFileSystemBind(cassandraDir, CASSANDRA_SERVER_DIR, BindMode.READ_WRITE)
             .withCommand("-Dcassandra.ring_delay_ms=5000 -Dcassandra.superuser_setup_delay_ms=1000");
 
-    @BeforeClass
-    public static void setUpClass() throws Exception {
+    @BeforeAll
+    static void setUpClass() throws Exception {
         waitForCql();
         TestUtils.createTestKeyspace();
     }
 
-    @AfterClass
-    public static void tearDownClass() throws Throwable {
+    @AfterAll
+    static void tearDownClass() throws Throwable {
         Container.ExecResult rm = cassandra.execInContainer("rm",
                 "-rf",
                 "/var/lib/cassandra/hints",

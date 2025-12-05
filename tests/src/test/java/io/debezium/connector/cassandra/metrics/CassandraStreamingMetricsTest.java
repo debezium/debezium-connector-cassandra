@@ -7,10 +7,10 @@ package io.debezium.connector.cassandra.metrics;
 
 import static io.debezium.connector.cassandra.utils.TestUtils.deleteTestKeyspaceTables;
 import static io.debezium.connector.cassandra.utils.TestUtils.deleteTestOffsets;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.lang.management.ManagementFactory;
 
@@ -18,9 +18,9 @@ import javax.management.InstanceNotFoundException;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.cassandra.CassandraConnectorTestBase;
@@ -28,14 +28,14 @@ import io.debezium.connector.cassandra.spi.ProvidersResolver;
 import io.debezium.connector.cassandra.utils.TestUtils;
 import io.debezium.connector.common.CdcSourceTaskContext;
 
-public class CassandraStreamingMetricsTest extends CassandraConnectorTestBase {
+class CassandraStreamingMetricsTest extends CassandraConnectorTestBase {
 
     private CassandraStreamingMetrics streamingMetrics;
     private MBeanServer mBeanServer;
     private ObjectName streamingMetricsObjectName;
 
-    @Before
-    public void setUp() throws Exception {
+    @BeforeEach
+    void setUp() throws Exception {
         // Setup context and processing
         provider = ProvidersResolver.resolveConnectorContextProvider();
         try {
@@ -56,8 +56,8 @@ public class CassandraStreamingMetricsTest extends CassandraConnectorTestBase {
         streamingMetricsObjectName = new ObjectName("debezium.cassandra:type=connector-metrics,context=streaming,server=" + serverName);
     }
 
-    @After
-    public void tearDown() throws Exception {
+    @AfterEach
+    void tearDown() throws Exception {
         deleteTestOffsets(context);
         streamingMetrics.unregisterMetrics();
         deleteTestKeyspaceTables();
@@ -65,64 +65,64 @@ public class CassandraStreamingMetricsTest extends CassandraConnectorTestBase {
     }
 
     @Test
-    public void testStreamingMetricsRegistration() throws Exception {
+    void testStreamingMetricsRegistration() throws Exception {
         // Verify that streaming metrics MBean is registered
-        assertTrue("Streaming metrics MBean should be registered",
-                mBeanServer.isRegistered(streamingMetricsObjectName));
+        assertTrue(mBeanServer.isRegistered(streamingMetricsObjectName),
+                "Streaming metrics MBean should be registered");
 
         // Verify initial values
-        assertEquals("Initial commit log position should be -1",
-                -1L,
-                mBeanServer.getAttribute(streamingMetricsObjectName, "CommitLogPosition"));
+        assertEquals(-1L,
+                mBeanServer.getAttribute(streamingMetricsObjectName, "CommitLogPosition"),
+                "Initial commit log position should be -1");
 
-        assertEquals("Initial processed mutations should be 0",
-                0L,
-                mBeanServer.getAttribute(streamingMetricsObjectName, "NumberOfProcessedMutations"));
+        assertEquals(0L,
+                mBeanServer.getAttribute(streamingMetricsObjectName, "NumberOfProcessedMutations"),
+                "Initial processed mutations should be 0");
 
-        assertEquals("Initial unrecoverable errors should be 0",
-                0L,
-                mBeanServer.getAttribute(streamingMetricsObjectName, "NumberOfUnrecoverableErrors"));
+        assertEquals(0L,
+                mBeanServer.getAttribute(streamingMetricsObjectName, "NumberOfUnrecoverableErrors"),
+                "Initial unrecoverable errors should be 0");
 
         // Commit log filename should be null initially
-        assertNull("Initial commit log filename should be null", mBeanServer.getAttribute(streamingMetricsObjectName, "CommitLogFilename"));
+        assertNull(mBeanServer.getAttribute(streamingMetricsObjectName, "CommitLogFilename"), "Initial commit log filename should be null");
     }
 
     @Test
-    public void testStreamingMetricsUpdates() throws Exception {
+    void testStreamingMetricsUpdates() throws Exception {
         // Set commit log filename
         String testFilename = "CommitLog-1234567890.log";
         streamingMetrics.setCommitLogFilename(testFilename);
 
-        assertEquals("Commit log filename should be updated",
-                testFilename,
-                mBeanServer.getAttribute(streamingMetricsObjectName, "CommitLogFilename"));
+        assertEquals(testFilename,
+                mBeanServer.getAttribute(streamingMetricsObjectName, "CommitLogFilename"),
+                "Commit log filename should be updated");
 
         // Set commit log position
         long testPosition = 12345L;
         streamingMetrics.setCommitLogPosition(testPosition);
 
-        assertEquals("Commit log position should be updated",
-                testPosition,
-                mBeanServer.getAttribute(streamingMetricsObjectName, "CommitLogPosition"));
+        assertEquals(testPosition,
+                mBeanServer.getAttribute(streamingMetricsObjectName, "CommitLogPosition"),
+                "Commit log position should be updated");
 
         // Simulate successful mutation processing
         streamingMetrics.onSuccess();
         streamingMetrics.onSuccess();
 
-        assertEquals("Processed mutations should be incremented",
-                2L,
-                mBeanServer.getAttribute(streamingMetricsObjectName, "NumberOfProcessedMutations"));
+        assertEquals(2L,
+                mBeanServer.getAttribute(streamingMetricsObjectName, "NumberOfProcessedMutations"),
+                "Processed mutations should be incremented");
 
         // Simulate unrecoverable error
         streamingMetrics.onUnrecoverableError();
 
-        assertEquals("Unrecoverable errors should be incremented",
-                1L,
-                mBeanServer.getAttribute(streamingMetricsObjectName, "NumberOfUnrecoverableErrors"));
+        assertEquals(1L,
+                mBeanServer.getAttribute(streamingMetricsObjectName, "NumberOfUnrecoverableErrors"),
+                "Unrecoverable errors should be incremented");
     }
 
     @Test
-    public void testStreamingMetricsReset() throws Exception {
+    void testStreamingMetricsReset() throws Exception {
         // Update some metrics
         streamingMetrics.setCommitLogFilename("test.log");
         streamingMetrics.setCommitLogPosition(100L);
@@ -130,35 +130,35 @@ public class CassandraStreamingMetricsTest extends CassandraConnectorTestBase {
         streamingMetrics.onUnrecoverableError();
 
         // Verify metrics are set
-        assertNotNull("Commit log filename should be set",
-                mBeanServer.getAttribute(streamingMetricsObjectName, "CommitLogFilename"));
-        assertTrue("Processed mutations should be greater than 0",
-                (Long) mBeanServer.getAttribute(streamingMetricsObjectName, "NumberOfProcessedMutations") > 0);
+        assertNotNull(mBeanServer.getAttribute(streamingMetricsObjectName, "CommitLogFilename"),
+                "Commit log filename should be set");
+        assertTrue((Long) mBeanServer.getAttribute(streamingMetricsObjectName, "NumberOfProcessedMutations") > 0,
+                "Processed mutations should be greater than 0");
 
         // Reset metrics
         streamingMetrics.reset();
 
         // Verify metrics are reset
-        assertNull("Commit log filename should be null after reset", mBeanServer.getAttribute(streamingMetricsObjectName, "CommitLogFilename"));
+        assertNull(mBeanServer.getAttribute(streamingMetricsObjectName, "CommitLogFilename"), "Commit log filename should be null after reset");
 
-        assertEquals("Commit log position should be -1 after reset",
-                -1L,
-                mBeanServer.getAttribute(streamingMetricsObjectName, "CommitLogPosition"));
+        assertEquals(-1L,
+                mBeanServer.getAttribute(streamingMetricsObjectName, "CommitLogPosition"),
+                "Commit log position should be -1 after reset");
 
-        assertEquals("Processed mutations should be 0 after reset",
-                0L,
-                mBeanServer.getAttribute(streamingMetricsObjectName, "NumberOfProcessedMutations"));
+        assertEquals(0L,
+                mBeanServer.getAttribute(streamingMetricsObjectName, "NumberOfProcessedMutations"),
+                "Processed mutations should be 0 after reset");
 
-        assertEquals("Unrecoverable errors should be 0 after reset",
-                0L,
-                mBeanServer.getAttribute(streamingMetricsObjectName, "NumberOfUnrecoverableErrors"));
+        assertEquals(0L,
+                mBeanServer.getAttribute(streamingMetricsObjectName, "NumberOfUnrecoverableErrors"),
+                "Unrecoverable errors should be 0 after reset");
     }
 
     @Test
-    public void testStreamingMetricsUnregistration() throws Exception {
+    void testStreamingMetricsUnregistration() throws Exception {
         // Verify MBean is registered
-        assertTrue("Streaming metrics MBean should be registered",
-                mBeanServer.isRegistered(streamingMetricsObjectName));
+        assertTrue(mBeanServer.isRegistered(streamingMetricsObjectName),
+                "Streaming metrics MBean should be registered");
 
         // Unregister metrics
         streamingMetrics.unregisterMetrics();

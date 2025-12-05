@@ -14,8 +14,8 @@ import static io.debezium.connector.cassandra.Record.Operation.RANGE_TOMBSTONE;
 import static io.debezium.connector.cassandra.utils.TestUtils.TEST_KEYSPACE_NAME;
 import static io.debezium.connector.cassandra.utils.TestUtils.TEST_TABLE_NAME;
 import static io.debezium.connector.cassandra.utils.TestUtils.runCql;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import java.util.List;
 
@@ -23,7 +23,7 @@ import org.apache.commons.lang3.tuple.Pair;
 
 import io.debezium.connector.cassandra.CassandraSchemaFactory.RangeData;
 
-public class RangeTombstoneCommitLogProcessingTest extends AbstractCommitLogProcessorTest {
+class RangeTombstoneCommitLogProcessingTest extends AbstractCommitLogProcessorTest {
 
     @Override
     public void initialiseData() throws Exception {

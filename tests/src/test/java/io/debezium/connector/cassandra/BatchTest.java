@@ -21,7 +21,7 @@ import java.util.HashMap;
 
 import com.datastax.oss.driver.api.core.cql.BatchStatementBuilder;
 
-public class BatchTest extends AbstractCommitLogProcessorTest {
+class BatchTest extends AbstractCommitLogProcessorTest {
     @Override
     public void initialiseData() throws Exception {
         createTable("CREATE TABLE %s.%s (\n" +
