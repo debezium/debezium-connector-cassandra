@@ -8,7 +8,6 @@ package io.debezium.connector.cassandra;
 import static io.debezium.connector.cassandra.transforms.CassandraTypeKafkaSchemaBuilders.BOOLEAN_TYPE;
 import static io.debezium.connector.cassandra.transforms.CassandraTypeKafkaSchemaBuilders.BYTES_TYPE;
 import static io.debezium.connector.cassandra.transforms.CassandraTypeKafkaSchemaBuilders.BYTE_TYPE;
-import static io.debezium.connector.cassandra.transforms.CassandraTypeKafkaSchemaBuilders.DATE_TYPE;
 import static io.debezium.connector.cassandra.transforms.CassandraTypeKafkaSchemaBuilders.DOUBLE_TYPE;
 import static io.debezium.connector.cassandra.transforms.CassandraTypeKafkaSchemaBuilders.FLOAT_TYPE;
 import static io.debezium.connector.cassandra.transforms.CassandraTypeKafkaSchemaBuilders.INT_TYPE;
@@ -87,7 +86,6 @@ public class Cassandra4TypeProvider implements CassandraTypeProvider {
                 new BasicTypeDeserializer(deserializer, ProtocolConstants.DataType.BIGINT, LongType.instance, LONG_TYPE),
                 new BasicTypeDeserializer(deserializer, ProtocolConstants.DataType.TIME, TimeType.instance, LONG_TYPE),
                 new BasicTypeDeserializer(deserializer, ProtocolConstants.DataType.COUNTER, CounterColumnType.instance, LONG_TYPE),
-                new BasicTypeDeserializer(deserializer, ProtocolConstants.DataType.DATE, SimpleDateType.instance, DATE_TYPE),
                 // Logical Types
                 new SimpleDateDeserializer(deserializer, SimpleDateType.instance),
                 new InetAddressDeserializer(deserializer, InetAddressType.instance),

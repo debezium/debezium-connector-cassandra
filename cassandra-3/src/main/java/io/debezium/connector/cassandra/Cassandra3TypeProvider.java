@@ -8,7 +8,6 @@ package io.debezium.connector.cassandra;
 import static io.debezium.connector.cassandra.transforms.CassandraTypeKafkaSchemaBuilders.BOOLEAN_TYPE;
 import static io.debezium.connector.cassandra.transforms.CassandraTypeKafkaSchemaBuilders.BYTES_TYPE;
 import static io.debezium.connector.cassandra.transforms.CassandraTypeKafkaSchemaBuilders.BYTE_TYPE;
-import static io.debezium.connector.cassandra.transforms.CassandraTypeKafkaSchemaBuilders.DATE_TYPE;
 import static io.debezium.connector.cassandra.transforms.CassandraTypeKafkaSchemaBuilders.DOUBLE_TYPE;
 import static io.debezium.connector.cassandra.transforms.CassandraTypeKafkaSchemaBuilders.FLOAT_TYPE;
 import static io.debezium.connector.cassandra.transforms.CassandraTypeKafkaSchemaBuilders.INT_TYPE;
