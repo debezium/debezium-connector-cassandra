@@ -408,15 +408,16 @@ class CassandraTypeDeserializerTest {
 
     @Test
     void testSimpleDateType() {
-        Integer expectedDate = 17953;
+        String dateString = "2019-02-19";
+        Integer expectedDaysSinceEpoch = 17946;
 
-        ByteBuffer serializedDate = SimpleDateType.instance.decompose(expectedDate);
+        ByteBuffer serializedDate = SimpleDateType.instance.fromString(dateString);
 
-        Object deserializedShort = CassandraTypeDeserializer.deserialize(SimpleDateType.instance, serializedDate);
-        assertEquals(expectedDate, deserializedShort);
+        Object deserializedDate = CassandraTypeDeserializer.deserialize(SimpleDateType.instance, serializedDate);
+        assertEquals(expectedDaysSinceEpoch, deserializedDate);
 
-        deserializedShort = CassandraTypeDeserializer.deserialize(DataTypes.DATE, serializedDate);
-        assertEquals(expectedDate, deserializedShort);
+        deserializedDate = CassandraTypeDeserializer.deserialize(DataTypes.DATE, serializedDate);
+        assertEquals(expectedDaysSinceEpoch, deserializedDate);
     }
 
     @Test
