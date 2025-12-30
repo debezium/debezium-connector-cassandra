@@ -57,6 +57,7 @@ import io.debezium.connector.cassandra.transforms.type.deserializer.AbstractType
 import io.debezium.connector.cassandra.transforms.type.deserializer.BasicTypeDeserializer;
 import io.debezium.connector.cassandra.transforms.type.deserializer.DecimalTypeDeserializer;
 import io.debezium.connector.cassandra.transforms.type.deserializer.InetAddressDeserializer;
+import io.debezium.connector.cassandra.transforms.type.deserializer.SimpleDateDeserializer;
 import io.debezium.connector.cassandra.transforms.type.deserializer.TimeUUIDTypeDeserializer;
 import io.debezium.connector.cassandra.transforms.type.deserializer.TimestampTypeDeserializer;
 import io.debezium.connector.cassandra.transforms.type.deserializer.UUIDTypeDeserializer;
@@ -88,6 +89,7 @@ public class Cassandra4TypeProvider implements CassandraTypeProvider {
                 new BasicTypeDeserializer(deserializer, ProtocolConstants.DataType.COUNTER, CounterColumnType.instance, LONG_TYPE),
                 new BasicTypeDeserializer(deserializer, ProtocolConstants.DataType.DATE, SimpleDateType.instance, DATE_TYPE),
                 // Logical Types
+                new SimpleDateDeserializer(deserializer, SimpleDateType.instance),
                 new InetAddressDeserializer(deserializer, InetAddressType.instance),
                 new TimestampTypeDeserializer(deserializer, TimestampType.instance),
                 new UUIDTypeDeserializer(deserializer, UUIDType.instance),
