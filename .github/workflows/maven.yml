@@ -43,7 +43,7 @@ jobs:
           distribution: 'temurin'
           java-version: 21
       - name: Build Debezium Core
-        run: ./cassandra/mvnw clean install -f core/pom.xml -pl debezium-bom,debezium-core,debezium-storage -am -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        run: ./cassandra/mvnw clean install -f core/pom.xml -pl debezium-bom,debezium-core,debezium-embedded,debezium-storage -am -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
       - name: Install dse dependency artifacts
         working-directory: ./cassandra
         run: sh ./install-artifacts.sh
