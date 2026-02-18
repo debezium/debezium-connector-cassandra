@@ -73,6 +73,7 @@ public class KafkaRecordEmitter implements Emitter {
     private void callback(Record record, Exception exception) {
         if (exception != null) {
             LOGGER.error("Failed to emit record {}", record, exception);
+            erroneousCommitLogs.add(record.getSource().offsetPosition.fileName);
             return;
         }
         long emitted = emitCount.incrementAndGet();
@@ -101,6 +102,11 @@ public class KafkaRecordEmitter implements Emitter {
         if (isSnapshot) {
             LOGGER.debug("Mark snapshot offset for table '{}'", sourceTable);
         }
+    }
+
+    @Override
+    public void flush() {
+        producer.flush();
     }
 
     public void close() throws Exception {
