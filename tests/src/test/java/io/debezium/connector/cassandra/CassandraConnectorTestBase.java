@@ -32,6 +32,7 @@ import com.github.dockerjava.api.command.CreateContainerCmd;
 import com.github.dockerjava.api.model.ExposedPort;
 import com.github.dockerjava.api.model.PortBinding;
 import com.github.dockerjava.api.model.Ports;
+import com.sun.security.auth.module.UnixSystem;
 
 import io.debezium.connector.cassandra.spi.CassandraTestProvider;
 import io.debezium.connector.cassandra.utils.TestUtils;
@@ -44,7 +45,8 @@ public abstract class CassandraConnectorTestBase {
     public static final String CASSANDRA_SERVER_DIR = "/var/lib/cassandra";
     private static final String cassandraDir = createCassandraDir();
     private static final String dockerDir = System.getProperty("docker.dir", "docker");
-    private static final Consumer<CreateContainerCmd> cmd = e -> e.getHostConfig().withPortBindings(new PortBinding(Ports.Binding.bindPort(9042), new ExposedPort(9042)));
+    private static final Consumer<CreateContainerCmd> cmd = createCmd -> createCmd.getHostConfig()
+            .withPortBindings(new PortBinding(Ports.Binding.bindPort(9042), new ExposedPort(9042)));
 
     protected CassandraConnectorContext context;
     protected CassandraTestProvider provider;
@@ -73,6 +75,10 @@ public abstract class CassandraConnectorTestBase {
                 "/var/lib/cassandra/commitlog",
                 "/var/lib/cassandra/cdc_raw",
                 "/var/lib/cassandra/saved_caches");
+        String owner = resolveHostOwner();
+        if (owner != null) {
+            cassandra.execInContainer("sh", "-c", "chown -R " + owner + " " + CASSANDRA_SERVER_DIR + " || true");
+        }
         cassandra.stop();
     }
 
@@ -103,7 +109,7 @@ public abstract class CassandraConnectorTestBase {
 
     protected static String createCassandraDir(String path) {
         try {
-            File cassandraDir = Testing.Files.createTestingDirectory(path, true);
+            File cassandraDir = Testing.Files.createTestingDirectory(path, false);
             // The directory will be bind-mounted into container where Cassandra runs under
             // cassandra user. Therefore we have to change permissions for all users so that
             // Cassandra from container can write into this dir.
@@ -127,5 +133,18 @@ public abstract class CassandraConnectorTestBase {
         createCassandraDir("cassandra/cdc_raw");
         createCassandraDir("cassandra/saved_caches");
         return cassandraDir;
+    }
+
+    private static String resolveHostOwner() {
+        if (!System.getProperty("os.name").toLowerCase().contains("linux")) {
+            return null;
+        }
+        try {
+            UnixSystem unixSystem = new UnixSystem();
+            return unixSystem.getUid() + ":" + unixSystem.getGid();
+        }
+        catch (Exception ignored) {
+            return null;
+        }
     }
 }
