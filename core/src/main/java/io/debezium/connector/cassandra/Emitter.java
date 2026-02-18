@@ -7,4 +7,7 @@ package io.debezium.connector.cassandra;
 
 public interface Emitter extends AutoCloseable {
     void emit(Record record);
+
+    default void flush() {
+    }
 }
