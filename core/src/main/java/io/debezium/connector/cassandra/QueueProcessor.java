@@ -102,6 +102,7 @@ public class QueueProcessor extends AbstractProcessor {
                 Path commitLog = Paths.get(eofEvent.file.getAbsolutePath());
                 String commitLogFileName = commitLog.getFileName().toString();
                 LOGGER.info("Encountered EOF event for {} ...", commitLogFileName);
+                recordEmitter.flush();
                 String folder = erroneousCommitLogs.contains(commitLogFileName) ? ERROR_FOLDER : ARCHIVE_FOLDER;
                 Path relocationDir = Paths.get(commitLogRelocationDir, folder);
                 CommitLogUtil.moveCommitLog(commitLog, relocationDir);

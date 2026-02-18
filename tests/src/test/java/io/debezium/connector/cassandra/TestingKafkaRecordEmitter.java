@@ -34,4 +34,8 @@ public class TestingKafkaRecordEmitter extends KafkaRecordEmitter {
         records.add(producerRecord);
         return producerRecord;
     }
+
+    @Override
+    public void flush() {
+    }
 }
