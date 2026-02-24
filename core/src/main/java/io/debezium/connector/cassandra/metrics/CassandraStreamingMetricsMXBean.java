@@ -17,4 +17,6 @@ public interface CassandraStreamingMetricsMXBean {
     long getNumberOfProcessedMutations();
 
     long getNumberOfUnrecoverableErrors();
+
+    long getCdcDirectoryTotalBytes();
 }

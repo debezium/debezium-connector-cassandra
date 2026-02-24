@@ -22,6 +22,7 @@ public class CassandraStreamingMetrics extends Metrics implements CassandraStrea
     private final AtomicLong commitLogPosition = new AtomicLong(-1L);
     private final AtomicLong numberOfProcessedMutations = new AtomicLong();
     private final AtomicLong numberOfUnrecoverableErrors = new AtomicLong();
+    private final AtomicLong cdcDirectoryTotalBytes = new AtomicLong();
 
     public CassandraStreamingMetrics(CdcSourceTaskContext taskContext) {
         super(taskContext, "streaming");
@@ -32,6 +33,7 @@ public class CassandraStreamingMetrics extends Metrics implements CassandraStrea
         numberOfUnrecoverableErrors.set(0);
         commitLogFilename = null;
         commitLogPosition.set(-1L);
+        cdcDirectoryTotalBytes.set(0);
     }
 
     public void registerMetrics() {
@@ -77,5 +79,14 @@ public class CassandraStreamingMetrics extends Metrics implements CassandraStrea
 
     public void onUnrecoverableError() {
         numberOfUnrecoverableErrors.incrementAndGet();
+    }
+
+    @Override
+    public long getCdcDirectoryTotalBytes() {
+        return cdcDirectoryTotalBytes.get();
+    }
+
+    public void setCdcDirectoryTotalBytes(long bytes) {
+        this.cdcDirectoryTotalBytes.set(bytes);
     }
 }
