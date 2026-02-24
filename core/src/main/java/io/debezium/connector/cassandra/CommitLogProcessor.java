@@ -17,6 +17,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -112,6 +113,7 @@ public class CommitLogProcessor extends AbstractProcessor {
             }
             initial = false;
         }
+        metrics.setCdcDirectoryTotalBytes(FileUtils.sizeOfDirectory(cdcDir));
         watcher.poll();
     }
 
