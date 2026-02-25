@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.cassandra.metrics;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -191,5 +192,15 @@ public class CassandraSnapshotMetrics extends Metrics implements SnapshotMetrics
     @Override
     public String getChunkId() {
         return "";
+    }
+
+    @Override
+    public Map<String, Long> getTableChunkCounts() {
+        return Collections.emptyMap();
+    }
+
+    @Override
+    public Map<String, Long> getTableChunksCompletedCounts() {
+        return Collections.emptyMap();
     }
 }
