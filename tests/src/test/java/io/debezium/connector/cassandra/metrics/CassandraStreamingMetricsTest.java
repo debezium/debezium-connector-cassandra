@@ -85,6 +85,10 @@ class CassandraStreamingMetricsTest extends CassandraConnectorTestBase {
 
         // Commit log filename should be null initially
         assertNull(mBeanServer.getAttribute(streamingMetricsObjectName, "CommitLogFilename"), "Initial commit log filename should be null");
+
+        assertEquals(0L,
+                mBeanServer.getAttribute(streamingMetricsObjectName, "CdcDirectoryTotalBytes"),
+                "Initial CDC directory total bytes should be 0");
     }
 
     @Test
@@ -119,6 +123,14 @@ class CassandraStreamingMetricsTest extends CassandraConnectorTestBase {
         assertEquals(1L,
                 mBeanServer.getAttribute(streamingMetricsObjectName, "NumberOfUnrecoverableErrors"),
                 "Unrecoverable errors should be incremented");
+
+        // Set CDC directory total bytes
+        long testBytes = 1048576L;
+        streamingMetrics.setCdcDirectoryTotalBytes(testBytes);
+
+        assertEquals(testBytes,
+                mBeanServer.getAttribute(streamingMetricsObjectName, "CdcDirectoryTotalBytes"),
+                "CDC directory total bytes should be updated");
     }
 
     @Test
@@ -128,12 +140,16 @@ class CassandraStreamingMetricsTest extends CassandraConnectorTestBase {
         streamingMetrics.setCommitLogPosition(100L);
         streamingMetrics.onSuccess();
         streamingMetrics.onUnrecoverableError();
+        streamingMetrics.setCdcDirectoryTotalBytes(512L);
 
         // Verify metrics are set
         assertNotNull(mBeanServer.getAttribute(streamingMetricsObjectName, "CommitLogFilename"),
                 "Commit log filename should be set");
         assertTrue((Long) mBeanServer.getAttribute(streamingMetricsObjectName, "NumberOfProcessedMutations") > 0,
                 "Processed mutations should be greater than 0");
+        assertEquals(512L,
+                mBeanServer.getAttribute(streamingMetricsObjectName, "CdcDirectoryTotalBytes"),
+                "CDC directory total bytes should be set");
 
         // Reset metrics
         streamingMetrics.reset();
@@ -152,6 +168,10 @@ class CassandraStreamingMetricsTest extends CassandraConnectorTestBase {
         assertEquals(0L,
                 mBeanServer.getAttribute(streamingMetricsObjectName, "NumberOfUnrecoverableErrors"),
                 "Unrecoverable errors should be 0 after reset");
+
+        assertEquals(0L,
+                mBeanServer.getAttribute(streamingMetricsObjectName, "CdcDirectoryTotalBytes"),
+                "CDC directory total bytes should be 0 after reset");
     }
 
     @Test
