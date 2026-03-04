@@ -6,6 +6,7 @@
 package io.debezium.connector.cassandra;
 
 import static io.debezium.connector.cassandra.utils.TestUtils.generateDefaultConfigMap;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
@@ -56,5 +57,75 @@ class QueueProcessorTest {
             Files.deleteIfExists(commitLog.toPath());
             Files.deleteIfExists(commitLogDir);
         }
+    }
+
+    @Test
+    void shouldAddToReprocessingWhenEofMovesFileToErrorFolder() throws Exception {
+        CassandraConnectorConfig config = new CassandraConnectorConfig(Configuration.from(generateDefaultConfigMap()));
+        DefaultCassandraConnectorContext context = new DefaultCassandraConnectorContext(config);
+        String commitLogFileName = "CommitLog-6-100.log";
+        // Pre-mark the file as erroneous so the EOF handler routes it to error/
+        context.getErroneousCommitLogs().add(commitLogFileName);
+
+        QueueProcessor processor = new QueueProcessor(context, 0, noopEmitter());
+
+        Path commitLogDir = Files.createTempDirectory("dbz-1647-error");
+        File commitLog = commitLogDir.resolve(commitLogFileName).toFile();
+        assertTrue(commitLog.createNewFile());
+
+        try {
+            processor.initialize();
+            context.getQueues().get(0).enqueue(new EOFEvent(commitLog));
+            processor.process();
+
+            assertTrue(context.getReprocessingCommitLogs().contains(commitLogFileName),
+                    "erroneous commit log should be added to reprocessingCommitLogs so offset check is bypassed on reprocessing");
+        }
+        finally {
+            context.cleanUp();
+            Files.deleteIfExists(commitLog.toPath());
+            Files.deleteIfExists(commitLogDir);
+        }
+    }
+
+    @Test
+    void shouldRemoveFromReprocessingWhenEofMovesFileToArchiveFolder() throws Exception {
+        CassandraConnectorConfig config = new CassandraConnectorConfig(Configuration.from(generateDefaultConfigMap()));
+        DefaultCassandraConnectorContext context = new DefaultCassandraConnectorContext(config);
+        String commitLogFileName = "CommitLog-6-100.log";
+        // Simulate a file that was being reprocessed
+        context.getReprocessingCommitLogs().add(commitLogFileName);
+
+        QueueProcessor processor = new QueueProcessor(context, 0, noopEmitter());
+
+        Path commitLogDir = Files.createTempDirectory("dbz-1647-archive");
+        File commitLog = commitLogDir.resolve(commitLogFileName).toFile();
+        assertTrue(commitLog.createNewFile());
+
+        try {
+            processor.initialize();
+            context.getQueues().get(0).enqueue(new EOFEvent(commitLog));
+            processor.process();
+
+            assertFalse(context.getReprocessingCommitLogs().contains(commitLogFileName),
+                    "successfully archived commit log should be removed from reprocessingCommitLogs");
+        }
+        finally {
+            context.cleanUp();
+            Files.deleteIfExists(commitLog.toPath());
+            Files.deleteIfExists(commitLogDir);
+        }
+    }
+
+    private static Emitter noopEmitter() {
+        return new Emitter() {
+            @Override
+            public void emit(Record record) {
+            }
+
+            @Override
+            public void close() {
+            }
+        };
     }
 }

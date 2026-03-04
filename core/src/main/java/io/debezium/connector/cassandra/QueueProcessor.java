@@ -30,6 +30,7 @@ public class QueueProcessor extends AbstractProcessor {
     private final Emitter recordEmitter;
     private final String commitLogRelocationDir;
     private final Set<String> erroneousCommitLogs;
+    private final Set<String> reprocessingCommitLogs;
 
     private static final String NAME_PREFIX = "Queue Processor ";
     public static final String ARCHIVE_FOLDER = "archive";
@@ -39,6 +40,7 @@ public class QueueProcessor extends AbstractProcessor {
         super(NAME_PREFIX + "[" + index + "]", Duration.ZERO);
         this.queue = context.getQueues().get(index);
         this.erroneousCommitLogs = context.getErroneousCommitLogs();
+        this.reprocessingCommitLogs = context.getReprocessingCommitLogs();
         this.commitLogRelocationDir = context.getCassandraConnectorConfig().commitLogRelocationDir();
         this.recordEmitter = recordEmitter;
     }
@@ -103,7 +105,14 @@ public class QueueProcessor extends AbstractProcessor {
                 String commitLogFileName = commitLog.getFileName().toString();
                 LOGGER.info("Encountered EOF event for {} ...", commitLogFileName);
                 recordEmitter.flush();
-                String folder = erroneousCommitLogs.contains(commitLogFileName) ? ERROR_FOLDER : ARCHIVE_FOLDER;
+                boolean isErroneous = erroneousCommitLogs.contains(commitLogFileName);
+                if (isErroneous) {
+                    reprocessingCommitLogs.add(commitLogFileName);
+                }
+                else {
+                    reprocessingCommitLogs.remove(commitLogFileName);
+                }
+                String folder = isErroneous ? ERROR_FOLDER : ARCHIVE_FOLDER;
                 Path relocationDir = Paths.get(commitLogRelocationDir, folder);
                 CommitLogUtil.moveCommitLog(commitLog, relocationDir);
                 break;

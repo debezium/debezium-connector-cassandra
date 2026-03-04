@@ -94,6 +94,7 @@ public class DseCommitLogReadHandlerImpl implements CommitLogReadHandler {
     private final CassandraSchemaFactory schemaFactory;
     private final CassandraConnectorConfig.EventOrderGuaranteeMode eventOrderGuaranteeMode;
     private final CassandraStreamingMetrics metrics;
+    private final Set<String> reprocessingCommitLogs;
 
     DseCommitLogReadHandlerImpl(CassandraConnectorContext context, CassandraStreamingMetrics metrics) {
         this.queues = context.getQueues();
@@ -105,6 +106,7 @@ public class DseCommitLogReadHandlerImpl implements CommitLogReadHandler {
         this.metrics = metrics;
         this.schemaFactory = CassandraSchemaFactory.get();
         this.eventOrderGuaranteeMode = context.getCassandraConnectorConfig().getEventOrderGuaranteeMode();
+        this.reprocessingCommitLogs = context.getReprocessingCommitLogs();
     }
 
     /**
@@ -267,7 +269,8 @@ public class DseCommitLogReadHandlerImpl implements CommitLogReadHandler {
             OffsetPosition offsetPosition = new OffsetPosition(descriptor.fileName(), entryLocation);
             KeyspaceTable keyspaceTable = new KeyspaceTable(mutation.getKeyspaceName(), pu.metadata().name);
 
-            if (offsetWriter.isOffsetProcessed(keyspaceTable.name(), offsetPosition.serialize(), false)) {
+            if (!reprocessingCommitLogs.contains(descriptor.fileName())
+                    && offsetWriter.isOffsetProcessed(keyspaceTable.name(), offsetPosition.serialize(), false)) {
                 LOGGER.info("Mutation at {} for table {} already processed, skipping...", offsetPosition, keyspaceTable);
                 return;
             }

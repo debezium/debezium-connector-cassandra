@@ -13,6 +13,8 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
 import java.io.File;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.Test;
@@ -41,7 +43,8 @@ class CommitLogPostProcessorTest {
             }
 
             @Override
-            public void getErrorCommitLogFiles() {
+            public Collection<String> getErrorCommitLogFiles() {
+                return Collections.emptyList();
             }
         };
         CassandraConnectorConfig config = spy(new CassandraConnectorConfig(Configuration.from(generateDefaultConfigMap())));

@@ -194,12 +194,10 @@ public class CassandraSnapshotMetrics extends Metrics implements SnapshotMetrics
         return "";
     }
 
-    @Override
     public Map<String, Long> getTableChunkCounts() {
         return Collections.emptyMap();
     }
 
-    @Override
     public Map<String, Long> getTableChunksCompletedCounts() {
         return Collections.emptyMap();
     }

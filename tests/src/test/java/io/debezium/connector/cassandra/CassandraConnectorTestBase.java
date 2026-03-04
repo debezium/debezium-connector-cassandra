@@ -12,6 +12,7 @@ import static org.awaitility.Awaitility.await;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.time.Duration;
@@ -44,6 +45,7 @@ public abstract class CassandraConnectorTestBase {
     public static final String CLUSTER_NAME = "Test Cluster";
     public static final String CASSANDRA_SERVER_DIR = "/var/lib/cassandra";
     private static final String cassandraDir = createCassandraDir();
+    public static final File CDC_RAW_DIR = Paths.get(Testing.Files.DATA_DIR, "cassandra", "cdc_raw").toAbsolutePath().toFile();
     private static final String dockerDir = System.getProperty("docker.dir", "docker");
     private static final Consumer<CreateContainerCmd> cmd = createCmd -> createCmd.getHostConfig()
             .withPortBindings(new PortBinding(Ports.Binding.bindPort(9042), new ExposedPort(9042)));

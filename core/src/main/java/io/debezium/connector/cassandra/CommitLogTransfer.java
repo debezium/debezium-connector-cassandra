@@ -6,6 +6,7 @@
 package io.debezium.connector.cassandra;
 
 import java.io.File;
+import java.util.Collection;
 import java.util.Properties;
 
 /**
@@ -40,6 +41,8 @@ public interface CommitLogTransfer {
 
     /**
      * Get all error commitLog files into cdc_raw directory for re-processing.
+     *
+     * @return the filenames of commit logs moved back to the CDC directory
      */
-    void getErrorCommitLogFiles();
+    Collection<String> getErrorCommitLogFiles();
 }

@@ -46,6 +46,7 @@ public class CommitLogIdxProcessor extends AbstractProcessor {
     private boolean initial = true;
     private final boolean errorCommitLogReprocessEnabled;
     private final CommitLogTransfer commitLogTransfer;
+    private final Set<String> reprocessingCommitLogs;
     private final int shutdownTimeoutSeconds;
     private final ExecutorService executorService;
     final static Set<Pair<CommitLogIdxParser, Future<CommitLogProcessingResult>>> submittedProcessings = ConcurrentHashMap.newKeySet();
@@ -57,6 +58,7 @@ public class CommitLogIdxProcessor extends AbstractProcessor {
         this.context = context;
         commitLogTransfer = this.context.getCassandraConnectorConfig().getCommitLogTransfer();
         errorCommitLogReprocessEnabled = this.context.getCassandraConnectorConfig().errorCommitLogReprocessEnabled();
+        reprocessingCommitLogs = this.context.getReprocessingCommitLogs();
         shutdownTimeoutSeconds = this.context.getCassandraConnectorConfig().getCommitLogProcessorShutdownTimeoutSeconds();
         this.cdcDir = cdcDir;
         executorService = Executors.newSingleThreadExecutor();
@@ -149,8 +151,8 @@ public class CommitLogIdxProcessor extends AbstractProcessor {
             // If commit.log.error.reprocessing.enabled is set to true, download all error commitLog files upon starting for re-processing.
             if (errorCommitLogReprocessEnabled) {
                 LOGGER.info("CommitLog Error Processing is enabled. Attempting to get all error commitLog files for re-processing.");
-                // this will place it back to cdc dir so watched detects it hence it will be processed again
-                commitLogTransfer.getErrorCommitLogFiles();
+                // this will place it back to cdc dir so watcher detects it and reprocesses it
+                reprocessingCommitLogs.addAll(commitLogTransfer.getErrorCommitLogFiles());
             }
             initial = false;
         }
