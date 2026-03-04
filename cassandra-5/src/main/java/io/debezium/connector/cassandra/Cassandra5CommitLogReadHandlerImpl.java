@@ -81,6 +81,7 @@ public class Cassandra5CommitLogReadHandlerImpl implements CommitLogReadHandler 
     private final RangeTombstoneContext<org.apache.cassandra.schema.TableMetadata> rangeTombstoneContext = new RangeTombstoneContext<>();
     private final CassandraSchemaFactory schemaFactory;
     private final CassandraConnectorConfig.EventOrderGuaranteeMode eventOrderGuaranteeMode;
+    private final Set<String> reprocessingCommitLogs;
 
     Cassandra5CommitLogReadHandlerImpl(CassandraConnectorContext context, CassandraStreamingMetrics metrics) {
         this.queues = context.getQueues();
@@ -92,6 +93,7 @@ public class Cassandra5CommitLogReadHandlerImpl implements CommitLogReadHandler 
         this.metrics = metrics;
         this.schemaFactory = CassandraSchemaFactory.get();
         this.eventOrderGuaranteeMode = context.getCassandraConnectorConfig().getEventOrderGuaranteeMode();
+        this.reprocessingCommitLogs = context.getReprocessingCommitLogs();
     }
 
     /**
@@ -254,7 +256,8 @@ public class Cassandra5CommitLogReadHandlerImpl implements CommitLogReadHandler 
             OffsetPosition offsetPosition = new OffsetPosition(descriptor.fileName(), entryLocation);
             KeyspaceTable keyspaceTable = new KeyspaceTable(mutation.getKeyspaceName(), pu.metadata().name);
 
-            if (offsetWriter.isOffsetProcessed(keyspaceTable.name(), offsetPosition.serialize(), false)) {
+            if (!reprocessingCommitLogs.contains(descriptor.fileName())
+                    && offsetWriter.isOffsetProcessed(keyspaceTable.name(), offsetPosition.serialize(), false)) {
                 LOGGER.info("Mutation at {} for table {} already processed, skipping...", offsetPosition, keyspaceTable);
                 return;
             }

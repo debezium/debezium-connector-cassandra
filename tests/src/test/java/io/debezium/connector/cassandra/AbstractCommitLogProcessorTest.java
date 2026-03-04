@@ -16,7 +16,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -128,8 +127,7 @@ abstract class AbstractCommitLogProcessorTest extends CassandraConnectorTestBase
         assertEquals(queue.totalCapacity(), queue.remainingCapacity());
 
         // process the logs in commit log directory
-        File cdcLoc = Paths.get("target/data/cassandra/cdc_raw").toAbsolutePath().toFile();
-        File[] commitLogs = CommitLogUtil.getCommitLogs(cdcLoc);
+        File[] commitLogs = CommitLogUtil.getCommitLogs(CDC_RAW_DIR);
         commitLogProcessing.readAllCommitLogs(commitLogs);
     }
 

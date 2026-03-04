@@ -33,5 +33,7 @@ public interface CassandraConnectorContext {
 
     Set<String> getErroneousCommitLogs();
 
+    Set<String> getReprocessingCommitLogs();
+
     String getClusterName();
 }

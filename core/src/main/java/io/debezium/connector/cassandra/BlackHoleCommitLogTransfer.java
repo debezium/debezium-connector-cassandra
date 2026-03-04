@@ -6,6 +6,8 @@
 package io.debezium.connector.cassandra;
 
 import java.io.File;
+import java.util.Collection;
+import java.util.Collections;
 
 /**
  * Implementation of {@link CommitLogTransfer} which deletes commit logs.
@@ -23,6 +25,7 @@ public class BlackHoleCommitLogTransfer implements CommitLogTransfer {
     }
 
     @Override
-    public void getErrorCommitLogFiles() {
+    public Collection<String> getErrorCommitLogFiles() {
+        return Collections.emptyList();
     }
 }

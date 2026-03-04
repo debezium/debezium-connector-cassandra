@@ -48,6 +48,7 @@ public class CommitLogProcessor extends AbstractProcessor {
     private final boolean errorCommitLogReprocessEnabled;
     private final CommitLogTransfer commitLogTransfer;
     private final Set<String> erroneousCommitLogs;
+    private final Set<String> reprocessingCommitLogs;
     private final File commitLogDir;
 
     public CommitLogProcessor(CassandraConnectorContext context, CassandraStreamingMetrics metrics,
@@ -63,6 +64,7 @@ public class CommitLogProcessor extends AbstractProcessor {
         errorCommitLogReprocessEnabled = this.context.getCassandraConnectorConfig().errorCommitLogReprocessEnabled();
         commitLogTransfer = this.context.getCassandraConnectorConfig().getCommitLogTransfer();
         erroneousCommitLogs = this.context.getErroneousCommitLogs();
+        reprocessingCommitLogs = this.context.getReprocessingCommitLogs();
         this.commitLogDir = commitLogDir;
     }
 
@@ -109,7 +111,7 @@ public class CommitLogProcessor extends AbstractProcessor {
             // If commit.log.error.reprocessing.enabled is set to true, download all error commitLog files upon starting for re-processing.
             if (errorCommitLogReprocessEnabled) {
                 LOGGER.info("CommitLog Error Processing is enabled. Attempting to get all error commitLog files for re-processing.");
-                commitLogTransfer.getErrorCommitLogFiles();
+                reprocessingCommitLogs.addAll(commitLogTransfer.getErrorCommitLogFiles());
             }
             initial = false;
         }

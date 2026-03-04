@@ -21,6 +21,8 @@ public class DefaultCassandraConnectorContext extends CdcSourceTaskContext<Cassa
     private OffsetWriter offsetWriter;
     // Create a HashSet to record names of CommitLog Files which are not successfully read or streamed.
     private final Set<String> erroneousCommitLogs = ConcurrentHashMap.newKeySet();
+    // Tracks commit log filenames that are being reprocessed; offset check is bypassed for these files.
+    private final Set<String> reprocessingCommitLogs = ConcurrentHashMap.newKeySet();
 
     public DefaultCassandraConnectorContext(CassandraConnectorConfig config) {
         super(config.getConfig(), config, config.getCustomMetricTags());
@@ -109,6 +111,10 @@ public class DefaultCassandraConnectorContext extends CdcSourceTaskContext<Cassa
 
     public Set<String> getErroneousCommitLogs() {
         return erroneousCommitLogs;
+    }
+
+    public Set<String> getReprocessingCommitLogs() {
+        return reprocessingCommitLogs;
     }
 
     @Override
