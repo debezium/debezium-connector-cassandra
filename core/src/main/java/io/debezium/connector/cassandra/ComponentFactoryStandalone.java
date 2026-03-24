@@ -10,6 +10,7 @@ import java.io.IOException;
 import org.apache.kafka.clients.producer.KafkaProducer;
 
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorConfigException;
+import io.debezium.connector.cassandra.tracing.TracingEmitter;
 
 public class ComponentFactoryStandalone implements ComponentFactory {
 
@@ -26,7 +27,7 @@ public class ComponentFactoryStandalone implements ComponentFactory {
     @Override
     public Emitter recordEmitter(CassandraConnectorContext context) {
         CassandraConnectorConfig config = context.getCassandraConnectorConfig();
-        return new KafkaRecordEmitter(
+        Emitter emitter = new KafkaRecordEmitter(
                 config,
                 new KafkaProducer<>(config.getKafkaConfigs()),
                 context.getOffsetWriter(),
@@ -34,6 +35,10 @@ public class ComponentFactoryStandalone implements ComponentFactory {
                 config.getValueConverter(),
                 context.getErroneousCommitLogs(),
                 config.getCommitLogTransfer());
+        if (config.isTracingEnabled()) {
+            return new TracingEmitter(emitter);
+        }
+        return emitter;
     }
 
 }
