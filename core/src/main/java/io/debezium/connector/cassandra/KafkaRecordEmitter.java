@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.connector.cassandra.tracing.TracingUtils;
 import io.debezium.spi.topic.TopicNamingStrategy;
 
 /**
@@ -67,7 +68,9 @@ public class KafkaRecordEmitter implements Emitter {
         String topic = topicNamingStrategy.dataChangeTopic(record.getSource().keyspaceTable);
         byte[] serializedKey = keyConverter.fromConnectData(topic, record.getKeySchema(), record.buildKey());
         byte[] serializedValue = valueConverter.fromConnectData(topic, record.getValueSchema(), record.buildValue());
-        return new ProducerRecord<>(topic, serializedKey, serializedValue);
+        ProducerRecord<byte[], byte[]> producerRecord = new ProducerRecord<>(topic, serializedKey, serializedValue);
+        TracingUtils.injectProducerHeaders(producerRecord.headers());
+        return producerRecord;
     }
 
     private void callback(Record record, Exception exception) {

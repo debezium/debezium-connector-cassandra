@@ -19,6 +19,11 @@
             <artifactId>debezium-connector-cassandra-core</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-api</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
     
     <build>

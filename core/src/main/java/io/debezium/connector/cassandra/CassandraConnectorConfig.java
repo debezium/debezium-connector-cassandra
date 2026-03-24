@@ -357,6 +357,17 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
             .withValidation(Field::isRequired)
             .withDescription("The local directory which commit logs get relocated to once processed.");
 
+    public static final boolean DEFAULT_TRACING_ENABLED = false;
+    public static final Field TRACING_ENABLED = Field.create("tracing.enabled")
+            .withType(Type.BOOLEAN)
+            .withDefault(DEFAULT_TRACING_ENABLED)
+            .withDescription("Enables OpenTelemetry tracing. When enabled and the OpenTelemetry API "
+                    + "is on the classpath, the connector creates tracing spans for each change event.");
+
+    public boolean isTracingEnabled() {
+        return this.getConfig().getBoolean(TRACING_ENABLED);
+    }
+
     /**
      * If disabled, commit logs would not be deleted post-process, and this could lead to disk storage
      */
