@@ -17,9 +17,11 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Properties;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,6 +62,8 @@ public class FileOffsetWriter implements OffsetWriter {
 
     private final OffsetFlushPolicy offsetFlushPolicy;
     private final ExecutorService executorService;
+    private final AtomicBoolean flushPending = new AtomicBoolean(false);
+    private static final Future<?> COMPLETED_FUTURE = CompletableFuture.completedFuture(null);
 
     public FileOffsetWriter(CassandraConnectorConfig config) throws IOException {
         if (config.offsetBackingStoreDir() == null) {
@@ -90,10 +94,11 @@ public class FileOffsetWriter implements OffsetWriter {
 
     @Override
     public Future<?> markOffset(String sourceTable, String sourceOffset, boolean isSnapshot) {
-        return executorService.submit(() -> performMarkOffset(sourceTable, sourceOffset, isSnapshot));
-    }
-
-    private void performMarkOffset(String sourceTable, String sourceOffset, boolean isSnapshot) {
+        // Update the in-memory offset directly on the caller thread (Properties is a
+        // synchronized Hashtable, so this is thread-safe). Only the expensive disk
+        // flush is delegated to the single-threaded executor, and even then we skip
+        // the submission when a flush task is already pending so the unbounded queue
+        // can never grow beyond one entry.
         if (isSnapshot) {
             if (!isOffsetProcessed(sourceTable, sourceOffset, isSnapshot)) {
                 snapshotProps.setProperty(sourceTable, sourceOffset);
@@ -104,9 +109,13 @@ public class FileOffsetWriter implements OffsetWriter {
                 commitLogProps.setProperty(sourceTable, sourceOffset);
             }
         }
-        if (offsetFlushPolicy.shouldFlush()) {
-            this.performFlush();
+        if (offsetFlushPolicy.shouldFlush() && flushPending.compareAndSet(false, true)) {
+            return executorService.submit(() -> {
+                flushPending.set(false);
+                this.performFlush();
+            });
         }
+        return COMPLETED_FUTURE;
     }
 
     @Override
