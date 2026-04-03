@@ -9,6 +9,8 @@ import static java.nio.file.StandardWatchEventKinds.ENTRY_CREATE;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.WatchEvent;
 import java.time.Duration;
@@ -154,7 +156,20 @@ public class CommitLogIdxProcessor extends AbstractProcessor {
             }
             initial = false;
         }
-        metrics.setCdcDirectoryTotalBytes(FileUtils.sizeOfDirectory(cdcDir));
+        updateCdcDirectorySizeMetric();
         watcher.poll();
+    }
+
+    private void updateCdcDirectorySizeMetric() {
+        try {
+            metrics.setCdcDirectoryTotalBytes(FileUtils.sizeOfDirectory(cdcDir));
+        }
+        catch (UncheckedIOException e) {
+            if (e.getCause() instanceof NoSuchFileException) {
+                LOGGER.debug("Skipping CDC directory size update because files moved during scan of {}", cdcDir, e);
+                return;
+            }
+            throw e;
+        }
     }
 }
