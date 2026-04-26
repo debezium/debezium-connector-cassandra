@@ -62,6 +62,7 @@ public class DefaultCassandraConnectorContext extends CdcSourceTaskContext<Cassa
         for (int i = 0; i < numOfChangeEventQueues; i++) {
             ChangeEventQueue<Event> queue = new ChangeEventQueue.Builder<Event>()
                     .pollInterval(getConfig().pollInterval())
+                    .pollDispatchInterval(getConfig().getPollDispatchInterval())
                     .maxBatchSize(getConfig().maxBatchSize())
                     .maxQueueSize(getConfig().maxQueueSize())
                     .loggingContextSupplier(() -> this.configureLoggingContext(getConfig().getContextName()))
