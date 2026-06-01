@@ -48,6 +48,7 @@ public abstract class AbstractConnectorTask extends BaseSourceTask<CassandraPart
     public CdcSourceTaskContext<? extends CommonConnectorConfig> preStart(Configuration config) {
 
         connectorConfig = new CassandraConnectorConfig(config);
+        template = init(connectorConfig);
 
         return (DefaultCassandraConnectorContext) template.getTaskContext();
     }
@@ -78,10 +79,8 @@ public abstract class AbstractConnectorTask extends BaseSourceTask<CassandraPart
             previousOffset = offsetLoader.load(new HashMap<>());
         }
 
-        template = init(connectorConfig,
-                new ComponentFactoryDebezium(queue, previousOffsets.getTheOnlyPartition(), previousOffset));
         try {
-            template.start();
+            template.start(new ComponentFactoryDebezium(queue, previousOffsets.getTheOnlyPartition(), previousOffset));
         }
         catch (Exception e) {
             throw new CassandraConnectorTaskException(e);
@@ -89,7 +88,7 @@ public abstract class AbstractConnectorTask extends BaseSourceTask<CassandraPart
         return null;
     }
 
-    protected abstract CassandraConnectorTaskTemplate init(CassandraConnectorConfig conf, ComponentFactory factory);
+    protected abstract CassandraConnectorTaskTemplate init(CassandraConnectorConfig conf);
 
     @Override
     protected List<SourceRecord> doPoll() throws InterruptedException {

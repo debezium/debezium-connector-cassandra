@@ -53,10 +53,10 @@ public class CassandraConnectorTaskTemplate {
     private final SchemaLoader schemaLoader;
     private final SchemaChangeListenerProvider schemaChangeListenerProvider;
     private final CassandraSpecificProcessors cassandraSpecificProcessors;
-    private final ComponentFactory factory;
 
     public static void main(String[] args,
-                            Function<CassandraConnectorConfig, CassandraConnectorTaskTemplate> template)
+                            Function<CassandraConnectorConfig, CassandraConnectorTaskTemplate> templateFactory,
+                            ComponentFactory factory)
             throws Exception {
         if (args.length == 0) {
             throw new CassandraConnectorConfigException("CDC config file is required");
@@ -64,7 +64,7 @@ public class CassandraConnectorTaskTemplate {
 
         try (FileInputStream fis = new FileInputStream(args[0])) {
             CassandraConnectorConfig config = new CassandraConnectorConfig(Configuration.load(fis));
-            template.apply(config).run();
+            templateFactory.apply(config).run(factory);
         }
     }
 
@@ -72,14 +72,13 @@ public class CassandraConnectorTaskTemplate {
                                           CassandraTypeProvider deserializerProvider,
                                           SchemaLoader schemaLoader,
                                           SchemaChangeListenerProvider schemaChangeListener,
-                                          CassandraSpecificProcessors cassandraSpecificProcessors,
-                                          ComponentFactory factory) {
+                                          CassandraSpecificProcessors cassandraSpecificProcessors) {
         this.config = config;
         this.deserializerProvider = deserializerProvider;
         this.schemaLoader = schemaLoader;
         this.schemaChangeListenerProvider = schemaChangeListener;
         this.cassandraSpecificProcessors = cassandraSpecificProcessors;
-        this.factory = factory;
+        this.taskContext = new DefaultCassandraConnectorContext(config);
     }
 
     private void initJmxReporter(String domain) {
@@ -100,7 +99,7 @@ public class CassandraConnectorTaskTemplate {
         return buildInfo;
     }
 
-    public void start() throws Exception {
+    public void start(ComponentFactory factory) throws Exception {
         if (!config.validateAndRecord(config.getValidationFieldSet(), LOGGER::error)) {
             throw new CassandraConnectorConfigException("Failed to start connector with invalid configuration " +
                     "(see logs for actual errors)");
@@ -110,7 +109,7 @@ public class CassandraConnectorTaskTemplate {
         initDeserializer();
 
         LOGGER.info("Initializing Cassandra connector task context ...");
-        taskContext = new DefaultCassandraConnectorContext(config, schemaLoader, schemaChangeListenerProvider, factory.offsetWriter(config));
+        taskContext.init(schemaLoader, schemaChangeListenerProvider, factory.offsetWriter(config));
 
         LOGGER.info("Starting processor group ...");
         AbstractProcessor[] processors = cassandraSpecificProcessors.getProcessors(taskContext);
@@ -126,9 +125,9 @@ public class CassandraConnectorTaskTemplate {
         jmxReporter.start();
     }
 
-    private void run() throws Exception {
+    private void run(ComponentFactory factory) throws Exception {
         try {
-            start();
+            start(factory);
             while (processorGroup.isRunning()) {
                 Thread.sleep(1000);
             }
