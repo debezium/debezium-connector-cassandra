@@ -31,25 +31,25 @@ public class DefaultCassandraConnectorContext extends CdcSourceTaskContext<Cassa
                                             SchemaLoader schemaLoader,
                                             SchemaChangeListenerProvider schemaChangeListenerProvider,
                                             OffsetWriter offsetWriter) {
-        super(config.getConfig(), config, config.getCustomMetricTags());
+        this(config);
+        init(schemaLoader, schemaChangeListenerProvider, offsetWriter);
+    }
+
+    public void init(SchemaLoader schemaLoader,
+                     SchemaChangeListenerProvider schemaChangeListenerProvider,
+                     OffsetWriter offsetWriter) {
         this.offsetWriter = offsetWriter;
 
         try {
-            prepareQueues();
+            schemaLoader.load(getCassandraConnectorConfig().cassandraConfig());
 
-            // Loading up DDL schemas from disk
-            schemaLoader.load(config.cassandraConfig());
+            AbstractSchemaChangeListener schemaChangeListener = schemaChangeListenerProvider.provide(getCassandraConnectorConfig());
 
-            AbstractSchemaChangeListener schemaChangeListener = schemaChangeListenerProvider.provide(config);
+            this.cassandraClient = new CassandraClient(getCassandraConnectorConfig().cassandraDriverConfig(), schemaChangeListener);
 
-            // Setting up Cassandra driver
-            this.cassandraClient = new CassandraClient(config.cassandraDriverConfig(), schemaChangeListener);
-
-            // Setting up schema holder ...
             this.schemaHolder = schemaChangeListener.getSchemaHolder();
         }
         catch (Exception e) {
-            // Clean up CassandraClient and FileOffsetWrite if connector context fails to be completely initialized.
             cleanUp();
             throw new CassandraConnectorTaskException("Failed to initialize Cassandra Connector Context.", e);
         }

@@ -14,14 +14,13 @@ import io.debezium.connector.cassandra.CassandraConnectorConfig;
 import io.debezium.connector.cassandra.CassandraConnectorContext;
 import io.debezium.connector.cassandra.CassandraConnectorTaskTemplate;
 import io.debezium.connector.cassandra.CommitLogProcessor;
-import io.debezium.connector.cassandra.ComponentFactory;
 import io.debezium.connector.cassandra.metrics.CassandraStreamingMetrics;
 import io.debezium.connector.common.CdcSourceTaskContext;
 
 public class Dse680ConnectorTask extends AbstractConnectorTask {
 
     @Override
-    protected CassandraConnectorTaskTemplate init(CassandraConnectorConfig config, ComponentFactory factory) {
+    protected CassandraConnectorTaskTemplate init(CassandraConnectorConfig config) {
         return new CassandraConnectorTaskTemplate(config,
                 new DseTypeProvider(),
                 new DseSchemaLoader(),
@@ -29,8 +28,7 @@ public class Dse680ConnectorTask extends AbstractConnectorTask {
                 context -> {
                     CassandraStreamingMetrics metrics = new CassandraStreamingMetrics((CdcSourceTaskContext) context);
                     return new AbstractProcessor[]{ getCommitLogProcessor(context, metrics, new DseCommitLogReadHandlerImpl(context, metrics)) };
-                },
-                factory);
+                });
     }
 
     protected AbstractProcessor getCommitLogProcessor(CassandraConnectorContext context, CassandraStreamingMetrics metrics, CommitLogReadHandler handler) {

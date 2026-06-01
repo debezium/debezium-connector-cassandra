@@ -45,10 +45,10 @@ public class CassandraConnectorTask {
     }
 
     public static void main(String[] args) throws Exception {
-        CassandraConnectorTaskTemplate.main(args, config -> init(config, new ComponentFactoryStandalone()));
+        CassandraConnectorTaskTemplate.main(args, CassandraConnectorTask::init, new ComponentFactoryStandalone());
     }
 
-    static CassandraConnectorTaskTemplate init(CassandraConnectorConfig config, ComponentFactory factory) {
+    static CassandraConnectorTaskTemplate init(CassandraConnectorConfig config) {
         return new CassandraConnectorTaskTemplate(config,
                 new Cassandra3TypeProvider(),
                 new Cassandra3SchemaLoader(),
@@ -59,7 +59,6 @@ public class CassandraConnectorTask {
                             new Cassandra3CommitLogSegmentReader(context, metrics),
                             new File(DatabaseDescriptor.getCDCLogLocation()),
                             new File(DatabaseDescriptor.getCommitLogLocation())) };
-                },
-                factory);
+                });
     }
 }
