@@ -17,6 +17,8 @@ import io.debezium.util.LoggingContext;
  */
 public interface CassandraConnectorContext {
 
+    void init(SchemaLoader schemaLoader, SchemaChangeListenerProvider schemaChangeListenerProvider, OffsetWriter offsetWriter);
+
     void cleanUp();
 
     CassandraConnectorConfig getCassandraConnectorConfig();

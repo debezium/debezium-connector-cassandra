@@ -8,8 +8,8 @@ package io.debezium.connector.cassandra;
 public class Cassandra3ConnectorTask extends AbstractConnectorTask {
 
     @Override
-    protected CassandraConnectorTaskTemplate init(CassandraConnectorConfig conf, ComponentFactory factory) {
-        return CassandraConnectorTask.init(conf, factory);
+    protected CassandraConnectorTaskTemplate init(CassandraConnectorConfig conf) {
+        return CassandraConnectorTask.init(conf);
     }
 
 }
