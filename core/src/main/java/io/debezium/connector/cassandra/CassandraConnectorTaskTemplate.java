@@ -17,17 +17,17 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 import org.eclipse.jetty.server.Server;
-import org.eclipse.jetty.servlet.ServletContextHandler;
-import org.eclipse.jetty.servlet.ServletHolder;
+import org.eclipse.jetty.ee10.servlet.ServletContextHandler;
+import org.eclipse.jetty.ee10.servlet.ServletHolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.health.HealthCheckRegistry;
 import com.codahale.metrics.jmx.JmxReporter;
-import com.codahale.metrics.servlets.HealthCheckServlet;
-import com.codahale.metrics.servlets.MetricsServlet;
-import com.codahale.metrics.servlets.PingServlet;
+import io.dropwizard.metrics.servlets.HealthCheckServlet;
+import io.dropwizard.metrics.servlets.MetricsServlet;
+import io.dropwizard.metrics.servlets.PingServlet;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.base.ChangeEventQueue;
