@@ -16,18 +16,15 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
-import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.ee10.servlet.ServletContextHandler;
 import org.eclipse.jetty.ee10.servlet.ServletHolder;
+import org.eclipse.jetty.server.Server;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.health.HealthCheckRegistry;
 import com.codahale.metrics.jmx.JmxReporter;
-import io.dropwizard.metrics.servlets.HealthCheckServlet;
-import io.dropwizard.metrics.servlets.MetricsServlet;
-import io.dropwizard.metrics.servlets.PingServlet;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.base.ChangeEventQueue;
@@ -37,6 +34,9 @@ import io.debezium.connector.cassandra.metrics.CassandraSnapshotMetrics;
 import io.debezium.connector.cassandra.network.BuildInfoServlet;
 import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;
 import io.debezium.connector.common.CdcSourceTaskContext;
+import io.dropwizard.metrics.servlets.HealthCheckServlet;
+import io.dropwizard.metrics.servlets.MetricsServlet;
+import io.dropwizard.metrics.servlets.PingServlet;
 
 public class CassandraConnectorTaskTemplate {
 
