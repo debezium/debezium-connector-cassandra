@@ -55,10 +55,9 @@
     <modules>
         <module>core</module>
         <module>tests</module>
-        <module>cassandra-3</module>
         <module>cassandra-4</module>
         <module>cassandra-5</module>
-        <module>dse</module>
+        <!--<module>dse</module>-->
     </modules>
 
     <properties>
