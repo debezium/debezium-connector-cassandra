@@ -37,7 +37,10 @@ public class AbstractSchemaChangeListener extends SchemaChangeListenerBase {
         this.schemaHolder = schemaHolder;
     }
 
-    public List<TableMetadata> getCdcEnabledTableMetadataList(final Session session) {
+    /**
+     * All tables with a cdc option set, virtual and cdc-missing tables excluded.
+     */
+    public List<TableMetadata> getAllTableMetadataList(final Session session) {
         return session.getMetadata()
                 .getKeyspaces()
                 .values()
@@ -48,13 +51,12 @@ public class AbstractSchemaChangeListener extends SchemaChangeListenerBase {
                         logger.info(format("Skipping virtual table %s.%s", tm.getKeyspace().asInternal(), tm.getName()));
                         return false;
                     }
-                    Object cdc = tm.getOptions().get(CqlIdentifier.fromCql("cdc"));
-                    if (cdc == null) {
+                    if (tm.getOptions().get(CqlIdentifier.fromCql("cdc")) == null) {
                         logger.warn(format("There is no cdc option for table %s.%s. Available options are: %s",
                                 tm.getKeyspace().asInternal(), tm.getName(), tm.getOptions()));
                         return false;
                     }
-                    return cdc.toString().equals("true");
+                    return true;
                 })
                 .collect(Collectors.toList());
     }
