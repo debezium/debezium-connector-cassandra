@@ -48,7 +48,7 @@ public class DseSchemaChangeListener extends AbstractSchemaChangeListener {
     @Override
     public void onSessionReady(Session session) {
         LOGGER.info("Initializing SchemaHolder ...");
-        List<com.datastax.oss.driver.api.core.metadata.schema.TableMetadata> allTableMetadataList = getAllTableMetadataList(session);
+        List<com.datastax.oss.driver.api.core.metadata.schema.TableMetadata> allTableMetadataList = getCdcOptionedTableMetadataList(session);
         for (com.datastax.oss.driver.api.core.metadata.schema.TableMetadata tm : allTableMetadataList) {
             onKeyspaceCreated(session.getMetadata().getKeyspace(tm.getKeyspace().toString()).get());
             onTableCreated(tm);
