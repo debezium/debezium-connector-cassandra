@@ -37,10 +37,7 @@ public class AbstractSchemaChangeListener extends SchemaChangeListenerBase {
         this.schemaHolder = schemaHolder;
     }
 
-    /**
-     * All tables with a cdc option set, virtual and cdc-missing tables excluded.
-     */
-    public List<TableMetadata> getAllTableMetadataList(final Session session) {
+    public List<TableMetadata> getCdcOptionedTableMetadataList(final Session session) {
         return session.getMetadata()
                 .getKeyspaces()
                 .values()
