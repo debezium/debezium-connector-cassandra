@@ -226,13 +226,16 @@ public class Cassandra5SchemaChangeListener extends AbstractSchemaChangeListener
         }
     }
 
+    static boolean isCdcEnabled(final com.datastax.oss.driver.api.core.metadata.schema.TableMetadata tableMetadata) {
+        Object cdcObject = tableMetadata.getOptions().get(CqlIdentifier.fromInternal("cdc"));
+        return cdcObject != null && cdcObject.toString().equals("true");
+    }
+
     @Override
     public void onTableUpdated(final com.datastax.oss.driver.api.core.metadata.schema.TableMetadata newTableMetadata,
                                final com.datastax.oss.driver.api.core.metadata.schema.TableMetadata oldTableMetaData) {
-        Object newCdcObject = newTableMetadata.getOptions().get(CqlIdentifier.fromInternal("cdc"));
-        boolean newCdc = newCdcObject.toString().equals("true");
-        Object oldCdcObject = oldTableMetaData.getOptions().get(CqlIdentifier.fromInternal("cdc"));
-        boolean oldCdc = oldCdcObject.toString().equals("true");
+        boolean newCdc = isCdcEnabled(newTableMetadata);
+        boolean oldCdc = isCdcEnabled(oldTableMetaData);
 
         if (newCdc) {
             // if it was cdc before and now it is too, add it, because its schema might change
