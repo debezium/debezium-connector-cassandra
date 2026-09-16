@@ -38,6 +38,7 @@ public abstract class AbstractConnectorTask extends BaseSourceTask<CassandraPart
 
     private CassandraConnectorTaskTemplate template;
     private CassandraConnectorConfig connectorConfig;
+    private ErrorHandler errorHandler;
 
     @Override
     public String version() {
@@ -81,6 +82,8 @@ public abstract class AbstractConnectorTask extends BaseSourceTask<CassandraPart
         }
 
         try {
+            errorHandler = new ErrorHandler(AbstractSourceConnector.class, connectorConfig, queue, errorHandler);
+            template.setErrorHandler(errorHandler);
             template.start(new ComponentFactoryDebezium(queue, previousOffsets.getTheOnlyPartition(), previousOffset));
         }
         catch (Exception e) {
@@ -119,7 +122,7 @@ public abstract class AbstractConnectorTask extends BaseSourceTask<CassandraPart
 
     @Override
     protected Optional<ErrorHandler> getErrorHandler() {
-        return Optional.empty();
+        return Optional.ofNullable(errorHandler);
     }
 
 }
