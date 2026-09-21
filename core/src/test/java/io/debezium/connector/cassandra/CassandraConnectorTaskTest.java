@@ -18,6 +18,7 @@ import org.junit.jupiter.api.Timeout;
 import io.debezium.config.Configuration;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.cassandra.CassandraConnectorTaskTemplate.ProcessorGroup;
+import io.debezium.doc.FixFor;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 
@@ -80,6 +81,7 @@ class CassandraConnectorTaskTest {
 
     @Test
     @Timeout(60)
+    @FixFor("debezium/dbz#2651")
     void testProcessorFailureIsReportedToErrorHandler() throws Exception {
         Configuration configuration = Configuration.empty()
                 .edit()
