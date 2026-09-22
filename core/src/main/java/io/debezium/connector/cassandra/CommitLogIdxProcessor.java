@@ -128,10 +128,7 @@ public class CommitLogIdxProcessor extends AbstractProcessor {
     @Override
     public void process() throws IOException, InterruptedException {
         if (watcher == null) {
-            // Register both ENTRY_CREATE and ENTRY_MODIFY so that idx files are
-            // detected whether they are newly created or written to after the watcher
-            // was registered. ENTRY_MODIFY is particularly important for Cassandra 5
-            // where the _cdc.idx may already exist when the segment is sealed.
+            // also react to modifications, since Cassandra 5 may write the _cdc.idx in place
             Set<WatchEvent.Kind<?>> watchKinds = new HashSet<>();
             watchKinds.add(ENTRY_CREATE);
             watchKinds.add(ENTRY_MODIFY);
@@ -164,8 +161,7 @@ public class CommitLogIdxProcessor extends AbstractProcessor {
             }
             initial = false;
         }
-        // Periodic rescan: catch any idx files that appeared via hard link and were missed
-        // by both ENTRY_CREATE and ENTRY_MODIFY (e.g. the hard link was created between polls).
+        // rescan for any idx files the watcher missed
         File[] currentIndexes = CommitLogUtil.getIndexes(cdcDir);
         if (currentIndexes != null) {
             for (File index : currentIndexes) {

@@ -99,18 +99,7 @@ public class CommitLogIdxParser {
                 parseIndexFile(commitLog);
 
                 if (!commitLog.completed && commitLog.offsetOfEndOfLastWrittenCDCMutation == offsetBeforeSleep && isAbandoned()) {
-                    // The idx offset has not advanced, and a strictly newer commit log segment
-                    // already exists alongside this one. Cassandra only ever writes to a single
-                    // active segment at a time, so the existence of a newer segment proves this
-                    // one is abandoned (e.g. a stale pre-upgrade segment whose idx will never be
-                    // completed) rather than merely idle. Waiting for COMPLETED on an abandoned
-                    // segment would block the single-threaded executor indefinitely, so process
-                    // up to the last known offset and treat the segment as done.
-                    //
-                    // Note: a segment abandoned without ever being followed by a newer one (e.g.
-                    // the node was permanently decommissioned) is intentionally left pending
-                    // rather than guessed at, since forcing completion here cannot be
-                    // distinguished from truncating a segment that is still being written to.
+                    // A newer segment exists, so this one is abandoned rather than merely idle.
                     LOGGER.warn("Idx offset for {} has not advanced and a newer commit log segment already exists - " +
                             "treating segment as abandoned, completing at offset {}",
                             commitLog, commitLog.offsetOfEndOfLastWrittenCDCMutation);
@@ -177,11 +166,6 @@ public class CommitLogIdxParser {
         }
     }
 
-    /**
-     * A segment is provably abandoned only once a strictly newer commit log segment already
-     * exists alongside it - Cassandra never resumes writing to an older segment once a newer
-     * one has been allocated.
-     */
     private boolean isAbandoned() {
         File cdcRawDir = commitLog.index.getParentFile();
         if (cdcRawDir == null || !cdcRawDir.isDirectory()) {
