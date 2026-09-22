@@ -35,7 +35,18 @@ public class LogicalCommitLog {
     }
 
     public boolean exists() {
-        return log.exists();
+        if (log.exists()) {
+            return true;
+        }
+        // Cassandra 5 under low write volume keeps the .log in commitlog/ with Links=1
+        // and only writes the .idx into cdc_raw/. Fall back to the commitlog/ sibling directory.
+        File commitLogDir = new File(index.getParentFile().getParent(), "commitlog");
+        File fallback = new File(commitLogDir, log.getName());
+        if (fallback.exists()) {
+            log = fallback;
+            return true;
+        }
+        return false;
     }
 
     public void parseCommitLogIndex() throws DebeziumException {

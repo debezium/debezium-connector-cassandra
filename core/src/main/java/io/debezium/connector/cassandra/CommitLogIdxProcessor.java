@@ -6,6 +6,7 @@
 package io.debezium.connector.cassandra;
 
 import static java.nio.file.StandardWatchEventKinds.ENTRY_CREATE;
+import static java.nio.file.StandardWatchEventKinds.ENTRY_MODIFY;
 
 import java.io.File;
 import java.io.IOException;
@@ -15,7 +16,7 @@ import java.nio.file.Path;
 import java.nio.file.WatchEvent;
 import java.time.Duration;
 import java.util.Arrays;
-import java.util.Collections;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -51,8 +52,9 @@ public class CommitLogIdxProcessor extends AbstractProcessor {
     private final Set<String> reprocessingCommitLogs;
     private final int shutdownTimeoutSeconds;
     private final ExecutorService executorService;
-    final static Set<Pair<CommitLogIdxParser, Future<CommitLogProcessingResult>>> submittedProcessings = ConcurrentHashMap.newKeySet();
+    static final Set<Pair<CommitLogIdxParser, Future<CommitLogProcessingResult>>> submittedProcessings = ConcurrentHashMap.newKeySet();
     private final CommitLogSegmentReader commitLogReader;
+    private final Set<String> submittedIndexes = ConcurrentHashMap.newKeySet();
 
     public CommitLogIdxProcessor(CassandraConnectorContext context, CassandraStreamingMetrics metrics,
                                  CommitLogSegmentReader commitLogReader, File cdcDir) {
@@ -107,6 +109,10 @@ public class CommitLogIdxProcessor extends AbstractProcessor {
     }
 
     public void submit(Path index) {
+        if (!submittedIndexes.add(index.getFileName().toString())) {
+            LOGGER.debug("Skipping already-submitted index {}", index.getFileName());
+            return;
+        }
         final CommitLogIdxParser parser = new CommitLogIdxParser(new LogicalCommitLog(index.toFile()), metrics,
                 this.context, commitLogReader);
         Future<CommitLogProcessingResult> future = executorService.submit(parser::process);
@@ -122,20 +128,20 @@ public class CommitLogIdxProcessor extends AbstractProcessor {
     @Override
     public void process() throws IOException, InterruptedException {
         if (watcher == null) {
+            // Register both ENTRY_CREATE and ENTRY_MODIFY so that idx files are
+            // detected whether they are newly created or written to after the watcher
+            // was registered. ENTRY_MODIFY is particularly important for Cassandra 5
+            // where the _cdc.idx may already exist when the segment is sealed.
+            Set<WatchEvent.Kind<?>> watchKinds = new HashSet<>();
+            watchKinds.add(ENTRY_CREATE);
+            watchKinds.add(ENTRY_MODIFY);
             watcher = new AbstractDirectoryWatcher(cdcDir.toPath(),
                     this.context.getCassandraConnectorConfig().cdcDirPollInterval(),
-                    Collections.singleton(ENTRY_CREATE)) {
+                    watchKinds) {
                 @Override
                 void handleEvent(WatchEvent<?> event, Path path) {
-                    if (isRunning()) {
-                        // react only on _cdc.idx files, run a thread which will basically wait until it is COMPLETED
-                        // and then read it all at once.
-                        // if another commit log is created in while this just submitted is being processed,
-                        // since executor service is single-threaded, it will block until the previous log is processed,
-                        // basically achieving sequential log processing
-                        if (path.getFileName().toString().endsWith("_cdc.idx")) {
-                            submit(path);
-                        }
+                    if (isRunning() && path.getFileName().toString().endsWith("_cdc.idx")) {
+                        submit(path);
                     }
                 }
             };
@@ -157,6 +163,16 @@ public class CommitLogIdxProcessor extends AbstractProcessor {
                 reprocessingCommitLogs.addAll(commitLogTransfer.getErrorCommitLogFiles());
             }
             initial = false;
+        }
+        // Periodic rescan: catch any idx files that appeared via hard link and were missed
+        // by both ENTRY_CREATE and ENTRY_MODIFY (e.g. the hard link was created between polls).
+        File[] currentIndexes = CommitLogUtil.getIndexes(cdcDir);
+        if (currentIndexes != null) {
+            for (File index : currentIndexes) {
+                if (isRunning()) {
+                    submit(index.toPath());
+                }
+            }
         }
         updateCdcDirectorySizeMetric();
         watcher.poll();
