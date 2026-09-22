@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.cassandra;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -285,5 +286,33 @@ class CommitLogIdxProcessorTest {
 
         assertTrue(readerEntered.await(5, TimeUnit.SECONDS));
         readerRelease.countDown();
+    }
+
+    @Test
+    @EnabledOnOs(OS.LINUX)
+    void submitRetriesIndexAfterDoesNotExistUntilLogAppears() throws Exception {
+        String segmentName = "CommitLog-8-77771";
+        // idx present, but no .log anywhere yet - first attempt must return DOES_NOT_EXIST
+        Files.writeString(cdcDir.resolve(segmentName + "_cdc.idx"), "4096\nCOMPLETED");
+
+        CountDownLatch[] latches = hookReader();
+        CountDownLatch readerEntered = latches[0];
+        CountDownLatch readerRelease = latches[1];
+
+        startProcessor();
+
+        assertFalse(readerEntered.await(300, TimeUnit.MILLISECONDS));
+
+        // .log now appears - the dedup key must have been released so a rescan can retry it
+        Path logSource = sourceDir.resolve(segmentName + ".log");
+        Files.writeString(logSource, "commitlog data");
+        Files.createLink(cdcDir.resolve(segmentName + ".log"), logSource);
+
+        try {
+            assertTrue(readerEntered.await(5, TimeUnit.SECONDS));
+        }
+        finally {
+            readerRelease.countDown();
+        }
     }
 }

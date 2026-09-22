@@ -140,7 +140,10 @@ public class CommitLogIdxParser {
 
     private void enqueueEOFEvent() {
         try {
-            queues.get(Math.abs(commitLog.log.getName().hashCode() % queues.size())).enqueue(new EOFEvent(commitLog.log));
+            // always the cdc_raw/ location, even if exists() fell back to commitlog/ for reading -
+            // that is where the sibling .idx lives and where cleanup looks for both files
+            File canonicalLog = new File(commitLog.index.getParentFile(), commitLog.log.getName());
+            queues.get(Math.abs(commitLog.log.getName().hashCode() % queues.size())).enqueue(new EOFEvent(canonicalLog));
         }
         catch (InterruptedException e) {
             throw new CassandraConnectorTaskException(String.format(
@@ -172,12 +175,21 @@ public class CommitLogIdxParser {
             return false;
         }
         File[] siblingIndexes = CommitLogUtil.getIndexes(cdcRawDir);
-        if (siblingIndexes == null) {
-            return false;
+        if (siblingIndexes != null) {
+            for (File siblingIndex : siblingIndexes) {
+                if (CommitLogUtil.compareCommitLogsIndexes(siblingIndex, commitLog.index) > 0) {
+                    return true;
+                }
+            }
         }
-        for (File siblingIndex : siblingIndexes) {
-            if (CommitLogUtil.compareCommitLogsIndexes(siblingIndex, commitLog.index) > 0) {
-                return true;
+        // the .log is hard-linked into cdc_raw/ at allocation, before its .idx is ever written,
+        // so a newer .log sibling can prove abandonment before any newer .idx exists
+        File[] siblingLogs = CommitLogUtil.getCommitLogs(cdcRawDir);
+        if (siblingLogs != null) {
+            for (File siblingLog : siblingLogs) {
+                if (CommitLogUtil.compareCommitLogs(siblingLog, commitLog.log) > 0) {
+                    return true;
+                }
             }
         }
         return false;
