@@ -27,11 +27,14 @@ import org.junit.jupiter.api.io.TempDir;
 
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.cassandra.metrics.CassandraStreamingMetrics;
+import io.debezium.util.LoggingContext;
 
 class CommitLogIdxParserTest {
 
     @TempDir
     Path cdcRawDir;
+
+    private ChangeEventQueue<Event> lastQueue;
 
     private CommitLogIdxParser buildParser(File idx) {
         CassandraConnectorContext context = mock(CassandraConnectorContext.class);
@@ -43,8 +46,9 @@ class CommitLogIdxParserTest {
                 .pollInterval(java.time.Duration.ofMillis(100))
                 .maxBatchSize(100)
                 .maxQueueSize(1000)
-                .loggingContextSupplier(() -> null)
+                .loggingContextSupplier(() -> LoggingContext.forConnector("test", "test", "test"))
                 .build();
+        lastQueue = queue;
 
         Set<String> erroneousCommitLogs = ConcurrentHashMap.newKeySet();
         Set<String> reprocessingCommitLogs = ConcurrentHashMap.newKeySet();
@@ -120,6 +124,39 @@ class CommitLogIdxParserTest {
 
         assertTrue(finished.await(4, TimeUnit.SECONDS));
         assertEquals(CommitLogProcessingResult.Result.OK, resultRef.get().result);
+    }
+
+    @Test
+    @Timeout(5)
+    void parserDoesNotBlockWhenOnlyNewerLogExistsWithoutNewerIndex() throws Exception {
+        File log = cdcRawDir.resolve("CommitLog-8-1700000800000.log").toFile();
+        File idx = cdcRawDir.resolve("CommitLog-8-1700000800000_cdc.idx").toFile();
+
+        assertTrue(log.createNewFile());
+        Files.writeString(idx.toPath(), "4194304\n");
+        // newer segment's .log is hard-linked before it ever gets an .idx
+        assertTrue(cdcRawDir.resolve("CommitLog-8-1700000900000.log").toFile().createNewFile());
+
+        CommitLogIdxParser parser = buildParser(idx);
+        CommitLogProcessingResult result = parser.process();
+
+        assertEquals(CommitLogProcessingResult.Result.OK, result.result);
+    }
+
+    @Test
+    @Timeout(5)
+    void enqueuesEofEventWithCanonicalCdcRawPathWhenLogFallbackUsed() throws Exception {
+        Path commitlogDir = cdcRawDir.getParent().resolve("commitlog");
+        Files.createDirectories(commitlogDir);
+        Files.writeString(commitlogDir.resolve("CommitLog-8-1700001000000.log"), "commitlog data");
+        File idx = cdcRawDir.resolve("CommitLog-8-1700001000000_cdc.idx").toFile();
+        Files.writeString(idx.toPath(), "4096\nCOMPLETED\n");
+
+        CommitLogIdxParser parser = buildParser(idx);
+        parser.process();
+
+        EOFEvent eof = (EOFEvent) lastQueue.poll().get(0);
+        assertEquals(cdcRawDir.toFile(), eof.file.getParentFile());
     }
 
     @Test
