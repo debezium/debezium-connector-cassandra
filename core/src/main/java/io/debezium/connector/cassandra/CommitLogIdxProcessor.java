@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.cassandra;
 
+import static io.debezium.connector.cassandra.CommitLogProcessingResult.Result.DOES_NOT_EXIST;
 import static java.nio.file.StandardWatchEventKinds.ENTRY_CREATE;
 import static java.nio.file.StandardWatchEventKinds.ENTRY_MODIFY;
 
@@ -109,13 +110,22 @@ public class CommitLogIdxProcessor extends AbstractProcessor {
     }
 
     public void submit(Path index) {
-        if (!submittedIndexes.add(index.getFileName().toString())) {
-            LOGGER.debug("Skipping already-submitted index {}", index.getFileName());
+        String indexName = index.getFileName().toString();
+        if (!submittedIndexes.add(indexName)) {
+            LOGGER.debug("Skipping already-submitted index {}", indexName);
             return;
         }
         final CommitLogIdxParser parser = new CommitLogIdxParser(new LogicalCommitLog(index.toFile()), metrics,
                 this.context, commitLogReader);
-        Future<CommitLogProcessingResult> future = executorService.submit(parser::process);
+        Future<CommitLogProcessingResult> future = executorService.submit(() -> {
+            CommitLogProcessingResult result = parser.process();
+            if (result.result == DOES_NOT_EXIST) {
+                // the .log may not be visible yet (a separate filesystem operation from the
+                // .idx write) - release the key so a later rescan/watcher event can retry it
+                submittedIndexes.remove(indexName);
+            }
+            return result;
+        });
         submittedProcessings.add(new Pair<>(parser, future));
         LOGGER.debug("Processing {} callables.", submittedProcessings.size());
     }
