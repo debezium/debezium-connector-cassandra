@@ -35,7 +35,17 @@ public class LogicalCommitLog {
     }
 
     public boolean exists() {
-        return log.exists();
+        if (log.exists()) {
+            return true;
+        }
+        // fall back to the commitlog/ sibling directory
+        File commitLogDir = new File(index.getParentFile().getParent(), "commitlog");
+        File fallback = new File(commitLogDir, log.getName());
+        if (fallback.exists()) {
+            log = fallback;
+            return true;
+        }
+        return false;
     }
 
     public void parseCommitLogIndex() throws DebeziumException {

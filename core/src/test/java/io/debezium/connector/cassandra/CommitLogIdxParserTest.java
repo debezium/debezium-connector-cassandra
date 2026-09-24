@@ -1,0 +1,242 @@
+/*
+ * Copyright Debezium Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
+package io.debezium.connector.cassandra;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
+import org.junit.jupiter.api.io.TempDir;
+
+import io.debezium.connector.base.ChangeEventQueue;
+import io.debezium.connector.cassandra.metrics.CassandraStreamingMetrics;
+import io.debezium.util.LoggingContext;
+
+class CommitLogIdxParserTest {
+
+    @TempDir
+    Path cdcRawDir;
+
+    private ChangeEventQueue<Event> lastQueue;
+
+    private CommitLogSegmentReader lastReader;
+
+    private CommitLogIdxParser buildParser(File idx) {
+        return buildParser(idx, false);
+    }
+
+    private CommitLogIdxParser buildParser(File idx, boolean realTimeProcessingEnabled) {
+        CassandraConnectorContext context = mock(CassandraConnectorContext.class);
+        CassandraConnectorConfig config = mock(CassandraConnectorConfig.class);
+        CommitLogSegmentReader reader = mock(CommitLogSegmentReader.class);
+        CassandraStreamingMetrics metrics = mock(CassandraStreamingMetrics.class);
+        lastReader = reader;
+
+        ChangeEventQueue<Event> queue = new ChangeEventQueue.Builder<Event>()
+                .pollInterval(java.time.Duration.ofMillis(100))
+                .maxBatchSize(100)
+                .maxQueueSize(1000)
+                .loggingContextSupplier(() -> LoggingContext.forConnector("test", "test", "test"))
+                .build();
+        lastQueue = queue;
+
+        Set<String> erroneousCommitLogs = ConcurrentHashMap.newKeySet();
+        Set<String> reprocessingCommitLogs = ConcurrentHashMap.newKeySet();
+
+        when(context.getCassandraConnectorConfig()).thenReturn(config);
+        when(context.getErroneousCommitLogs()).thenReturn(erroneousCommitLogs);
+        when(context.getReprocessingCommitLogs()).thenReturn(reprocessingCommitLogs);
+        when(context.getQueues()).thenReturn(List.of(queue));
+        when(config.getCommitLogTransfer()).thenReturn(new BlackHoleCommitLogTransfer());
+        when(config.getCommitLogMarkedCompletePollInterval()).thenReturn(100);
+        when(config.isCommitLogRealTimeProcessingEnabled()).thenReturn(realTimeProcessingEnabled);
+
+        return new CommitLogIdxParser(new LogicalCommitLog(idx), metrics, context, reader);
+    }
+
+    @Test
+    @Timeout(5)
+    void parserDoesNotBlockOnAbandonedSegmentWithNoCompletedLine() throws Exception {
+        File log = cdcRawDir.resolve("CommitLog-8-1700000100000.log").toFile();
+        File idx = cdcRawDir.resolve("CommitLog-8-1700000100000_cdc.idx").toFile();
+
+        assertTrue(log.createNewFile());
+        Files.writeString(idx.toPath(), "4194304\n");
+        // a newer segment already exists, so this one is abandoned
+        Files.writeString(cdcRawDir.resolve("CommitLog-8-1700000150000_cdc.idx"), "0\n");
+
+        CommitLogIdxParser parser = buildParser(idx);
+        CommitLogProcessingResult result = parser.process();
+
+        assertEquals(CommitLogProcessingResult.Result.OK, result.result);
+    }
+
+    @Test
+    @Timeout(5)
+    void parserDoesNotBlockIndefinitelyOnceSegmentIsAbandoned() throws Exception {
+        File log = cdcRawDir.resolve("CommitLog-8-1700000200000.log").toFile();
+        File idx = cdcRawDir.resolve("CommitLog-8-1700000200000_cdc.idx").toFile();
+
+        assertTrue(log.createNewFile());
+        Files.writeString(idx.toPath(), "1048576\n");
+        Files.writeString(cdcRawDir.resolve("CommitLog-8-1700000250000_cdc.idx"), "0\n");
+
+        CommitLogIdxParser parser = buildParser(idx);
+        CommitLogProcessingResult result = parser.process();
+
+        assertEquals(CommitLogProcessingResult.Result.OK, result.result);
+    }
+
+    @Test
+    @Timeout(5)
+    void parserDoesNotForceCompleteActiveSegmentWithoutNewerSegment() throws Exception {
+        File log = cdcRawDir.resolve("CommitLog-8-1700000600000.log").toFile();
+        File idx = cdcRawDir.resolve("CommitLog-8-1700000600000_cdc.idx").toFile();
+
+        assertTrue(log.createNewFile());
+        Files.writeString(idx.toPath(), "2048\n");
+
+        CommitLogIdxParser parser = buildParser(idx);
+
+        CountDownLatch finished = new CountDownLatch(1);
+        AtomicReference<CommitLogProcessingResult> resultRef = new AtomicReference<>();
+        Thread t = new Thread(() -> {
+            resultRef.set(parser.process());
+            finished.countDown();
+        });
+        t.setDaemon(true);
+        t.start();
+
+        // pollingInterval is 100ms; several intervals pass with no newer segment present
+        assertFalse(finished.await(400, TimeUnit.MILLISECONDS));
+
+        Files.writeString(cdcRawDir.resolve("CommitLog-8-1700000700000_cdc.idx"), "0\n");
+
+        assertTrue(finished.await(4, TimeUnit.SECONDS));
+        assertEquals(CommitLogProcessingResult.Result.OK, resultRef.get().result);
+    }
+
+    // a newer .log alone must not prove abandonment - see isAbandoned()
+    @Test
+    @Timeout(5)
+    void parserDoesNotForceCompleteWhenOnlyNewerLogExistsWithoutNewerIndex() throws Exception {
+        File log = cdcRawDir.resolve("CommitLog-8-1700000800000.log").toFile();
+        File idx = cdcRawDir.resolve("CommitLog-8-1700000800000_cdc.idx").toFile();
+
+        assertTrue(log.createNewFile());
+        Files.writeString(idx.toPath(), "4194304\n");
+
+        CommitLogIdxParser parser = buildParser(idx);
+
+        CountDownLatch finished = new CountDownLatch(1);
+        AtomicReference<CommitLogProcessingResult> resultRef = new AtomicReference<>();
+        Thread t = new Thread(() -> {
+            resultRef.set(parser.process());
+            finished.countDown();
+        });
+        t.setDaemon(true);
+        t.start();
+
+        // newer segment's .log is hard-linked before it ever gets an .idx - must not unblock us
+        assertTrue(cdcRawDir.resolve("CommitLog-8-1700000900000.log").toFile().createNewFile());
+        assertFalse(finished.await(400, TimeUnit.MILLISECONDS));
+
+        // only a newer .idx proves abandonment
+        Files.writeString(cdcRawDir.resolve("CommitLog-8-1700000900000_cdc.idx"), "0\n");
+
+        assertTrue(finished.await(4, TimeUnit.SECONDS));
+        assertEquals(CommitLogProcessingResult.Result.OK, resultRef.get().result);
+    }
+
+    // reproduces a production report: continuous writes + real-time processing must not stop
+    // reading a still-active segment just because a newer one was allocated
+    @Test
+    @Timeout(5)
+    void parserKeepsReadingActiveSegmentAfterNewerSegmentIsAllocated() throws Exception {
+        File log = cdcRawDir.resolve("CommitLog-8-2000000100000.log").toFile();
+        File idx = cdcRawDir.resolve("CommitLog-8-2000000100000_cdc.idx").toFile();
+        assertTrue(log.createNewFile());
+        Files.writeString(idx.toPath(), "1000\n");
+
+        CommitLogIdxParser parser = buildParser(idx, true);
+
+        List<Integer> readPositions = Collections.synchronizedList(new ArrayList<>());
+        doAnswer(inv -> {
+            readPositions.add(inv.getArgument(2));
+            return null;
+        }).when(lastReader).readCommitLogSegment(any(), anyLong(), anyInt());
+
+        // newer segment allocated while this one is still active - must not stop us early
+        assertTrue(cdcRawDir.resolve("CommitLog-8-2000000200000.log").toFile().createNewFile());
+
+        CountDownLatch finished = new CountDownLatch(1);
+        Thread t = new Thread(() -> {
+            parser.process();
+            finished.countDown();
+        });
+        t.setDaemon(true);
+        t.start();
+
+        // Cassandra keeps writing to N after the newer segment was allocated
+        Thread.sleep(150);
+        Files.writeString(idx.toPath(), "4194304\nCOMPLETED\n");
+
+        assertTrue(finished.await(4, TimeUnit.SECONDS));
+        assertTrue(readPositions.stream().anyMatch(p -> p >= 1000),
+                "parser must read through to the true end of the segment, got " + readPositions);
+    }
+
+    @Test
+    @Timeout(5)
+    void enqueuesEofEventWithCanonicalCdcRawPathWhenLogFallbackUsed() throws Exception {
+        Path commitlogDir = cdcRawDir.getParent().resolve("commitlog");
+        Files.createDirectories(commitlogDir);
+        Files.writeString(commitlogDir.resolve("CommitLog-8-1700001000000.log"), "commitlog data");
+        File idx = cdcRawDir.resolve("CommitLog-8-1700001000000_cdc.idx").toFile();
+        Files.writeString(idx.toPath(), "4096\nCOMPLETED\n");
+
+        CommitLogIdxParser parser = buildParser(idx);
+        parser.process();
+
+        EOFEvent eof = (EOFEvent) lastQueue.poll().get(0);
+        assertEquals(cdcRawDir.toFile(), eof.file.getParentFile());
+    }
+
+    @Test
+    @Timeout(5)
+    void parserReturnsOkForNormalCompletedSegment() throws Exception {
+        File log = cdcRawDir.resolve("CommitLog-8-1700000300000.log").toFile();
+        File idx = cdcRawDir.resolve("CommitLog-8-1700000300000_cdc.idx").toFile();
+
+        assertTrue(log.createNewFile());
+        Files.writeString(idx.toPath(), "4194304\nCOMPLETED\n");
+
+        CommitLogIdxParser parser = buildParser(idx);
+        CommitLogProcessingResult result = parser.process();
+
+        assertEquals(CommitLogProcessingResult.Result.OK, result.result);
+    }
+}
