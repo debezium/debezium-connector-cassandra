@@ -174,22 +174,16 @@ public class CommitLogIdxParser {
         if (cdcRawDir == null || !cdcRawDir.isDirectory()) {
             return false;
         }
+        // deliberately .idx-only: a newer .log is hard-linked at allocation, before it's ever
+        // synced, so it can appear while this segment is still actively being written to. Only
+        // a newer .idx reliably proves this one was already closed out first.
         File[] siblingIndexes = CommitLogUtil.getIndexes(cdcRawDir);
-        if (siblingIndexes != null) {
-            for (File siblingIndex : siblingIndexes) {
-                if (CommitLogUtil.compareCommitLogsIndexes(siblingIndex, commitLog.index) > 0) {
-                    return true;
-                }
-            }
+        if (siblingIndexes == null) {
+            return false;
         }
-        // the .log is hard-linked into cdc_raw/ at allocation, before its .idx is ever written,
-        // so a newer .log sibling can prove abandonment before any newer .idx exists
-        File[] siblingLogs = CommitLogUtil.getCommitLogs(cdcRawDir);
-        if (siblingLogs != null) {
-            for (File siblingLog : siblingLogs) {
-                if (CommitLogUtil.compareCommitLogs(siblingLog, commitLog.log) > 0) {
-                    return true;
-                }
+        for (File siblingIndex : siblingIndexes) {
+            if (CommitLogUtil.compareCommitLogsIndexes(siblingIndex, commitLog.index) > 0) {
+                return true;
             }
         }
         return false;
