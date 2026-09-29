@@ -48,6 +48,9 @@ class CommitLogIdxProcessorTest {
     @TempDir
     Path sourceDir;
 
+    @TempDir
+    Path commitLogDir;
+
     private CassandraConnectorContext context;
     private CassandraConnectorConfig config;
     private CassandraStreamingMetrics metrics;
@@ -86,14 +89,13 @@ class CommitLogIdxProcessorTest {
     }
 
     private void startProcessor() throws Exception {
-        processor = new CommitLogIdxProcessor(context, metrics, reader, cdcDir.toFile());
+        processor = new CommitLogIdxProcessor(context, metrics, reader, cdcDir.toFile(), commitLogDir.toFile());
         processor.initialize();
         Thread t = new Thread(() -> {
             try {
                 processor.start();
             }
             catch (Exception e) {
-                // expected on stop()
             }
         });
         t.setDaemon(true);
@@ -122,7 +124,7 @@ class CommitLogIdxProcessorTest {
         when(config.getCommitLogTransfer()).thenReturn(transfer);
         when(transfer.getErrorCommitLogFiles()).thenReturn(List.of("CommitLog-6-100.log", "CommitLog-6-101.log"));
 
-        CommitLogIdxProcessor p = new CommitLogIdxProcessor(context, metrics, reader, cdcDir.toFile());
+        CommitLogIdxProcessor p = new CommitLogIdxProcessor(context, metrics, reader, cdcDir.toFile(), commitLogDir.toFile());
         p.initialize();
         Thread t = new Thread(() -> {
             try {
@@ -231,7 +233,7 @@ class CommitLogIdxProcessorTest {
         Path log1 = sourceDir.resolve(seg1 + ".log");
         Files.writeString(log1, "commitlog data");
         Files.createLink(cdcDir.resolve(seg1 + ".log"), log1);
-        Files.writeString(cdcDir.resolve(seg1 + "_cdc.idx"), "4194304\n"); // no COMPLETED
+        Files.writeString(cdcDir.resolve(seg1 + "_cdc.idx"), "4194304\n");
 
         String seg2 = "CommitLog-8-44442";
         Path log2 = sourceDir.resolve(seg2 + ".log");
@@ -246,12 +248,11 @@ class CommitLogIdxProcessorTest {
             return null;
         }).when(reader).readCommitLogSegment(any(), anyLong(), anyInt());
 
-        startProcessor(); // picks up seg1 via initial scan; executor is now blocked on it
+        startProcessor();
 
         Files.createLink(cdcDir.resolve(seg2 + ".log"), log2);
         Files.writeString(cdcDir.resolve(seg2 + "_cdc.idx"), "4096\nCOMPLETED");
 
-        // seg2 is a newer segment, so seg1 is abandoned and the executor unblocks
         assertTrue(seg2Processed.await(4, TimeUnit.SECONDS));
     }
 
@@ -262,11 +263,11 @@ class CommitLogIdxProcessorTest {
         Path log = sourceDir.resolve(seg + ".log");
         Files.writeString(log, "commitlog data");
         Files.createLink(cdcDir.resolve(seg + ".log"), log);
-        Files.writeString(cdcDir.resolve(seg + "_cdc.idx"), "4194304\n"); // no COMPLETED
+        Files.writeString(cdcDir.resolve(seg + "_cdc.idx"), "4194304\n");
 
-        startProcessor(); // picks up seg via initial scan
+        startProcessor();
 
-        Thread.sleep(400); // several poll intervals pass with no newer segment present
+        Thread.sleep(400);
 
         assertTrue(CommitLogIdxProcessor.submittedProcessings.stream()
                 .anyMatch(p -> p.getFirst().getCommitLog().index.getName().equals(seg + "_cdc.idx")));
@@ -276,9 +277,7 @@ class CommitLogIdxProcessorTest {
     @Test
     void shouldFindLogViaCommitlogFallbackWhenNotHardLinkedIntoCdcRaw() throws Exception {
         String segmentName = "CommitLog-8-55555";
-        Path commitlogDir = cdcDir.getParent().resolve("commitlog");
-        Files.createDirectories(commitlogDir);
-        Files.writeString(commitlogDir.resolve(segmentName + ".log"), "commitlog data");
+        Files.writeString(commitLogDir.resolve(segmentName + ".log"), "commitlog data");
         Files.writeString(cdcDir.resolve(segmentName + "_cdc.idx"), "4096\nCOMPLETED");
 
         CountDownLatch[] latches = hookReader();
@@ -295,7 +294,6 @@ class CommitLogIdxProcessorTest {
     @EnabledOnOs(OS.LINUX)
     void submitRetriesIndexAfterDoesNotExistUntilLogAppears() throws Exception {
         String segmentName = "CommitLog-8-77771";
-        // idx present, but no .log anywhere yet - first attempt must return DOES_NOT_EXIST
         Files.writeString(cdcDir.resolve(segmentName + "_cdc.idx"), "4096\nCOMPLETED");
 
         CountDownLatch[] latches = hookReader();
@@ -306,7 +304,6 @@ class CommitLogIdxProcessorTest {
 
         assertFalse(readerEntered.await(300, TimeUnit.MILLISECONDS));
 
-        // .log now appears - the dedup key must have been released so a rescan can retry it
         Path logSource = sourceDir.resolve(segmentName + ".log");
         Files.writeString(logSource, "commitlog data");
         Files.createLink(cdcDir.resolve(segmentName + ".log"), logSource);
@@ -319,22 +316,17 @@ class CommitLogIdxProcessorTest {
         }
     }
 
-    // getIndexes() is backed by File.listFiles(), which has no ordering guarantee; the
-    // rescan must sort before submitting, same as the initial scan does. isRunning() is
-    // overridden so process() can be driven synchronously from the test thread, with no
-    // background start()-loop that could race the rescan by reacting to a file individually
-    // before the rest are written.
     @Test
     @EnabledOnOs(OS.LINUX)
     void rescanSubmitsMissedSegmentsInAscendingOrder() throws Exception {
-        processor = new CommitLogIdxProcessor(context, metrics, reader, cdcDir.toFile()) {
+        processor = new CommitLogIdxProcessor(context, metrics, reader, cdcDir.toFile(), commitLogDir.toFile()) {
             @Override
             public boolean isRunning() {
                 return true;
             }
         };
         processor.initialize();
-        processor.process(); // registers the watcher against an empty directory
+        processor.process();
 
         List<Long> readSegmentIds = Collections.synchronizedList(new ArrayList<>());
         CountDownLatch allRead = new CountDownLatch(5);
@@ -344,7 +336,6 @@ class CommitLogIdxProcessorTest {
             return null;
         }).when(reader).readCommitLogSegment(any(), anyLong(), anyInt());
 
-        // written in scrambled order, all before the next process() call's rescan
         for (long id : new long[]{ 88888, 11111, 55555, 22222, 99999 }) {
             String seg = "CommitLog-8-" + id;
             Path logSource = sourceDir.resolve(seg + ".log");
@@ -353,7 +344,7 @@ class CommitLogIdxProcessorTest {
             Files.writeString(cdcDir.resolve(seg + "_cdc.idx"), "4096\nCOMPLETED");
         }
 
-        processor.process(); // the rescan (which runs before watcher.poll()) must see all five
+        processor.process();
 
         assertTrue(allRead.await(5, TimeUnit.SECONDS));
         assertEquals(List.of(11111L, 22222L, 55555L, 88888L, 99999L), readSegmentIds);
@@ -369,15 +360,14 @@ class CommitLogIdxProcessorTest {
         Path idxPath = cdcDir.resolve(segmentName + "_cdc.idx");
         Files.writeString(idxPath, "4096\nCOMPLETED");
 
-        startProcessor(); // picks up and fully processes the COMPLETED segment
+        startProcessor();
         Thread.sleep(150);
         assertTrue(processor.submittedIndexes.contains(segmentName + "_cdc.idx"));
 
-        // simulate what CommitLogTransfer/QueueProcessor does once the EOF event is handled
         Files.delete(idxPath);
         Files.delete(cdcDir.resolve(segmentName + ".log"));
 
-        Thread.sleep(150); // let a rescan cycle notice and prune it
+        Thread.sleep(150);
         assertFalse(processor.submittedIndexes.contains(segmentName + "_cdc.idx"));
     }
 }
