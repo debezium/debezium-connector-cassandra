@@ -35,6 +35,19 @@ class Cassandra5SchemaChangeListenerTest {
         assertFalse(Cassandra5SchemaChangeListener.isCdcEnabled(mockTable("false")));
     }
 
+    @Test
+    void canMirrorToOfflineSchemaIsFalseWhenKeyspaceMetadataAbsent() {
+        // When the keyspace is not yet in the embedded Schema.instance, getKeyspaceMetadata(...) is null.
+        // Before the fix, onTableCreated then called Keyspace.openWithoutSSTables(...) and threw a NullPointerException.
+        assertFalse(Cassandra5SchemaChangeListener.canMirrorToOfflineSchema(null));
+    }
+
+    @Test
+    void canMirrorToOfflineSchemaIsTrueWhenKeyspaceMetadataPresent() {
+        assertTrue(Cassandra5SchemaChangeListener.canMirrorToOfflineSchema(
+                mock(org.apache.cassandra.schema.KeyspaceMetadata.class)));
+    }
+
     private TableMetadata mockTable(String cdcValue) {
         TableMetadata table = mock(TableMetadata.class);
         Map<CqlIdentifier, Object> options = new HashMap<>();
