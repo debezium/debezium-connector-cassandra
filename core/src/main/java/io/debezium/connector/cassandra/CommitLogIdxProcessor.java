@@ -55,7 +55,7 @@ public class CommitLogIdxProcessor extends AbstractProcessor {
     private final ExecutorService executorService;
     static final Set<Pair<CommitLogIdxParser, Future<CommitLogProcessingResult>>> submittedProcessings = ConcurrentHashMap.newKeySet();
     private final CommitLogSegmentReader commitLogReader;
-    private final Set<String> submittedIndexes = ConcurrentHashMap.newKeySet();
+    final Set<String> submittedIndexes = ConcurrentHashMap.newKeySet();
 
     public CommitLogIdxProcessor(CassandraConnectorContext context, CassandraStreamingMetrics metrics,
                                  CommitLogSegmentReader commitLogReader, File cdcDir) {
@@ -174,11 +174,17 @@ public class CommitLogIdxProcessor extends AbstractProcessor {
         // rescan for any idx files the watcher missed
         File[] currentIndexes = CommitLogUtil.getIndexes(cdcDir);
         if (currentIndexes != null) {
+            Arrays.sort(currentIndexes, CommitLogUtil::compareCommitLogsIndexes);
+            Set<String> currentIndexNames = new HashSet<>();
             for (File index : currentIndexes) {
+                currentIndexNames.add(index.getName());
                 if (isRunning()) {
                     submit(index.toPath());
                 }
             }
+            // names whose file is gone were already fully processed and cleaned up -
+            // safe to forget, keeping the set bounded by what is actually on disk
+            submittedIndexes.retainAll(currentIndexNames);
         }
         updateCdcDirectorySizeMetric();
         watcher.poll();
