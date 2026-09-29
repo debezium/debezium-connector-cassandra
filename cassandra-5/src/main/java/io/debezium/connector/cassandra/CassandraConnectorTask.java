@@ -54,7 +54,8 @@ public class CassandraConnectorTask {
                     CassandraStreamingMetrics metrics = new CassandraStreamingMetrics((CdcSourceTaskContext) context);
                     return new AbstractProcessor[]{ new CommitLogIdxProcessor(context, metrics,
                             new Cassandra5CommitLogSegmentReader(context, metrics),
-                            new File(DatabaseDescriptor.getCDCLogLocation())) };
+                            new File(DatabaseDescriptor.getCDCLogLocation()),
+                            new File(DatabaseDescriptor.getCommitLogLocation())) };
                 });
     }
 }

@@ -17,7 +17,8 @@ public class Dse6816ConnectorTask extends Dse680ConnectorTask {
 
     @Override
     protected AbstractProcessor getCommitLogProcessor(CassandraConnectorContext context, CassandraStreamingMetrics metrics, CommitLogReadHandler handler) {
-        return new CommitLogIdxProcessor(context, metrics, new DseCommitLogSegmentReader(context, metrics), DatabaseDescriptor.getCDCLogLocation());
+        return new CommitLogIdxProcessor(context, metrics, new DseCommitLogSegmentReader(context, metrics), DatabaseDescriptor.getCDCLogLocation(),
+                DatabaseDescriptor.getCommitLogLocation());
     }
 
 }

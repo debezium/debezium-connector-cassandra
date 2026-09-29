@@ -45,6 +45,7 @@ public class CommitLogIdxProcessor extends AbstractProcessor {
 
     private final CassandraConnectorContext context;
     private final File cdcDir;
+    private final File commitLogDir;
     private AbstractDirectoryWatcher watcher;
     private final CassandraStreamingMetrics metrics;
     private boolean initial = true;
@@ -58,7 +59,7 @@ public class CommitLogIdxProcessor extends AbstractProcessor {
     final Set<String> submittedIndexes = ConcurrentHashMap.newKeySet();
 
     public CommitLogIdxProcessor(CassandraConnectorContext context, CassandraStreamingMetrics metrics,
-                                 CommitLogSegmentReader commitLogReader, File cdcDir) {
+                                 CommitLogSegmentReader commitLogReader, File cdcDir, File commitLogDir) {
         super(NAME, Duration.ZERO);
         this.context = context;
         commitLogTransfer = this.context.getCassandraConnectorConfig().getCommitLogTransfer();
@@ -66,6 +67,7 @@ public class CommitLogIdxProcessor extends AbstractProcessor {
         reprocessingCommitLogs = this.context.getReprocessingCommitLogs();
         shutdownTimeoutSeconds = this.context.getCassandraConnectorConfig().getCommitLogProcessorShutdownTimeoutSeconds();
         this.cdcDir = cdcDir;
+        this.commitLogDir = commitLogDir;
         executorService = Executors.newSingleThreadExecutor();
         this.metrics = metrics;
         this.commitLogReader = commitLogReader;
@@ -115,13 +117,11 @@ public class CommitLogIdxProcessor extends AbstractProcessor {
             LOGGER.debug("Skipping already-submitted index {}", indexName);
             return;
         }
-        final CommitLogIdxParser parser = new CommitLogIdxParser(new LogicalCommitLog(index.toFile()), metrics,
+        final CommitLogIdxParser parser = new CommitLogIdxParser(new LogicalCommitLog(index.toFile(), commitLogDir), metrics,
                 this.context, commitLogReader);
         Future<CommitLogProcessingResult> future = executorService.submit(() -> {
             CommitLogProcessingResult result = parser.process();
             if (result.result == DOES_NOT_EXIST) {
-                // the .log may not be visible yet (a separate filesystem operation from the
-                // .idx write) - release the key so a later rescan/watcher event can retry it
                 submittedIndexes.remove(indexName);
             }
             return result;
@@ -138,7 +138,7 @@ public class CommitLogIdxProcessor extends AbstractProcessor {
     @Override
     public void process() throws IOException, InterruptedException {
         if (watcher == null) {
-            // also react to modifications, since Cassandra 5 may write the _cdc.idx in place
+            // ENTRY_MODIFY: Cassandra 5 may write the _cdc.idx in place, not as a new file
             Set<WatchEvent.Kind<?>> watchKinds = new HashSet<>();
             watchKinds.add(ENTRY_CREATE);
             watchKinds.add(ENTRY_MODIFY);
@@ -171,7 +171,6 @@ public class CommitLogIdxProcessor extends AbstractProcessor {
             }
             initial = false;
         }
-        // rescan for any idx files the watcher missed
         File[] currentIndexes = CommitLogUtil.getIndexes(cdcDir);
         if (currentIndexes != null) {
             Arrays.sort(currentIndexes, CommitLogUtil::compareCommitLogsIndexes);
@@ -182,8 +181,6 @@ public class CommitLogIdxProcessor extends AbstractProcessor {
                     submit(index.toPath());
                 }
             }
-            // names whose file is gone were already fully processed and cleaned up -
-            // safe to forget, keeping the set bounded by what is actually on disk
             submittedIndexes.retainAll(currentIndexNames);
         }
         updateCdcDirectorySizeMetric();
