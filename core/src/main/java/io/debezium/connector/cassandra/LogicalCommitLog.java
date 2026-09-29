@@ -15,12 +15,14 @@ import io.debezium.DebeziumException;
 public class LogicalCommitLog {
     File log;
     File index;
+    final File commitLogDir;
     long commitLogSegmentId;
     int offsetOfEndOfLastWrittenCDCMutation = 0;
     boolean completed = false;
 
-    public LogicalCommitLog(File index) {
+    public LogicalCommitLog(File index, File commitLogDir) {
         this.index = index;
+        this.commitLogDir = commitLogDir;
         this.log = parseCommitLogName(index);
         this.commitLogSegmentId = parseSegmentId(log);
     }
@@ -38,8 +40,10 @@ public class LogicalCommitLog {
         if (log.exists()) {
             return true;
         }
-        // fall back to the commitlog/ sibling directory
-        File commitLogDir = new File(index.getParentFile().getParent(), "commitlog");
+        // no guessing - commitlog_directory and cdc_raw_directory are configured independently
+        if (commitLogDir == null) {
+            return false;
+        }
         File fallback = new File(commitLogDir, log.getName());
         if (fallback.exists()) {
             log = fallback;

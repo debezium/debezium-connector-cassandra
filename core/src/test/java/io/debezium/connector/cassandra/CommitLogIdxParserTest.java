@@ -40,15 +40,22 @@ class CommitLogIdxParserTest {
     @TempDir
     Path cdcRawDir;
 
+    @TempDir
+    Path commitLogDir;
+
     private ChangeEventQueue<Event> lastQueue;
 
     private CommitLogSegmentReader lastReader;
 
     private CommitLogIdxParser buildParser(File idx) {
-        return buildParser(idx, false);
+        return buildParser(new LogicalCommitLog(idx, null), false);
     }
 
     private CommitLogIdxParser buildParser(File idx, boolean realTimeProcessingEnabled) {
+        return buildParser(new LogicalCommitLog(idx, null), realTimeProcessingEnabled);
+    }
+
+    private CommitLogIdxParser buildParser(LogicalCommitLog commitLog, boolean realTimeProcessingEnabled) {
         CassandraConnectorContext context = mock(CassandraConnectorContext.class);
         CassandraConnectorConfig config = mock(CassandraConnectorConfig.class);
         CommitLogSegmentReader reader = mock(CommitLogSegmentReader.class);
@@ -74,7 +81,7 @@ class CommitLogIdxParserTest {
         when(config.getCommitLogMarkedCompletePollInterval()).thenReturn(100);
         when(config.isCommitLogRealTimeProcessingEnabled()).thenReturn(realTimeProcessingEnabled);
 
-        return new CommitLogIdxParser(new LogicalCommitLog(idx), metrics, context, reader);
+        return new CommitLogIdxParser(commitLog, metrics, context, reader);
     }
 
     @Test
@@ -85,7 +92,6 @@ class CommitLogIdxParserTest {
 
         assertTrue(log.createNewFile());
         Files.writeString(idx.toPath(), "4194304\n");
-        // a newer segment already exists, so this one is abandoned
         Files.writeString(cdcRawDir.resolve("CommitLog-8-1700000150000_cdc.idx"), "0\n");
 
         CommitLogIdxParser parser = buildParser(idx);
@@ -130,7 +136,6 @@ class CommitLogIdxParserTest {
         t.setDaemon(true);
         t.start();
 
-        // pollingInterval is 100ms; several intervals pass with no newer segment present
         assertFalse(finished.await(400, TimeUnit.MILLISECONDS));
 
         Files.writeString(cdcRawDir.resolve("CommitLog-8-1700000700000_cdc.idx"), "0\n");
@@ -139,7 +144,6 @@ class CommitLogIdxParserTest {
         assertEquals(CommitLogProcessingResult.Result.OK, resultRef.get().result);
     }
 
-    // a newer .log alone must not prove abandonment - see isAbandoned()
     @Test
     @Timeout(5)
     void parserDoesNotForceCompleteWhenOnlyNewerLogExistsWithoutNewerIndex() throws Exception {
@@ -160,19 +164,15 @@ class CommitLogIdxParserTest {
         t.setDaemon(true);
         t.start();
 
-        // newer segment's .log is hard-linked before it ever gets an .idx - must not unblock us
         assertTrue(cdcRawDir.resolve("CommitLog-8-1700000900000.log").toFile().createNewFile());
         assertFalse(finished.await(400, TimeUnit.MILLISECONDS));
 
-        // only a newer .idx proves abandonment
         Files.writeString(cdcRawDir.resolve("CommitLog-8-1700000900000_cdc.idx"), "0\n");
 
         assertTrue(finished.await(4, TimeUnit.SECONDS));
         assertEquals(CommitLogProcessingResult.Result.OK, resultRef.get().result);
     }
 
-    // reproduces a production report: continuous writes + real-time processing must not stop
-    // reading a still-active segment just because a newer one was allocated
     @Test
     @Timeout(5)
     void parserKeepsReadingActiveSegmentAfterNewerSegmentIsAllocated() throws Exception {
@@ -189,7 +189,6 @@ class CommitLogIdxParserTest {
             return null;
         }).when(lastReader).readCommitLogSegment(any(), anyLong(), anyInt());
 
-        // newer segment allocated while this one is still active - must not stop us early
         assertTrue(cdcRawDir.resolve("CommitLog-8-2000000200000.log").toFile().createNewFile());
 
         CountDownLatch finished = new CountDownLatch(1);
@@ -200,7 +199,6 @@ class CommitLogIdxParserTest {
         t.setDaemon(true);
         t.start();
 
-        // Cassandra keeps writing to N after the newer segment was allocated
         Thread.sleep(150);
         Files.writeString(idx.toPath(), "4194304\nCOMPLETED\n");
 
@@ -212,13 +210,11 @@ class CommitLogIdxParserTest {
     @Test
     @Timeout(5)
     void enqueuesEofEventWithCanonicalCdcRawPathWhenLogFallbackUsed() throws Exception {
-        Path commitlogDir = cdcRawDir.getParent().resolve("commitlog");
-        Files.createDirectories(commitlogDir);
-        Files.writeString(commitlogDir.resolve("CommitLog-8-1700001000000.log"), "commitlog data");
+        Files.writeString(commitLogDir.resolve("CommitLog-8-1700001000000.log"), "commitlog data");
         File idx = cdcRawDir.resolve("CommitLog-8-1700001000000_cdc.idx").toFile();
         Files.writeString(idx.toPath(), "4096\nCOMPLETED\n");
 
-        CommitLogIdxParser parser = buildParser(idx);
+        CommitLogIdxParser parser = buildParser(new LogicalCommitLog(idx, commitLogDir.toFile()), false);
         parser.process();
 
         EOFEvent eof = (EOFEvent) lastQueue.poll().get(0);
