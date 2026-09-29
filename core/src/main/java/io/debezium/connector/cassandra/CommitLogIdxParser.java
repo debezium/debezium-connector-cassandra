@@ -99,7 +99,6 @@ public class CommitLogIdxParser {
                 parseIndexFile(commitLog);
 
                 if (!commitLog.completed && commitLog.offsetOfEndOfLastWrittenCDCMutation == offsetBeforeSleep && isAbandoned()) {
-                    // A newer segment exists, so this one is abandoned rather than merely idle.
                     LOGGER.warn("Idx offset for {} has not advanced and a newer commit log segment already exists - " +
                             "treating segment as abandoned, completing at offset {}",
                             commitLog, commitLog.offsetOfEndOfLastWrittenCDCMutation);
@@ -140,8 +139,7 @@ public class CommitLogIdxParser {
 
     private void enqueueEOFEvent() {
         try {
-            // always the cdc_raw/ location, even if exists() fell back to commitlog/ for reading -
-            // that is where the sibling .idx lives and where cleanup looks for both files
+            // always the cdc_raw/ location, even if exists() fell back to commitlog/ for reading
             File canonicalLog = new File(commitLog.index.getParentFile(), commitLog.log.getName());
             queues.get(Math.abs(commitLog.log.getName().hashCode() % queues.size())).enqueue(new EOFEvent(canonicalLog));
         }
@@ -174,9 +172,7 @@ public class CommitLogIdxParser {
         if (cdcRawDir == null || !cdcRawDir.isDirectory()) {
             return false;
         }
-        // deliberately .idx-only: a newer .log is hard-linked at allocation, before it's ever
-        // synced, so it can appear while this segment is still actively being written to. Only
-        // a newer .idx reliably proves this one was already closed out first.
+        // .idx-only: a newer .log is hard-linked at allocation, before ever being synced
         File[] siblingIndexes = CommitLogUtil.getIndexes(cdcRawDir);
         if (siblingIndexes == null) {
             return false;
