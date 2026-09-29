@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.cassandra;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -20,6 +21,8 @@ import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -314,5 +317,67 @@ class CommitLogIdxProcessorTest {
         finally {
             readerRelease.countDown();
         }
+    }
+
+    // getIndexes() is backed by File.listFiles(), which has no ordering guarantee; the
+    // rescan must sort before submitting, same as the initial scan does. isRunning() is
+    // overridden so process() can be driven synchronously from the test thread, with no
+    // background start()-loop that could race the rescan by reacting to a file individually
+    // before the rest are written.
+    @Test
+    @EnabledOnOs(OS.LINUX)
+    void rescanSubmitsMissedSegmentsInAscendingOrder() throws Exception {
+        processor = new CommitLogIdxProcessor(context, metrics, reader, cdcDir.toFile()) {
+            @Override
+            public boolean isRunning() {
+                return true;
+            }
+        };
+        processor.initialize();
+        processor.process(); // registers the watcher against an empty directory
+
+        List<Long> readSegmentIds = Collections.synchronizedList(new ArrayList<>());
+        CountDownLatch allRead = new CountDownLatch(5);
+        doAnswer(inv -> {
+            readSegmentIds.add((Long) inv.getArgument(1));
+            allRead.countDown();
+            return null;
+        }).when(reader).readCommitLogSegment(any(), anyLong(), anyInt());
+
+        // written in scrambled order, all before the next process() call's rescan
+        for (long id : new long[]{ 88888, 11111, 55555, 22222, 99999 }) {
+            String seg = "CommitLog-8-" + id;
+            Path logSource = sourceDir.resolve(seg + ".log");
+            Files.writeString(logSource, "commitlog data");
+            Files.createLink(cdcDir.resolve(seg + ".log"), logSource);
+            Files.writeString(cdcDir.resolve(seg + "_cdc.idx"), "4096\nCOMPLETED");
+        }
+
+        processor.process(); // the rescan (which runs before watcher.poll()) must see all five
+
+        assertTrue(allRead.await(5, TimeUnit.SECONDS));
+        assertEquals(List.of(11111L, 22222L, 55555L, 88888L, 99999L), readSegmentIds);
+    }
+
+    @Test
+    @EnabledOnOs(OS.LINUX)
+    void rescanPrunesSubmittedIndexesForFilesNoLongerOnDisk() throws Exception {
+        String segmentName = "CommitLog-8-44443";
+        Path logSource = sourceDir.resolve(segmentName + ".log");
+        Files.writeString(logSource, "commitlog data");
+        Files.createLink(cdcDir.resolve(segmentName + ".log"), logSource);
+        Path idxPath = cdcDir.resolve(segmentName + "_cdc.idx");
+        Files.writeString(idxPath, "4096\nCOMPLETED");
+
+        startProcessor(); // picks up and fully processes the COMPLETED segment
+        Thread.sleep(150);
+        assertTrue(processor.submittedIndexes.contains(segmentName + "_cdc.idx"));
+
+        // simulate what CommitLogTransfer/QueueProcessor does once the EOF event is handled
+        Files.delete(idxPath);
+        Files.delete(cdcDir.resolve(segmentName + ".log"));
+
+        Thread.sleep(150); // let a rescan cycle notice and prune it
+        assertFalse(processor.submittedIndexes.contains(segmentName + "_cdc.idx"));
     }
 }
