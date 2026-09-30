@@ -34,6 +34,7 @@ import io.debezium.connector.cassandra.metrics.CassandraSnapshotMetrics;
 import io.debezium.connector.cassandra.network.BuildInfoServlet;
 import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;
 import io.debezium.connector.common.CdcSourceTaskContext;
+import io.debezium.pipeline.ErrorHandler;
 import io.dropwizard.metrics.servlets.HealthCheckServlet;
 import io.dropwizard.metrics.servlets.MetricsServlet;
 import io.dropwizard.metrics.servlets.PingServlet;
@@ -53,6 +54,7 @@ public class CassandraConnectorTaskTemplate {
     private final SchemaLoader schemaLoader;
     private final SchemaChangeListenerProvider schemaChangeListenerProvider;
     private final CassandraSpecificProcessors cassandraSpecificProcessors;
+    private ErrorHandler errorHandler;
 
     public static void main(String[] args,
                             Function<CassandraConnectorConfig, CassandraConnectorTaskTemplate> templateFactory,
@@ -113,7 +115,7 @@ public class CassandraConnectorTaskTemplate {
 
         LOGGER.info("Starting processor group ...");
         AbstractProcessor[] processors = cassandraSpecificProcessors.getProcessors(taskContext);
-        processorGroup = initProcessorGroup(taskContext, factory.recordEmitter(taskContext), processors);
+        processorGroup = initProcessorGroup(taskContext, factory.recordEmitter(taskContext), errorHandler, processors);
         processorGroup.start();
 
         LOGGER.info("Starting HTTP server ...");
@@ -142,15 +144,20 @@ public class CassandraConnectorTaskTemplate {
         return taskContext;
     }
 
+    public void setErrorHandler(ErrorHandler errorHandler) {
+        this.errorHandler = errorHandler;
+    }
+
     private void initDeserializer() {
         CassandraTypeDeserializer.init(deserializerProvider.deserializers(), config.getDecimalMode(),
                 config.getVarIntMode(), deserializerProvider.baseTypeForReversedType());
     }
 
     protected ProcessorGroup initProcessorGroup(CassandraConnectorContext taskContext, Emitter recordEmitter,
-                                                AbstractProcessor... cassandraSpecificProcessors) {
+                                                ErrorHandler errorHandler, AbstractProcessor... cassandraSpecificProcessors) {
         try {
             ProcessorGroup processorGroup = new ProcessorGroup();
+            processorGroup.setErrorHandler(errorHandler);
 
             for (AbstractProcessor processor : cassandraSpecificProcessors) {
                 processorGroup.addProcessor(processor);
@@ -223,9 +230,14 @@ public class CassandraConnectorTaskTemplate {
 
         private final Set<AbstractProcessor> processors;
         private ExecutorService executorService;
+        private ErrorHandler errorHandler;
 
         ProcessorGroup() {
             this.processors = new HashSet<>();
+        }
+
+        void setErrorHandler(ErrorHandler errorHandler) {
+            this.errorHandler = errorHandler;
         }
 
         public boolean isRunning() {
@@ -258,6 +270,10 @@ public class CassandraConnectorTaskTemplate {
                     }
                     catch (Exception e) {
                         LOGGER.error("Encountered exception while running {}; stopping all processors.", processor.getName(), e);
+                        // The task thread cannot observe a failure raised here, so hand it over.
+                        if (errorHandler != null) {
+                            errorHandler.setProducerThrowable(e);
+                        }
                         try {
                             stopProcessors();
                         }
