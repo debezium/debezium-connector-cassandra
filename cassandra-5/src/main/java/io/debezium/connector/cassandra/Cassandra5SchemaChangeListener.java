@@ -118,8 +118,7 @@ public class Cassandra5SchemaChangeListener extends AbstractSchemaChangeListener
 
     @Override
     public void onTableCreated(com.datastax.oss.driver.api.core.metadata.schema.TableMetadata tableMetadata) {
-        Object cdc = tableMetadata.getOptions().get(CqlIdentifier.fromInternal("cdc"));
-        boolean cdcEnabled = cdc.toString().equals("true");
+        boolean cdcEnabled = isCdcEnabled(tableMetadata);
 
         if (cdcEnabled) {
             schemaHolder.addOrUpdateTableSchema(new KeyspaceTable(tableMetadata), getKeyValueSchema(tableMetadata));
@@ -136,6 +135,14 @@ public class Cassandra5SchemaChangeListener extends AbstractSchemaChangeListener
                     tableMetadata.getKeyspace().toString())
                     .id(TableId.fromUUID(uuid))
                     .build();
+
+            // Keyspace may not be in the embedded Schema.instance yet (single-node / RF=1); skip offline mirroring to avoid an NPE in openWithoutSSTables.
+            if (!canMirrorToOfflineSchema(Schema.instance.getKeyspaceMetadata(metadata.keyspace))) {
+                LOGGER.warn("Keyspace {} is not present in the embedded Schema instance yet; "
+                        + "skipping offline schema mirroring for {}.{}",
+                        metadata.keyspace, tableMetadata.getKeyspace(), tableMetadata.getName());
+                return;
+            }
 
             final Keyspace keyspace = Keyspace.openWithoutSSTables(tableMetadata.getKeyspace().asInternal());
             if (keyspace.hasColumnFamilyStore(metadata.id)) {
@@ -226,6 +233,15 @@ public class Cassandra5SchemaChangeListener extends AbstractSchemaChangeListener
         catch (Exception e) {
             LOGGER.warn("Error happened while removing table {}.{} from schema instance.", tableMetadata.getKeyspace(), tableMetadata.getName(), e);
         }
+    }
+
+    static boolean isCdcEnabled(final com.datastax.oss.driver.api.core.metadata.schema.TableMetadata tableMetadata) {
+        Object cdcObject = tableMetadata.getOptions().get(CqlIdentifier.fromInternal("cdc"));
+        return cdcObject != null && cdcObject.toString().equals("true");
+    }
+
+    static boolean canMirrorToOfflineSchema(final org.apache.cassandra.schema.KeyspaceMetadata keyspaceMetadata) {
+        return keyspaceMetadata != null;
     }
 
     @Override
