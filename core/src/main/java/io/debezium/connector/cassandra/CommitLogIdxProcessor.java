@@ -5,7 +5,9 @@
  */
 package io.debezium.connector.cassandra;
 
+import static io.debezium.connector.cassandra.CommitLogProcessingResult.Result.DOES_NOT_EXIST;
 import static java.nio.file.StandardWatchEventKinds.ENTRY_CREATE;
+import static java.nio.file.StandardWatchEventKinds.ENTRY_MODIFY;
 
 import java.io.File;
 import java.io.IOException;
@@ -15,7 +17,7 @@ import java.nio.file.Path;
 import java.nio.file.WatchEvent;
 import java.time.Duration;
 import java.util.Arrays;
-import java.util.Collections;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -43,6 +45,7 @@ public class CommitLogIdxProcessor extends AbstractProcessor {
 
     private final CassandraConnectorContext context;
     private final File cdcDir;
+    private final File commitLogDir;
     private AbstractDirectoryWatcher watcher;
     private final CassandraStreamingMetrics metrics;
     private boolean initial = true;
@@ -51,11 +54,12 @@ public class CommitLogIdxProcessor extends AbstractProcessor {
     private final Set<String> reprocessingCommitLogs;
     private final int shutdownTimeoutSeconds;
     private final ExecutorService executorService;
-    final static Set<Pair<CommitLogIdxParser, Future<CommitLogProcessingResult>>> submittedProcessings = ConcurrentHashMap.newKeySet();
+    static final Set<Pair<CommitLogIdxParser, Future<CommitLogProcessingResult>>> submittedProcessings = ConcurrentHashMap.newKeySet();
     private final CommitLogSegmentReader commitLogReader;
+    final Set<String> submittedIndexes = ConcurrentHashMap.newKeySet();
 
     public CommitLogIdxProcessor(CassandraConnectorContext context, CassandraStreamingMetrics metrics,
-                                 CommitLogSegmentReader commitLogReader, File cdcDir) {
+                                 CommitLogSegmentReader commitLogReader, File cdcDir, File commitLogDir) {
         super(NAME, Duration.ZERO);
         this.context = context;
         commitLogTransfer = this.context.getCassandraConnectorConfig().getCommitLogTransfer();
@@ -63,6 +67,7 @@ public class CommitLogIdxProcessor extends AbstractProcessor {
         reprocessingCommitLogs = this.context.getReprocessingCommitLogs();
         shutdownTimeoutSeconds = this.context.getCassandraConnectorConfig().getCommitLogProcessorShutdownTimeoutSeconds();
         this.cdcDir = cdcDir;
+        this.commitLogDir = commitLogDir;
         executorService = Executors.newSingleThreadExecutor();
         this.metrics = metrics;
         this.commitLogReader = commitLogReader;
@@ -107,9 +112,20 @@ public class CommitLogIdxProcessor extends AbstractProcessor {
     }
 
     public void submit(Path index) {
-        final CommitLogIdxParser parser = new CommitLogIdxParser(new LogicalCommitLog(index.toFile()), metrics,
+        String indexName = index.getFileName().toString();
+        if (!submittedIndexes.add(indexName)) {
+            LOGGER.debug("Skipping already-submitted index {}", indexName);
+            return;
+        }
+        final CommitLogIdxParser parser = new CommitLogIdxParser(new LogicalCommitLog(index.toFile(), commitLogDir), metrics,
                 this.context, commitLogReader);
-        Future<CommitLogProcessingResult> future = executorService.submit(parser::process);
+        Future<CommitLogProcessingResult> future = executorService.submit(() -> {
+            CommitLogProcessingResult result = parser.process();
+            if (result.result == DOES_NOT_EXIST) {
+                submittedIndexes.remove(indexName);
+            }
+            return result;
+        });
         submittedProcessings.add(new Pair<>(parser, future));
         LOGGER.debug("Processing {} callables.", submittedProcessings.size());
     }
@@ -122,20 +138,17 @@ public class CommitLogIdxProcessor extends AbstractProcessor {
     @Override
     public void process() throws IOException, InterruptedException {
         if (watcher == null) {
+            // ENTRY_MODIFY: Cassandra 5 may write the _cdc.idx in place, not as a new file
+            Set<WatchEvent.Kind<?>> watchKinds = new HashSet<>();
+            watchKinds.add(ENTRY_CREATE);
+            watchKinds.add(ENTRY_MODIFY);
             watcher = new AbstractDirectoryWatcher(cdcDir.toPath(),
                     this.context.getCassandraConnectorConfig().cdcDirPollInterval(),
-                    Collections.singleton(ENTRY_CREATE)) {
+                    watchKinds) {
                 @Override
                 void handleEvent(WatchEvent<?> event, Path path) {
-                    if (isRunning()) {
-                        // react only on _cdc.idx files, run a thread which will basically wait until it is COMPLETED
-                        // and then read it all at once.
-                        // if another commit log is created in while this just submitted is being processed,
-                        // since executor service is single-threaded, it will block until the previous log is processed,
-                        // basically achieving sequential log processing
-                        if (path.getFileName().toString().endsWith("_cdc.idx")) {
-                            submit(path);
-                        }
+                    if (isRunning() && path.getFileName().toString().endsWith("_cdc.idx")) {
+                        submit(path);
                     }
                 }
             };
@@ -157,6 +170,18 @@ public class CommitLogIdxProcessor extends AbstractProcessor {
                 reprocessingCommitLogs.addAll(commitLogTransfer.getErrorCommitLogFiles());
             }
             initial = false;
+        }
+        File[] currentIndexes = CommitLogUtil.getIndexes(cdcDir);
+        if (currentIndexes != null) {
+            Arrays.sort(currentIndexes, CommitLogUtil::compareCommitLogsIndexes);
+            Set<String> currentIndexNames = new HashSet<>();
+            for (File index : currentIndexes) {
+                currentIndexNames.add(index.getName());
+                if (isRunning()) {
+                    submit(index.toPath());
+                }
+            }
+            submittedIndexes.retainAll(currentIndexNames);
         }
         updateCdcDirectorySizeMetric();
         watcher.poll();
