@@ -86,16 +86,32 @@ public class Cassandra4SchemaChangeListener extends AbstractSchemaChangeListener
     @Override
     public void onKeyspaceUpdated(final KeyspaceMetadata current, final KeyspaceMetadata previous) {
         try {
-            org.apache.cassandra.schema.KeyspaceMetadata keyspaceMetadata = org.apache.cassandra.schema.KeyspaceMetadata.create(
-                    current.getName().asInternal(),
-                    KeyspaceParams.create(current.isDurableWrites(),
-                            current.getReplication()));
+            org.apache.cassandra.schema.KeyspaceMetadata existing = Schema.instance.getKeyspaceMetadata(current.getName().asInternal());
+            org.apache.cassandra.schema.KeyspaceMetadata keyspaceMetadata = offlineKeyspaceUpdate(existing);
+            if (keyspaceMetadata == null) {
+                return;
+            }
             Schema.instance.updateHandler.apply(schema -> schema.withAddedOrUpdated(keyspaceMetadata), true);
             LOGGER.info("Updated keyspace [{}] in schema instance.", current.describe(true));
         }
         catch (Exception e) {
             LOGGER.warn("Error happened while updating the keyspace {} in schema instance.", current.getName(), e);
         }
+    }
+
+    /**
+     * Computes the keyspace metadata to re-apply to the embedded, offline schema on a keyspace
+     * update, preserving the existing replication params.
+     *
+     * @param existing the keyspace already present in the embedded schema, or {@code null} if absent
+     * @return the metadata to apply, or {@code null} when there is nothing to update
+     */
+    static org.apache.cassandra.schema.KeyspaceMetadata offlineKeyspaceUpdate(
+                                                                              final org.apache.cassandra.schema.KeyspaceMetadata existing) {
+        if (existing == null) {
+            return null;
+        }
+        return existing.withSwapped(existing.params);
     }
 
     @Override
