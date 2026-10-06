@@ -36,6 +36,8 @@ public class Cassandra5SchemaChangeListener extends AbstractSchemaChangeListener
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Cassandra5SchemaChangeListener.class);
 
+    private volatile Session session;
+
     public Cassandra5SchemaChangeListener(String kafkaTopicPrefix,
                                           SourceInfoStructMaker<SourceInfo> sourceInfoStructMaker,
                                           SchemaHolder schemaHolder) {
@@ -44,6 +46,7 @@ public class Cassandra5SchemaChangeListener extends AbstractSchemaChangeListener
 
     @Override
     public void onSessionReady(@Nonnull Session session) {
+        this.session = session;
         LOGGER.info("Initializing SchemaHolder ...");
         List<com.datastax.oss.driver.api.core.metadata.schema.TableMetadata> allTableMetadataList = getCdcOptionedTableMetadataList(session);
         for (com.datastax.oss.driver.api.core.metadata.schema.TableMetadata tm : allTableMetadataList) {
@@ -134,12 +137,20 @@ public class Cassandra5SchemaChangeListener extends AbstractSchemaChangeListener
                     .id(TableId.fromUUID(uuid))
                     .build();
 
-            // Keyspace may not be in the embedded Schema.instance yet (single-node / RF=1); skip offline mirroring to avoid an NPE in openWithoutSSTables.
-            if (!canMirrorToOfflineSchema(Schema.instance.getKeyspaceMetadata(metadata.keyspace))) {
-                LOGGER.warn("Keyspace {} is not present in the embedded Schema instance yet; "
-                        + "skipping offline schema mirroring for {}.{}",
-                        metadata.keyspace, tableMetadata.getKeyspace(), tableMetadata.getName());
-                return;
+            // Keyspace may not be in the embedded Schema.instance yet (single-node / RF=1); register it before mirroring so the table is captured without a restart.
+            if (Schema.instance.getKeyspaceMetadata(metadata.keyspace) == null) {
+                Optional<KeyspaceMetadata> driverKeyspace = resolveKeyspaceFromSession(this.session, tableMetadata.getKeyspace());
+                if (driverKeyspace.isPresent()) {
+                    LOGGER.info("Keyspace {} not present in the embedded Schema instance yet; registering it before adding table {}.{}",
+                            metadata.keyspace, tableMetadata.getKeyspace(), tableMetadata.getName());
+                    onKeyspaceCreated(driverKeyspace.get());
+                }
+                else {
+                    LOGGER.warn("Keyspace {} not present in the embedded Schema instance and could not be resolved from the session; "
+                            + "skipping offline schema mirroring for {}.{}",
+                            metadata.keyspace, tableMetadata.getKeyspace(), tableMetadata.getName());
+                    return;
+                }
             }
 
             final Keyspace keyspace = Keyspace.openWithoutSSTables(tableMetadata.getKeyspace().asInternal());
@@ -238,8 +249,8 @@ public class Cassandra5SchemaChangeListener extends AbstractSchemaChangeListener
         return cdcObject != null && cdcObject.toString().equals("true");
     }
 
-    static boolean canMirrorToOfflineSchema(final org.apache.cassandra.schema.KeyspaceMetadata keyspaceMetadata) {
-        return keyspaceMetadata != null;
+    static Optional<KeyspaceMetadata> resolveKeyspaceFromSession(final Session session, final CqlIdentifier keyspace) {
+        return session == null ? Optional.empty() : session.getMetadata().getKeyspace(keyspace);
     }
 
     @Override
