@@ -6,21 +6,29 @@
 package io.debezium.connector.cassandra;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 
 import com.datastax.oss.driver.api.core.CqlIdentifier;
+import com.datastax.oss.driver.api.core.metadata.Metadata;
+import com.datastax.oss.driver.api.core.metadata.schema.KeyspaceMetadata;
 import com.datastax.oss.driver.api.core.metadata.schema.TableMetadata;
+import com.datastax.oss.driver.api.core.session.Session;
+
+import io.debezium.doc.FixFor;
 
 class Cassandra5SchemaChangeListenerTest {
 
     private static final CqlIdentifier CDC = CqlIdentifier.fromInternal("cdc");
+    private static final CqlIdentifier KEYSPACE = CqlIdentifier.fromInternal("ks");
 
     @Test
     void isCdcEnabledReturnsFalseWhenCdcOptionIsAbsent() {
@@ -36,16 +44,35 @@ class Cassandra5SchemaChangeListenerTest {
     }
 
     @Test
-    void canMirrorToOfflineSchemaIsFalseWhenKeyspaceMetadataAbsent() {
-        // When the keyspace is not yet in the embedded Schema.instance, getKeyspaceMetadata(...) is null.
-        // Before the fix, onTableCreated then called Keyspace.openWithoutSSTables(...) and threw a NullPointerException.
-        assertFalse(Cassandra5SchemaChangeListener.canMirrorToOfflineSchema(null));
+    @FixFor("debezium/dbz#2736")
+    void resolveKeyspaceFromSessionReturnsEmptyWhenSessionIsNull() {
+        // No session captured yet, so the keyspace cannot be resolved to register before mirroring.
+        assertFalse(Cassandra5SchemaChangeListener.resolveKeyspaceFromSession(null, KEYSPACE).isPresent());
     }
 
     @Test
-    void canMirrorToOfflineSchemaIsTrueWhenKeyspaceMetadataPresent() {
-        assertTrue(Cassandra5SchemaChangeListener.canMirrorToOfflineSchema(
-                mock(org.apache.cassandra.schema.KeyspaceMetadata.class)));
+    @FixFor("debezium/dbz#2736")
+    void resolveKeyspaceFromSessionReturnsKeyspaceWhenPresent() {
+        KeyspaceMetadata keyspace = mock(KeyspaceMetadata.class);
+        Session session = mockSession(KEYSPACE, keyspace);
+        Optional<KeyspaceMetadata> resolved = Cassandra5SchemaChangeListener.resolveKeyspaceFromSession(session, KEYSPACE);
+        assertTrue(resolved.isPresent());
+        assertSame(keyspace, resolved.get());
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2736")
+    void resolveKeyspaceFromSessionReturnsEmptyWhenKeyspaceAbsent() {
+        Session session = mockSession(KEYSPACE, null);
+        assertFalse(Cassandra5SchemaChangeListener.resolveKeyspaceFromSession(session, KEYSPACE).isPresent());
+    }
+
+    private Session mockSession(CqlIdentifier keyspace, KeyspaceMetadata keyspaceMetadata) {
+        Session session = mock(Session.class);
+        Metadata metadata = mock(Metadata.class);
+        when(session.getMetadata()).thenReturn(metadata);
+        when(metadata.getKeyspace(keyspace)).thenReturn(Optional.ofNullable(keyspaceMetadata));
+        return session;
     }
 
     private TableMetadata mockTable(String cdcValue) {
