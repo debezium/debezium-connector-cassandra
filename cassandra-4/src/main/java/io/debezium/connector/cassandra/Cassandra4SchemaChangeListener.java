@@ -87,12 +87,14 @@ public class Cassandra4SchemaChangeListener extends AbstractSchemaChangeListener
     public void onKeyspaceUpdated(final KeyspaceMetadata current, final KeyspaceMetadata previous) {
         try {
             org.apache.cassandra.schema.KeyspaceMetadata existing = Schema.instance.getKeyspaceMetadata(current.getName().asInternal());
-            org.apache.cassandra.schema.KeyspaceMetadata keyspaceMetadata = offlineKeyspaceUpdate(existing);
-            if (keyspaceMetadata == null) {
+            if (existing == null) {
+                // Not mirrored yet: register it like onSessionReady/onTableCreated would.
+                onKeyspaceCreated(current);
                 return;
             }
+            org.apache.cassandra.schema.KeyspaceMetadata keyspaceMetadata = offlineKeyspaceUpdate(existing);
             Schema.instance.updateHandler.apply(schema -> schema.withAddedOrUpdated(keyspaceMetadata), true);
-            LOGGER.info("Updated keyspace [{}] in schema instance.", current.describe(true));
+            LOGGER.debug("Keyspace [{}] update received; offline schema left unchanged.", current.getName());
         }
         catch (Exception e) {
             LOGGER.warn("Error happened while updating the keyspace {} in schema instance.", current.getName(), e);
@@ -101,16 +103,16 @@ public class Cassandra4SchemaChangeListener extends AbstractSchemaChangeListener
 
     /**
      * Computes the keyspace metadata to re-apply to the embedded, offline schema on a keyspace
-     * update, preserving the existing replication params.
+     * update. The existing metadata is returned unchanged (params, tables, views and types), so the
+     * schema diff is empty and nothing in the offline schema is touched: replication and
+     * durable_writes do not matter for commit log deserialization, and the mirrored tables must
+     * survive the update.
      *
-     * @param existing the keyspace already present in the embedded schema, or {@code null} if absent
-     * @return the metadata to apply, or {@code null} when there is nothing to update
+     * @param existing the keyspace already present in the embedded schema
+     * @return the metadata to re-apply (the existing metadata, unchanged)
      */
     static org.apache.cassandra.schema.KeyspaceMetadata offlineKeyspaceUpdate(
                                                                               final org.apache.cassandra.schema.KeyspaceMetadata existing) {
-        if (existing == null) {
-            return null;
-        }
         return existing.withSwapped(existing.params);
     }
 
