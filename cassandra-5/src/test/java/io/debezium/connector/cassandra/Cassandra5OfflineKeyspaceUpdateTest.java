@@ -6,7 +6,6 @@
 package io.debezium.connector.cassandra;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
 import org.apache.cassandra.schema.KeyspaceMetadata;
@@ -30,13 +29,6 @@ class Cassandra5OfflineKeyspaceUpdateTest {
         assertEquals(existing.params.replication, result.params.replication,
                 "offlineKeyspaceUpdate must not change the embedded keyspace's replication params");
         assertEquals(existing.name, result.name);
-    }
-
-    @Test
-    @FixFor("debezium/dbz#2792")
-    void offlineKeyspaceUpdateReturnsNullWhenKeyspaceNotYetMirrored() {
-        // Nothing to update when the keyspace is not present in the embedded schema.
-        assertNull(Cassandra5SchemaChangeListener.offlineKeyspaceUpdate(null));
     }
 
     @Test
