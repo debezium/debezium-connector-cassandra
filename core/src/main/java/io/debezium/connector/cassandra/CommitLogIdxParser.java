@@ -12,6 +12,7 @@ import static io.debezium.connector.cassandra.CommitLogProcessingResult.Result.D
 import static io.debezium.connector.cassandra.CommitLogProcessingResult.Result.ERROR;
 import static io.debezium.connector.cassandra.CommitLogProcessingResult.Result.OK;
 
+import java.io.File;
 import java.util.List;
 import java.util.Set;
 
@@ -55,6 +56,10 @@ public class CommitLogIdxParser {
         completePrematurely = true;
     }
 
+    LogicalCommitLog getCommitLog() {
+        return commitLog;
+    }
+
     private CommitLogProcessingResult parse() {
         try {
             parseIndexFile(commitLog);
@@ -64,6 +69,8 @@ public class CommitLogIdxParser {
                     LOGGER.warn("{} completed prematurely", commitLog);
                     return new CommitLogProcessingResult(commitLog, COMPLETED_PREMATURELY);
                 }
+
+                int offsetBeforeSleep = commitLog.offsetOfEndOfLastWrittenCDCMutation;
 
                 if (realTimeProcessingEnabled) {
                     Integer commitLogPosition;
@@ -90,6 +97,13 @@ public class CommitLogIdxParser {
                 LOGGER.debug("Sleep for idx file to be complete");
                 Thread.sleep(pollingInterval);
                 parseIndexFile(commitLog);
+
+                if (!commitLog.completed && commitLog.offsetOfEndOfLastWrittenCDCMutation == offsetBeforeSleep && isAbandoned()) {
+                    LOGGER.warn("Idx offset for {} has not advanced and a newer commit log segment already exists - " +
+                            "treating segment as abandoned, completing at offset {}",
+                            commitLog, commitLog.offsetOfEndOfLastWrittenCDCMutation);
+                    commitLog.completed = true;
+                }
             }
 
             LOGGER.info("Completed idx file for: {}", commitLog);
@@ -125,7 +139,9 @@ public class CommitLogIdxParser {
 
     private void enqueueEOFEvent() {
         try {
-            queues.get(Math.abs(commitLog.log.getName().hashCode() % queues.size())).enqueue(new EOFEvent(commitLog.log));
+            // always the cdc_raw/ location, even if exists() fell back to commitlog/ for reading
+            File canonicalLog = new File(commitLog.index.getParentFile(), commitLog.log.getName());
+            queues.get(Math.abs(commitLog.log.getName().hashCode() % queues.size())).enqueue(new EOFEvent(canonicalLog));
         }
         catch (InterruptedException e) {
             throw new CassandraConnectorTaskException(String.format(
@@ -149,6 +165,24 @@ public class CommitLogIdxParser {
             erroneousCommitLogs.add(logicalCommitLog.log.getName());
             enqueueEOFEvent();
         }
+    }
+
+    private boolean isAbandoned() {
+        File cdcRawDir = commitLog.index.getParentFile();
+        if (cdcRawDir == null || !cdcRawDir.isDirectory()) {
+            return false;
+        }
+        // .idx-only: a newer .log is hard-linked at allocation, before ever being synced
+        File[] siblingIndexes = CommitLogUtil.getIndexes(cdcRawDir);
+        if (siblingIndexes == null) {
+            return false;
+        }
+        for (File siblingIndex : siblingIndexes) {
+            if (CommitLogUtil.compareCommitLogsIndexes(siblingIndex, commitLog.index) > 0) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void parseIndexFile(LogicalCommitLog commitLog) throws DebeziumException {
