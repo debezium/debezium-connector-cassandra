@@ -69,6 +69,7 @@
         <version.embedded.cassandra>4.0.6</version.embedded.cassandra>
         <version.testcontainers>1.21.4</version.testcontainers>
         <version.junit5>5.10.1</version.junit5>
+        <version.log4j>2.26.1</version.log4j>
     </properties>
 
     <repositories>
@@ -205,6 +206,13 @@
                 <version>${version.junit5}</version>
                 <scope>test</scope>
             </dependency>
+
+            <!-- Logging -->
+            <dependency>
+                <groupId>org.apache.logging.log4j</groupId>
+                <artifactId>log4j-slf4j-impl</artifactId>
+                <version>${version.log4j}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -297,8 +305,8 @@
             <artifactId>slf4j-api</artifactId>
         </dependency>
         <dependency>
-            <groupId>ch.qos.logback</groupId>
-            <artifactId>logback-classic</artifactId>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-slf4j-impl</artifactId>
         </dependency>
 
         <!-- Building -->
