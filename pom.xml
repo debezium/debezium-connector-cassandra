@@ -69,6 +69,7 @@
         <version.embedded.cassandra>4.0.6</version.embedded.cassandra>
         <version.testcontainers>1.21.4</version.testcontainers>
         <version.junit5>5.10.1</version.junit5>
+        <version.jetty>12.1.14</version.jetty>
         <version.log4j>2.26.1</version.log4j>
     </properties>
 
@@ -91,6 +92,20 @@
     <!-- Managing versions here to ensure the right ones are applied during releases -->
     <dependencyManagement>
         <dependencies>
+            <dependency>
+                <groupId>org.eclipse.jetty</groupId>
+                <artifactId>jetty-bom</artifactId>
+                <version>${version.jetty}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.eclipse.jetty.ee10</groupId>
+                <artifactId>jetty-ee10-bom</artifactId>
+                <version>${version.jetty}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
             <dependency>
                 <groupId>io.debezium</groupId>
                 <artifactId>debezium-bom</artifactId>
