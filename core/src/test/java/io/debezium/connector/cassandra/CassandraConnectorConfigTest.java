@@ -15,7 +15,6 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
-import io.confluent.kafka.serializers.AbstractKafkaAvroSerDeConfig;
 import io.debezium.config.Configuration;
 
 class CassandraConnectorConfigTest {
@@ -111,7 +110,7 @@ class CassandraConnectorConfigTest {
         String keyConverterClass = "io.confluent.connect.avro.AvroConverter";
         HashMap<String, Object> keyConverterConfigs = new HashMap<>();
         keyConverterConfigs.put(CassandraConnectorConfig.KEY_CONVERTER_CLASS_CONFIG.name(), keyConverterClass);
-        keyConverterConfigs.put(CassandraConnectorConfig.KEY_CONVERTER_PREFIX + AbstractKafkaAvroSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, "http://localhost:8081");
+        keyConverterConfigs.put(CassandraConnectorConfig.KEY_CONVERTER_PREFIX + "schema.registry.url", "http://localhost:8081");
         config = buildTaskConfigs(keyConverterConfigs);
         assertEquals(keyConverterClass, config.getKeyConverter().getClass().getName());
 
