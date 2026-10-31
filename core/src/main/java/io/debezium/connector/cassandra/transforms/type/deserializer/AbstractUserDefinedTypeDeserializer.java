@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -35,7 +36,11 @@ public abstract class AbstractUserDefinedTypeDeserializer extends AbstractTypeDe
         for (int i = 0; i < fieldNames.size(); i++) {
             String fieldName = fieldNames.get(i);
             Object fieldType = fieldTypes.get(i);
-            struct.put(fieldName, CassandraTypeDeserializer.deserialize(fieldType, elements.get(i)));
+            // A serialized value may hold fewer components than the type has fields, e.g. when it was
+            // written before fields were added with ALTER TYPE ... ADD; such trailing fields are null
+            final var element = i < elements.size() ? elements.get(i) : null;
+            final var value = CassandraTypeDeserializer.deserialize(fieldType, element);
+            struct.put(fieldName, withSchema(value, struct.schema().field(fieldName).schema()));
         }
         return struct;
     }
@@ -46,10 +51,25 @@ public abstract class AbstractUserDefinedTypeDeserializer extends AbstractTypeDe
         List<String> fieldNames = fieldNames(abstractType);
         List<?> fieldTypes = fieldTypes(abstractType);
         for (int i = 0; i < fieldNames.size(); i++) {
-            Schema fieldSchema = CassandraTypeDeserializer.getSchemaBuilder(fieldTypes.get(i)).build();
+            // every field is optional, as a UDT value may lack any of its fields
+            Schema fieldSchema = CassandraTypeDeserializer.getSchemaBuilder(fieldTypes.get(i)).optional().build();
             schemaBuilder.field(fieldNames.get(i), fieldSchema);
         }
         return schemaBuilder.optional();
+    }
+
+    /**
+     * Rebinds a struct value, e.g. a precise decimal, created with a required schema to the optional field schema.
+     */
+    private static Object withSchema(Object value, Schema schema) {
+        if (value instanceof Struct valueStruct && !valueStruct.schema().equals(schema)) {
+            final var struct = new Struct(schema);
+            for (Field field : schema.fields()) {
+                struct.put(field, valueStruct.get(field.name()));
+            }
+            return struct;
+        }
+        return value;
     }
 
     @Override
