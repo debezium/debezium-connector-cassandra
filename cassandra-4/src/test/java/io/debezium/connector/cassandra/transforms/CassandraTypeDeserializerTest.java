@@ -71,6 +71,7 @@ import com.datastax.oss.driver.internal.core.type.DefaultUserDefinedType;
 import io.debezium.connector.cassandra.Cassandra4TypeProvider;
 import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer.DecimalMode;
 import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer.VarIntMode;
+import io.debezium.doc.FixFor;
 
 class CassandraTypeDeserializerTest {
 
@@ -660,6 +661,127 @@ class CassandraTypeDeserializerTest {
                 Arrays.asList(DataTypes.ASCII, DataTypes.frozenSetOf(DataTypes.ASCII)));
         deserializedList = CassandraTypeDeserializer.deserialize(DataTypes.frozenListOf(userDefinedType), serializedList);
         assertEquals(expectedList, deserializedList);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1365")
+    void testUserTypeWithFewerComponentsThanFields() {
+        UserType userType = createUserTypeWithAddedFields();
+        Schema userSchema = CassandraTypeDeserializer.getSchemaBuilder(userType).build();
+
+        // value written before "intField" and "addedField" were added to the type
+        ByteBuffer serializedUserTypeObject = serializeUserTypeComponents(AsciiType.instance.decompose("foobar"));
+        Struct expectedUserTypeData = new Struct(userSchema)
+                .put("asciiField", "foobar");
+        Object deserializedUserTypeObject = CassandraTypeDeserializer.deserialize(userType, serializedUserTypeObject);
+        assertEquals(expectedUserTypeData, deserializedUserTypeObject);
+
+        // value without any components
+        deserializedUserTypeObject = CassandraTypeDeserializer.deserialize(userType, ByteBuffer.allocate(0));
+        assertEquals(new Struct(userSchema), deserializedUserTypeObject);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1365")
+    void testCollectionsOfUserTypeWithFewerComponentsThanFields() {
+        UserType userType = createUserTypeWithAddedFields();
+        Schema userSchema = CassandraTypeDeserializer.getSchemaBuilder(userType).build();
+
+        // value written before "addedField" was added to the type
+        ByteBuffer serializedUserTypeObject = serializeUserTypeComponents(AsciiType.instance.decompose("foobar"),
+                Int32Type.instance.decompose(1));
+        Struct expectedUserTypeData = new Struct(userSchema)
+                .put("asciiField", "foobar")
+                .put("intField", 1);
+
+        MapType<String, ByteBuffer> frozenMapType = MapType.getInstance(UTF8Type.instance, userType, false);
+        Map<String, ByteBuffer> originalMap = new HashMap<>();
+        originalMap.put("key", serializedUserTypeObject.duplicate());
+        ByteBuffer serializedMap = frozenMapType.decompose(originalMap);
+        Map<String, Struct> expectedMap = new HashMap<>();
+        expectedMap.put("key", expectedUserTypeData);
+        Object deserializedMap = CassandraTypeDeserializer.deserialize(frozenMapType, serializedMap);
+        assertEquals(expectedMap, deserializedMap);
+
+        SetType<ByteBuffer> frozenSetType = SetType.getInstance(userType, false);
+        Set<ByteBuffer> originalSet = new HashSet<>();
+        originalSet.add(serializedUserTypeObject.duplicate());
+        ByteBuffer serializedSet = frozenSetType.decompose(originalSet);
+        List<Struct> expectedList = new ArrayList<>();
+        expectedList.add(expectedUserTypeData);
+        Object deserializedSet = CassandraTypeDeserializer.deserialize(frozenSetType, serializedSet);
+        assertEquals(expectedList, deserializedSet);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1365")
+    void testUserTypeWithFewerComponentsThanFieldsInPreciseMode() {
+        CassandraTypeDeserializer.setDecimalMode(DecimalMode.PRECISE);
+        CassandraTypeDeserializer.setVarIntMode(VarIntMode.PRECISE);
+        try {
+            ByteBuffer userTypeName = ByteBuffer.wrap("FooType".getBytes(Charset.defaultCharset()));
+            List<FieldIdentifier> fieldIdentifiers = new ArrayList<>();
+            fieldIdentifiers.add(new FieldIdentifier(ByteBuffer.wrap("asciiField".getBytes(Charset.defaultCharset()))));
+            fieldIdentifiers.add(new FieldIdentifier(ByteBuffer.wrap("decimalField".getBytes(Charset.defaultCharset()))));
+            fieldIdentifiers.add(new FieldIdentifier(ByteBuffer.wrap("varIntField".getBytes(Charset.defaultCharset()))));
+            List<AbstractType<?>> fieldTypes = new ArrayList<>();
+            fieldTypes.add(AsciiType.instance);
+            fieldTypes.add(DecimalType.instance);
+            fieldTypes.add(IntegerType.instance);
+            UserType userType = new UserType("barspace", userTypeName, fieldIdentifiers, fieldTypes, false);
+            Schema userSchema = CassandraTypeDeserializer.getSchemaBuilder(userType).build();
+
+            // value written before "varIntField" was added to the type
+            BigDecimal expectedDecimal = BigDecimal.valueOf(Math.PI);
+            ByteBuffer serializedUserTypeObject = serializeUserTypeComponents(AsciiType.instance.decompose("foobar"),
+                    DecimalType.instance.decompose(expectedDecimal));
+            Struct expectedDecimalStruct = new Struct(userSchema.field("decimalField").schema())
+                    .put("value", expectedDecimal.unscaledValue().toByteArray())
+                    .put("scale", expectedDecimal.scale());
+            Struct expectedUserTypeData = new Struct(userSchema)
+                    .put("asciiField", "foobar")
+                    .put("decimalField", expectedDecimalStruct);
+            Object deserializedUserTypeObject = CassandraTypeDeserializer.deserialize(userType, serializedUserTypeObject);
+            assertEquals(expectedUserTypeData, deserializedUserTypeObject);
+
+            // value written before "decimalField" and "varIntField" were added to the type
+            serializedUserTypeObject = serializeUserTypeComponents(AsciiType.instance.decompose("foobar"));
+            expectedUserTypeData = new Struct(userSchema)
+                    .put("asciiField", "foobar");
+            deserializedUserTypeObject = CassandraTypeDeserializer.deserialize(userType, serializedUserTypeObject);
+            assertEquals(expectedUserTypeData, deserializedUserTypeObject);
+        }
+        finally {
+            CassandraTypeDeserializer.setDecimalMode(DecimalMode.DOUBLE);
+            CassandraTypeDeserializer.setVarIntMode(VarIntMode.LONG);
+        }
+    }
+
+    private static UserType createUserTypeWithAddedFields() {
+        ByteBuffer userTypeName = ByteBuffer.wrap("FooType".getBytes(Charset.defaultCharset()));
+        List<FieldIdentifier> fieldIdentifiers = new ArrayList<>();
+        fieldIdentifiers.add(new FieldIdentifier(ByteBuffer.wrap("asciiField".getBytes(Charset.defaultCharset()))));
+        fieldIdentifiers.add(new FieldIdentifier(ByteBuffer.wrap("intField".getBytes(Charset.defaultCharset()))));
+        fieldIdentifiers.add(new FieldIdentifier(ByteBuffer.wrap("addedField".getBytes(Charset.defaultCharset()))));
+        List<AbstractType<?>> fieldTypes = new ArrayList<>();
+        fieldTypes.add(AsciiType.instance);
+        fieldTypes.add(Int32Type.instance);
+        fieldTypes.add(UTF8Type.instance);
+        return new UserType("barspace", userTypeName, fieldIdentifiers, fieldTypes, false);
+    }
+
+    private static ByteBuffer serializeUserTypeComponents(ByteBuffer... components) {
+        int size = 0;
+        for (ByteBuffer component : components) {
+            size += Integer.BYTES + component.remaining();
+        }
+        ByteBuffer result = ByteBuffer.allocate(size);
+        for (ByteBuffer component : components) {
+            result.putInt(component.remaining());
+            result.put(component.duplicate());
+        }
+        result.flip();
+        return result;
     }
 
 }
