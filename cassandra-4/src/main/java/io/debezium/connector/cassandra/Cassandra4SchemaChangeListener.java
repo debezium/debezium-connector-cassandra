@@ -195,8 +195,7 @@ public class Cassandra4SchemaChangeListener extends AbstractSchemaChangeListener
 
     @Override
     public void onTableDropped(com.datastax.oss.driver.api.core.metadata.schema.TableMetadata tableMetadata) {
-        Object cdc = tableMetadata.getOptions().get(CqlIdentifier.fromInternal("cdc"));
-        boolean cdcEnabled = cdc.toString().equals("true");
+        boolean cdcEnabled = isCdcEnabled(tableMetadata);
 
         if (cdcEnabled) {
             schemaHolder.removeTableSchema(new KeyspaceTable(tableMetadata));
