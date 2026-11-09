@@ -47,16 +47,24 @@ class Cassandra4SchemaChangeListenerTest {
     @Test
     @FixFor("debezium/dbz#3036")
     void keyspaceDropContinuesAfterTableWithMissingCdcOption() {
-        SchemaHolder schemaHolder = mock(SchemaHolder.class);
-        Cassandra4SchemaChangeListener listener = new Cassandra4SchemaChangeListener("server", null, schemaHolder);
+        final var schemaHolder = mock(SchemaHolder.class);
+        final var listener = new Cassandra4SchemaChangeListener("server", null, schemaHolder) {
+            @Override
+            void removeTableFromSchemaInstance(final TableMetadata tableMetadata) {
+            }
 
-        TableMetadata unmanagedTable = mockTable("unmanaged", null);
-        TableMetadata managedTable = mockTable("managed", "true");
-        Map<CqlIdentifier, TableMetadata> tables = new LinkedHashMap<>();
+            @Override
+            void removeKeyspaceFromSchemaInstance(final String keyspaceName) {
+            }
+        };
+
+        final var unmanagedTable = mockTable("unmanaged", null);
+        final var managedTable = mockTable("managed", "true");
+        final Map<CqlIdentifier, TableMetadata> tables = new LinkedHashMap<>();
         tables.put(unmanagedTable.getName(), unmanagedTable);
         tables.put(managedTable.getName(), managedTable);
 
-        KeyspaceMetadata keyspace = mock(KeyspaceMetadata.class);
+        final var keyspace = mock(KeyspaceMetadata.class);
         when(keyspace.getName()).thenReturn(KEYSPACE);
         when(keyspace.getTables()).thenReturn(tables);
 
