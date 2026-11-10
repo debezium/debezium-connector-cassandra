@@ -203,8 +203,7 @@ public class Cassandra5SchemaChangeListener extends AbstractSchemaChangeListener
 
     @Override
     public void onTableDropped(com.datastax.oss.driver.api.core.metadata.schema.TableMetadata tableMetadata) {
-        Object cdc = tableMetadata.getOptions().get(CqlIdentifier.fromInternal("cdc"));
-        boolean cdcEnabled = cdc.toString().equals("true");
+        boolean cdcEnabled = isCdcEnabled(tableMetadata);
 
         if (cdcEnabled) {
             schemaHolder.removeTableSchema(new KeyspaceTable(tableMetadata));
@@ -274,8 +273,8 @@ public class Cassandra5SchemaChangeListener extends AbstractSchemaChangeListener
     @Override
     public void onTableUpdated(final com.datastax.oss.driver.api.core.metadata.schema.TableMetadata newTableMetadata,
                                final com.datastax.oss.driver.api.core.metadata.schema.TableMetadata oldTableMetaData) {
-        boolean newCdc = isCdcEnabled(newTableMetadata);
-        boolean oldCdc = isCdcEnabled(oldTableMetaData);
+        final var newCdc = isCdcEnabled(newTableMetadata);
+        final var oldCdc = isCdcEnabled(oldTableMetaData);
 
         if (newCdc) {
             // if it was cdc before and now it is too, add it, because its schema might change
