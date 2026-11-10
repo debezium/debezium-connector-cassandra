@@ -115,8 +115,7 @@ public class DseSchemaChangeListener extends AbstractSchemaChangeListener {
 
     @Override
     public void onTableCreated(com.datastax.oss.driver.api.core.metadata.schema.TableMetadata tableMetadata) {
-        Object cdc = tableMetadata.getOptions().get(CqlIdentifier.fromInternal("cdc"));
-        boolean cdcEnabled = cdc.toString().equals("true");
+        final var cdcEnabled = isCdcEnabled(tableMetadata);
 
         if (cdcEnabled) {
             schemaHolder.addOrUpdateTableSchema(new KeyspaceTable(tableMetadata), getKeyValueSchema(tableMetadata));
@@ -163,8 +162,7 @@ public class DseSchemaChangeListener extends AbstractSchemaChangeListener {
 
     @Override
     public void onTableDropped(com.datastax.oss.driver.api.core.metadata.schema.TableMetadata tableMetadata) {
-        Object cdc = tableMetadata.getOptions().get(CqlIdentifier.fromInternal("cdc"));
-        boolean cdcEnabled = cdc.toString().equals("true");
+        final var cdcEnabled = isCdcEnabled(tableMetadata);
 
         if (cdcEnabled) {
             schemaHolder.removeTableSchema(new KeyspaceTable(tableMetadata));
@@ -223,10 +221,8 @@ public class DseSchemaChangeListener extends AbstractSchemaChangeListener {
     @Override
     public void onTableUpdated(final com.datastax.oss.driver.api.core.metadata.schema.TableMetadata newTableMetadata,
                                final com.datastax.oss.driver.api.core.metadata.schema.TableMetadata oldTableMetaData) {
-        Object newCdcObject = newTableMetadata.getOptions().get(CqlIdentifier.fromInternal("cdc"));
-        boolean newCdc = newCdcObject.toString().equals("true");
-        Object oldCdcObject = oldTableMetaData.getOptions().get(CqlIdentifier.fromInternal("cdc"));
-        boolean oldCdc = oldCdcObject.toString().equals("true");
+        final var newCdc = isCdcEnabled(newTableMetadata);
+        final var oldCdc = isCdcEnabled(oldTableMetaData);
 
         if (newCdc) {
             // if it was cdc before and now it is too, add it, because its schema might change
@@ -264,5 +260,9 @@ public class DseSchemaChangeListener extends AbstractSchemaChangeListener {
         catch (Exception e) {
             LOGGER.warn("Error happened while reacting on changed table {}.{} in schema instance.", newTableMetadata.getKeyspace(), newTableMetadata.getName(), e);
         }
+    }
+
+    static boolean isCdcEnabled(final com.datastax.oss.driver.api.core.metadata.schema.TableMetadata tableMetadata) {
+        return "true".equals(tableMetadata.getOptions().get(CqlIdentifier.fromInternal("cdc")).toString());
     }
 }
