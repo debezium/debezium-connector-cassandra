@@ -49,7 +49,15 @@ class Cassandra5SchemaChangeListenerTest {
     @FixFor("debezium/dbz#3036")
     void keyspaceDropContinuesAfterTableWithMissingCdcOption() {
         final var schemaHolder = mock(SchemaHolder.class);
-        final var listener = new Cassandra5SchemaChangeListener("server", null, schemaHolder);
+        final var listener = new Cassandra5SchemaChangeListener("server", null, schemaHolder) {
+            @Override
+            void removeTableFromSchemaInstance(final TableMetadata tableMetadata) {
+            }
+
+            @Override
+            void removeKeyspaceFromSchemaInstance(final String keyspaceName) {
+            }
+        };
 
         final var unmanagedTable = mockTable("unmanaged", null);
         final var managedTable = mockTable("managed", "true");

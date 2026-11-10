@@ -105,12 +105,16 @@ public class DseSchemaChangeListener extends AbstractSchemaChangeListener {
             for (Map.Entry<CqlIdentifier, com.datastax.oss.driver.api.core.metadata.schema.TableMetadata> entries : keyspaceMetadata.getTables().entrySet()) {
                 onTableDropped(entries.getValue());
             }
-            SchemaManager.instance.removeKeyspaceInstance(keyspaceMetadata.getName().toString());
+            removeKeyspaceFromSchemaInstance(keyspaceMetadata.getName().toString());
             LOGGER.info("Removed keyspace [{}] from schema instance.", keyspaceMetadata.describe(true));
         }
         catch (Exception e) {
             LOGGER.warn("Error happened while removing the keyspace {} from schema instance.", keyspaceMetadata.getName(), e);
         }
+    }
+
+    void removeKeyspaceFromSchemaInstance(final String keyspaceName) {
+        SchemaManager.instance.removeKeyspaceInstance(keyspaceName);
     }
 
     @Override
@@ -169,52 +173,55 @@ public class DseSchemaChangeListener extends AbstractSchemaChangeListener {
         }
 
         try {
-            final String ksName = tableMetadata.getKeyspace().toString();
-            final String tableName = tableMetadata.getName().toString();
-            LOGGER.debug("Table {}.{} detected to be removed!", ksName, tableName);
-            final org.apache.cassandra.schema.KeyspaceMetadata oldKsm = SchemaManager.instance.getKeyspaceMetadata(ksName);
-            if (oldKsm == null) {
-                LOGGER.warn("KeyspaceMetadata for keyspace {} is not found!", ksName);
-                return;
-            }
-
-            TableMetadata metadata = SchemaManager.instance.getTableMetadata(TableId.fromUUID(tableMetadata.getId().get()));
-            if (metadata == null) {
-                LOGGER.warn("Metadata for ColumnFamilyStore for {}.{} is not found!", ksName, tableName);
-                return;
-            }
-
-            Keyspace instance = SchemaManager.instance.getKeyspaceInstance(metadata.keyspace);
-            if (instance == null) {
-                LOGGER.warn("Keyspace instance for ColumnFamilyStore for {}.{} is not found!", ksName, tableName);
-                return;
-            }
-
-            final ColumnFamilyStore cfs = instance.hasColumnFamilyStore(metadata.id)
-                    ? instance.getColumnFamilyStore(metadata.id)
-                    : null;
-
-            if (cfs == null) {
-                LOGGER.warn("ColumnFamilyStore for {}.{} is not found!", ksName, tableName);
-                return;
-            }
-            // make sure all the indexes are dropped, or else.
-            cfs.indexManager.markAllIndexesRemoved();
-            // reinitialize the keyspace.
-            final Optional<TableMetadata> cfm = oldKsm.tables.get(tableName);
-
-            if (cfm.isPresent()) {
-                final org.apache.cassandra.schema.KeyspaceMetadata newKsm = oldKsm.withSwapped(oldKsm.tables.without(tableName));
-                SchemaManager.instance.load(newKsm);
-                LOGGER.info("Removed table [{}] from schema instance.", tableMetadata.describe(true));
-            }
-            else {
-                LOGGER.warn("Table {}.{} is not present in old keyspace meta data!", ksName, tableName);
-            }
-
+            removeTableFromSchemaInstance(tableMetadata);
         }
         catch (Exception e) {
             LOGGER.warn("Error happened while removing table {}.{} from schema instance.", tableMetadata.getKeyspace(), tableMetadata.getName(), e);
+        }
+    }
+
+    void removeTableFromSchemaInstance(final com.datastax.oss.driver.api.core.metadata.schema.TableMetadata tableMetadata) {
+        final String ksName = tableMetadata.getKeyspace().toString();
+        final String tableName = tableMetadata.getName().toString();
+        LOGGER.debug("Table {}.{} detected to be removed!", ksName, tableName);
+        final org.apache.cassandra.schema.KeyspaceMetadata oldKsm = SchemaManager.instance.getKeyspaceMetadata(ksName);
+        if (oldKsm == null) {
+            LOGGER.warn("KeyspaceMetadata for keyspace {} is not found!", ksName);
+            return;
+        }
+
+        TableMetadata metadata = SchemaManager.instance.getTableMetadata(TableId.fromUUID(tableMetadata.getId().get()));
+        if (metadata == null) {
+            LOGGER.warn("Metadata for ColumnFamilyStore for {}.{} is not found!", ksName, tableName);
+            return;
+        }
+
+        Keyspace instance = SchemaManager.instance.getKeyspaceInstance(metadata.keyspace);
+        if (instance == null) {
+            LOGGER.warn("Keyspace instance for ColumnFamilyStore for {}.{} is not found!", ksName, tableName);
+            return;
+        }
+
+        final ColumnFamilyStore cfs = instance.hasColumnFamilyStore(metadata.id)
+                ? instance.getColumnFamilyStore(metadata.id)
+                : null;
+
+        if (cfs == null) {
+            LOGGER.warn("ColumnFamilyStore for {}.{} is not found!", ksName, tableName);
+            return;
+        }
+        // make sure all the indexes are dropped, or else.
+        cfs.indexManager.markAllIndexesRemoved();
+        // reinitialize the keyspace.
+        final Optional<TableMetadata> cfm = oldKsm.tables.get(tableName);
+
+        if (cfm.isPresent()) {
+            final org.apache.cassandra.schema.KeyspaceMetadata newKsm = oldKsm.withSwapped(oldKsm.tables.without(tableName));
+            SchemaManager.instance.load(newKsm);
+            LOGGER.info("Removed table [{}] from schema instance.", tableMetadata.describe(true));
+        }
+        else {
+            LOGGER.warn("Table {}.{} is not present in old keyspace meta data!", ksName, tableName);
         }
     }
 
@@ -263,6 +270,7 @@ public class DseSchemaChangeListener extends AbstractSchemaChangeListener {
     }
 
     static boolean isCdcEnabled(final com.datastax.oss.driver.api.core.metadata.schema.TableMetadata tableMetadata) {
-        return "true".equals(tableMetadata.getOptions().get(CqlIdentifier.fromInternal("cdc")).toString());
+        final Object cdcObject = tableMetadata.getOptions().get(CqlIdentifier.fromInternal("cdc"));
+        return cdcObject != null && "true".equals(cdcObject.toString());
     }
 }
