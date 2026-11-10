@@ -127,12 +127,16 @@ public class Cassandra5SchemaChangeListener extends AbstractSchemaChangeListener
             for (Map.Entry<CqlIdentifier, com.datastax.oss.driver.api.core.metadata.schema.TableMetadata> entries : keyspaceMetadata.getTables().entrySet()) {
                 onTableDropped(entries.getValue());
             }
-            Schema.instance.updateHandler.apply(schema -> schema.without(keyspaceMetadata.getName().toString()), true);
+            removeKeyspaceFromSchemaInstance(keyspaceMetadata.getName().toString());
             LOGGER.info("Removed keyspace [{}] from schema instance.", keyspaceMetadata.describe(true));
         }
         catch (Exception e) {
             LOGGER.warn("Error happened while removing the keyspace {} from schema instance.", keyspaceMetadata.getName(), e);
         }
+    }
+
+    void removeKeyspaceFromSchemaInstance(final String keyspaceName) {
+        Schema.instance.updateHandler.apply(schema -> schema.without(keyspaceName), true);
     }
 
     @Override
@@ -210,54 +214,57 @@ public class Cassandra5SchemaChangeListener extends AbstractSchemaChangeListener
         }
 
         try {
-            final String ksName = tableMetadata.getKeyspace().toString();
-            final String tableName = tableMetadata.getName().toString();
-            LOGGER.debug("Table {}.{} detected to be removed!", ksName, tableName);
-            final org.apache.cassandra.schema.KeyspaceMetadata oldKsm = Schema.instance.getKeyspaceMetadata(ksName);
-            if (oldKsm == null) {
-                LOGGER.warn("KeyspaceMetadata for keyspace {} is not found!", ksName);
-                return;
-            }
-
-            Optional<UUID> optionalId = tableMetadata.getId();
-            assert optionalId.isPresent();
-
-            TableMetadata metadata = Schema.instance.getTableMetadata(TableId.fromUUID(optionalId.get()));
-            if (metadata == null) {
-                LOGGER.warn("Metadata for ColumnFamilyStore for {}.{} is not found!", ksName, tableName);
-                return;
-            }
-
-            Keyspace instance = Schema.instance.getKeyspaceInstance(metadata.keyspace);
-            if (instance == null) {
-                LOGGER.warn("Keyspace instance for ColumnFamilyStore for {}.{} is not found!", ksName, tableName);
-                return;
-            }
-
-            final ColumnFamilyStore cfs = instance.hasColumnFamilyStore(metadata.id)
-                    ? instance.getColumnFamilyStore(metadata.id)
-                    : null;
-
-            if (cfs == null) {
-                LOGGER.warn("ColumnFamilyStore for {}.{} is not found!", ksName, tableName);
-                return;
-            }
-            // make sure all the indexes are dropped, or else.
-            cfs.indexManager.markAllIndexesRemoved();
-            // reinitialize the keyspace.
-            final Optional<TableMetadata> cfm = oldKsm.tables.get(tableName);
-
-            if (cfm.isPresent()) {
-                Schema.instance.updateHandler.apply(schema -> schema.withAddedOrUpdated(oldKsm.withSwapped(oldKsm.tables.without(tableName))), true);
-                LOGGER.info("Removed table [{}] from schema instance.", tableMetadata.describe(true));
-            }
-            else {
-                LOGGER.warn("Table {}.{} is not present in old keyspace meta data!", ksName, tableName);
-            }
-
+            removeTableFromSchemaInstance(tableMetadata);
         }
         catch (Exception e) {
             LOGGER.warn("Error happened while removing table {}.{} from schema instance.", tableMetadata.getKeyspace(), tableMetadata.getName(), e);
+        }
+    }
+
+    void removeTableFromSchemaInstance(final com.datastax.oss.driver.api.core.metadata.schema.TableMetadata tableMetadata) {
+        final String ksName = tableMetadata.getKeyspace().toString();
+        final String tableName = tableMetadata.getName().toString();
+        LOGGER.debug("Table {}.{} detected to be removed!", ksName, tableName);
+        final org.apache.cassandra.schema.KeyspaceMetadata oldKsm = Schema.instance.getKeyspaceMetadata(ksName);
+        if (oldKsm == null) {
+            LOGGER.warn("KeyspaceMetadata for keyspace {} is not found!", ksName);
+            return;
+        }
+
+        Optional<UUID> optionalId = tableMetadata.getId();
+        assert optionalId.isPresent();
+
+        TableMetadata metadata = Schema.instance.getTableMetadata(TableId.fromUUID(optionalId.get()));
+        if (metadata == null) {
+            LOGGER.warn("Metadata for ColumnFamilyStore for {}.{} is not found!", ksName, tableName);
+            return;
+        }
+
+        Keyspace instance = Schema.instance.getKeyspaceInstance(metadata.keyspace);
+        if (instance == null) {
+            LOGGER.warn("Keyspace instance for ColumnFamilyStore for {}.{} is not found!", ksName, tableName);
+            return;
+        }
+
+        final ColumnFamilyStore cfs = instance.hasColumnFamilyStore(metadata.id)
+                ? instance.getColumnFamilyStore(metadata.id)
+                : null;
+
+        if (cfs == null) {
+            LOGGER.warn("ColumnFamilyStore for {}.{} is not found!", ksName, tableName);
+            return;
+        }
+        // make sure all the indexes are dropped, or else.
+        cfs.indexManager.markAllIndexesRemoved();
+        // reinitialize the keyspace.
+        final Optional<TableMetadata> cfm = oldKsm.tables.get(tableName);
+
+        if (cfm.isPresent()) {
+            Schema.instance.updateHandler.apply(schema -> schema.withAddedOrUpdated(oldKsm.withSwapped(oldKsm.tables.without(tableName))), true);
+            LOGGER.info("Removed table [{}] from schema instance.", tableMetadata.describe(true));
+        }
+        else {
+            LOGGER.warn("Table {}.{} is not present in old keyspace meta data!", ksName, tableName);
         }
     }
 
