@@ -54,7 +54,7 @@ public abstract class CassandraConnectorTestBase {
     protected CassandraTestProvider provider;
 
     @org.testcontainers.junit.jupiter.Container
-    static GenericContainer cassandra = new GenericContainer(new ImageFromDockerfile().withFileFromPath(".", (new File(dockerDir)).toPath()))
+    protected static GenericContainer cassandra = new GenericContainer(new ImageFromDockerfile().withFileFromPath(".", (new File(dockerDir)).toPath()))
             .withExposedPorts(9042)
             .withStartupTimeout(Duration.ofMinutes(3))
             .withCreateContainerCmdModifier(cmd)
